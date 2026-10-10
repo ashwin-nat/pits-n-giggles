@@ -42,6 +42,10 @@ from tests_base import F1TelemetryUnitTestsBase
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+def load(data: dict, *, use_cache: bool) -> TrackSegmentsClassifier:
+    return TrackSegmentsClassifier.model_validate({**data, "use_cache": use_cache})
+
+
 class TestTrackSegments(F1TelemetryUnitTestsBase):
 
     @staticmethod
@@ -92,8 +96,7 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
             ]
         }
 
-        self.tracker = TrackSegmentsClassifier()
-        self.tracker.load_track_data(self.track_data)
+        self.tracker = load(self.track_data, use_cache=False)
 
     # --- Regression: straight and corner lookups ------------------------------------------
 
@@ -215,12 +218,6 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
         info = self.tracker.get_segment_info(-0.1)
         self.assertIsNone(info)
 
-    def test_no_track_loaded(self):
-        """Calling get_segment_info before load_track_data is a caller error (enforced precondition)."""
-        tracker = TrackSegmentsClassifier()
-        with self.assertRaises(AssertionError):
-            tracker.get_segment_info(100)
-
     # --- Lap wraparound (sim outlap negatives / start-finish line) -------------------------
 
     def test_negative_position_wraps_onto_last_segment(self):
@@ -229,8 +226,7 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
             {"type": "straight", "name": "A", "start_m": 0,    "end_m": 6900},
             {"type": "corner",   "name": "B", "start_m": 6900, "end_m": 7000, "corner_number": 1},
         ]
-        tracker = TrackSegmentsClassifier()
-        tracker.load_track_data(self._track(segments))
+        tracker = load(self._track(segments), use_cache=False)
 
         info = tracker.get_segment_info(-1)  # -1 % 7000 == 6999
         self.assertIsInstance(info, CornerSegmentInfo)
@@ -241,8 +237,7 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
         segments = [
             {"type": "corner", "name": "Start Corner", "start_m": 0, "end_m": 200, "corner_number": 1},
         ]
-        tracker = TrackSegmentsClassifier()
-        tracker.load_track_data(self._track(segments))
+        tracker = load(self._track(segments), use_cache=False)
 
         info = tracker.get_segment_info(7000)  # == track_length -> wraps to 0
         self.assertIsInstance(info, CornerSegmentInfo)
@@ -253,65 +248,56 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
     def test_validation_missing_type(self):
         """Missing 'type' field raises ValueError."""
         bad = {"name": "X", "start_m": 0, "end_m": 100}
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(self._track([bad]))
+            load(self._track([bad]), use_cache=False)
 
     def test_validation_missing_name(self):
         """Missing 'name' field raises ValueError."""
         bad = {"type": "straight", "start_m": 0, "end_m": 100}
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(self._track([bad]))
+            load(self._track([bad]), use_cache=False)
 
     def test_validation_missing_start_m(self):
         """Missing 'start_m' field raises ValueError."""
         bad = {"type": "straight", "name": "X", "end_m": 100}
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(self._track([bad]))
+            load(self._track([bad]), use_cache=False)
 
     def test_validation_missing_end_m(self):
         """Missing 'end_m' field raises ValueError."""
         bad = {"type": "straight", "name": "X", "start_m": 0}
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(self._track([bad]))
+            load(self._track([bad]), use_cache=False)
 
     def test_validation_corner_missing_corner_number(self):
         """Corner segment without 'corner_number' raises ValueError."""
         bad = {"type": "corner", "name": "X", "start_m": 0, "end_m": 100}
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(self._track([bad]))
+            load(self._track([bad]), use_cache=False)
 
     def test_validation_complex_corner_missing_corners(self):
         """Complex corner without 'corner_numbers' raises ValueError."""
         bad = {"type": "complex_corner", "name": "X", "start_m": 0, "end_m": 100}
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(self._track([bad]))
+            load(self._track([bad]), use_cache=False)
 
     def test_validation_unknown_type(self):
         """Unknown segment type raises ValidationError."""
         bad = {"type": "chicane", "name": "X", "start_m": 0, "end_m": 100}
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(self._track([bad]))
+            load(self._track([bad]), use_cache=False)
 
     def test_validation_start_m_equal_to_end_m(self):
         """start_m == end_m raises ValidationError."""
         bad = {"type": "straight", "name": "X", "start_m": 100, "end_m": 100}
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(self._track([bad]))
+            load(self._track([bad]), use_cache=False)
 
     def test_validation_start_m_greater_than_end_m(self):
         """start_m > end_m raises ValidationError."""
         bad = {"type": "straight", "name": "X", "start_m": 200, "end_m": 100}
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(self._track([bad]))
+            load(self._track([bad]), use_cache=False)
 
     # --- Ordering and overlap validation --------------------------------------------------
 
@@ -321,9 +307,8 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
             {"type": "straight", "name": "B", "start_m": 500, "end_m": 1000},
             {"type": "straight", "name": "A", "start_m": 0,   "end_m": 500},
         ]
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(self._track(segments))
+            load(self._track(segments), use_cache=False)
 
     def test_validation_segments_overlapping(self):
         """Segment whose start_m falls inside the previous segment raises ValidationError."""
@@ -331,9 +316,8 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
             {"type": "straight", "name": "A", "start_m": 0,   "end_m": 600},
             {"type": "straight", "name": "B", "start_m": 400, "end_m": 1000},
         ]
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(self._track(segments))
+            load(self._track(segments), use_cache=False)
 
     def test_validation_adjacent_segments_exact_boundary(self):
         """Segments where start_m of next == end_m of previous are valid (no gap, no overlap)."""
@@ -341,8 +325,7 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
             {"type": "straight", "name": "A", "start_m": 0,   "end_m": 500},
             {"type": "straight", "name": "B", "start_m": 500, "end_m": 1000},
         ]
-        tracker = TrackSegmentsClassifier()
-        tracker.load_track_data(self._track(segments))  # must not raise
+        tracker = load(self._track(segments), use_cache=False)  # must not raise
 
     # --- Top-level schema fields ----------------------------------------------------------
 
@@ -357,29 +340,20 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
     def test_top_level_missing_circuit_name(self):
         """Missing circuit_name raises ValidationError."""
         data = {"circuit_number": 1, "track_length": 1000, "segments": []}
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(data)
+            load(data, use_cache=False)
 
     def test_top_level_missing_circuit_number(self):
         """Missing circuit_number raises ValidationError."""
         data = {"circuit_name": "X", "track_length": 1000, "segments": []}
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(data)
+            load(data, use_cache=False)
 
     def test_top_level_missing_track_length(self):
         """Missing track_length raises ValidationError."""
         data = {"circuit_name": "X", "circuit_number": 1, "segments": []}
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(data)
-
-    def test_properties_return_none_before_load(self):
-        """Top-level properties return None before load_track_data is called."""
-        tracker = TrackSegmentsClassifier()
-        self.assertIsNone(tracker.circuit_name)
-        self.assertIsNone(tracker.circuit_number)
+            load(data, use_cache=False)
 
     # --- Lookup correctness for all three segment types -----------------------------------
 
@@ -414,22 +388,22 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
         second = self.tracker.get_segment_info(100).segment_id
         self.assertEqual(first, second)
 
-    def test_segment_id_restamped_on_reload(self):
-        """Reloading track data re-stamps segment_id consistently with the new array order."""
+    def test_segment_id_stamped_in_array_order(self):
+        """segment_id is stamped from the position in the segment array, not taken from the input."""
         reordered = self._track([
             {"type": "straight", "name": "New Straight", "start_m": 0, "end_m": 500},
             {"type": "corner", "name": "New Corner", "start_m": 500, "end_m": 700, "corner_number": 1},
         ])
-        self.tracker.load_track_data(reordered)
+        tracker = load(reordered, use_cache=False)
 
-        self.assertEqual(self.tracker.get_segment_info(100).segment_id, 0)
-        self.assertEqual(self.tracker.get_segment_info(600).segment_id, 1)
+        self.assertEqual(tracker.get_segment_info(100).segment_id, 0)
+        self.assertEqual(tracker.get_segment_info(600).segment_id, 1)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 
 class TestLastSegmentCache(F1TelemetryUnitTestsBase):
-    """Exercises the _last_segment cache added to TrackSegments.get_segment_info."""
+    """Exercises the last-segment cache of TrackSegmentsClassifier.get_segment_info."""
 
     def setUp(self):
         self.track_data = {
@@ -444,8 +418,7 @@ class TestLastSegmentCache(F1TelemetryUnitTestsBase):
                 # covers its full length has no "outside all segments" position left to test.
             ],
         }
-        self.tracker = TrackSegmentsClassifier()
-        self.tracker.load_track_data(self.track_data)
+        self.tracker = load(self.track_data, use_cache=True)
 
     def test_repeated_lookup_same_segment_returns_same_object(self):
         """Consecutive lookups within the same segment hit the cache and return the same instance."""
@@ -480,30 +453,59 @@ class TestLastSegmentCache(F1TelemetryUnitTestsBase):
         info = self.tracker.get_segment_info(450)
         self.assertEqual(info.name, "Turn One")
 
-    def test_cache_reset_on_reload_track_data(self):
-        """Loading new track data must not let a cached segment from the old track leak through."""
-        # Populate the cache with a segment from the first track (0-400 -> Start Straight).
-        self.tracker.get_segment_info(100)
-
-        other_track = {
-            "circuit_name": "Other Circuit",
-            "circuit_number": 2,
-            "track_length": 500,
-            "segments": [
-                {"type": "corner", "name": "Only Corner", "start_m": 0, "end_m": 500, "corner_number": 1},
-            ],
-        }
-        self.tracker.load_track_data(other_track)
-
-        info = self.tracker.get_segment_info(100)
-        self.assertEqual(info.name, "Only Corner")
-
     def test_boundary_transition_end_exclusive_via_cache(self):
         """Landing exactly on a segment's end_m must not be served by the stale cached segment."""
         first = self.tracker.get_segment_info(300)
         self.assertEqual(first.name, "Start Straight")
         second = self.tracker.get_segment_info(400)
         self.assertEqual(second.name, "Turn One")
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+class TestClassifierCacheToggle(F1TelemetryUnitTestsBase):
+
+    _DATA = {
+        "circuit_name": "Toggle Circuit",
+        "circuit_number": 1,
+        "track_length": 1000,
+        "segments": [
+            {"type": "straight", "name": "A", "start_m": 0,   "end_m": 400},
+            {"type": "corner",   "name": "B", "start_m": 400, "end_m": 600, "corner_number": 1},
+            {"type": "straight", "name": "C", "start_m": 600, "end_m": 900},
+        ],
+    }
+
+    def test_use_cache_is_required(self):
+        """Constructing without use_cache raises ValidationError."""
+        with self.assertRaises(ValidationError):
+            TrackSegmentsClassifier.model_validate(self._DATA)
+
+    def test_cache_on_and_off_agree(self):
+        """Cached and uncached classifiers return identical segments for the same positions."""
+        on = load(self._DATA, use_cache=True)
+        off = load(self._DATA, use_cache=False)
+        positions = [0, 399, 400, 399, 599.9, 600, 899, 900, 950, 100, -1, 1000, 2450, 450, 50]
+        for pos in positions:
+            self.assertEqual(on.get_segment_info(pos), off.get_segment_info(pos), pos)
+
+    def test_cache_not_populated_when_disabled(self):
+        """With use_cache=False the cache state is never written."""
+        off = load(self._DATA, use_cache=False)
+        off.get_segment_info(100)
+        self.assertIsNone(off.cache.last)
+
+    def test_cache_excluded_from_model_dump(self):
+        """The cache is internal state and does not appear in model_dump()."""
+        on = load(self._DATA, use_cache=True)
+        on.get_segment_info(100)
+        self.assertNotIn("cache", on.model_dump())
+
+    def test_model_is_frozen(self):
+        """Assigning to a field raises ValidationError."""
+        on = load(self._DATA, use_cache=True)
+        with self.assertRaises(ValidationError):
+            on.track_length = 5
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -619,9 +621,9 @@ class TestGetSector(F1TelemetryUnitTestsBase):
         return data
 
     def setUp(self):
-        self.tracker = TrackSegmentsClassifier()
-        self.tracker.load_track_data(
-            self._track_with_sectors({"s1": self._S1, "s2": self._S2}, self._TRACK_LENGTH)
+        self.tracker = load(
+            self._track_with_sectors({"s1": self._S1, "s2": self._S2}, self._TRACK_LENGTH),
+            use_cache=False,
         )
 
     # --- Sector 1 -------------------------------------------------------------------------
@@ -684,64 +686,50 @@ class TestGetSector(F1TelemetryUnitTestsBase):
 
     def test_no_sectors_key_returns_none(self):
         """get_sector returns None when sectors key is absent from track data."""
-        tracker = TrackSegmentsClassifier()
-        tracker.load_track_data(self._track_with_sectors(sectors=None))
-        self.assertIsNone(tracker.get_sector(100))
-
-    def test_no_track_loaded_returns_none(self):
-        """get_sector returns None when no track data has been loaded."""
-        tracker = TrackSegmentsClassifier()
+        tracker = load(self._track_with_sectors(sectors=None), use_cache=False)
         self.assertIsNone(tracker.get_sector(100))
 
     # --- Validation -----------------------------------------------------------------------
 
     def test_sectors_s1_equal_s2_raises(self):
         """s1 == s2 raises ValidationError."""
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(self._track_with_sectors({"s1": 500, "s2": 500}))
+            load(self._track_with_sectors({"s1": 500, "s2": 500}), use_cache=False)
 
     def test_sectors_s1_greater_than_s2_raises(self):
         """s1 > s2 raises ValidationError."""
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(self._track_with_sectors({"s1": 1500, "s2": 500}))
+            load(self._track_with_sectors({"s1": 1500, "s2": 500}), use_cache=False)
 
     def test_sectors_missing_s1_raises(self):
         """sectors without s1 raises ValidationError."""
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(self._track_with_sectors({"s2": 1500}))
+            load(self._track_with_sectors({"s2": 1500}), use_cache=False)
 
     def test_sectors_missing_s2_raises(self):
         """sectors without s2 raises ValidationError."""
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(self._track_with_sectors({"s1": 500}))
+            load(self._track_with_sectors({"s1": 500}), use_cache=False)
 
     def test_sectors_s1_zero_raises(self):
         """s1 == 0 raises ValidationError (SECTOR1 would be unreachable)."""
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(self._track_with_sectors({"s1": 0, "s2": 500}))
+            load(self._track_with_sectors({"s1": 0, "s2": 500}), use_cache=False)
 
     def test_sectors_s1_negative_raises(self):
         """Negative s1 raises ValidationError."""
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(self._track_with_sectors({"s1": -100, "s2": 500}))
+            load(self._track_with_sectors({"s1": -100, "s2": 500}), use_cache=False)
 
     def test_sectors_s2_equal_track_length_raises(self):
         """s2 == track_length raises ValidationError (SECTOR3 would be unreachable)."""
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(self._track_with_sectors({"s1": 500, "s2": 3000}, track_length=3000))
+            load(self._track_with_sectors({"s1": 500, "s2": 3000}, track_length=3000), use_cache=False)
 
     def test_sectors_s2_greater_than_track_length_raises(self):
         """s2 > track_length raises ValidationError."""
-        tracker = TrackSegmentsClassifier()
         with self.assertRaises(ValidationError):
-            tracker.load_track_data(self._track_with_sectors({"s1": 500, "s2": 4000}, track_length=3000))
+            load(self._track_with_sectors({"s1": 500, "s2": 4000}, track_length=3000), use_cache=False)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -782,7 +770,7 @@ class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
             path = os.path.join(self._tmp.name, f"{circuit['circuit_name']}.json")
             with open(path, "w", encoding="utf-8") as fh:
                 json.dump(circuit, fh)
-        self.db = TrackSegmentsDatabase(self._tmp.name)
+        self.db = TrackSegmentsDatabase(self._tmp.name, cache=False)
 
     def tearDown(self):
         self._tmp.cleanup()
@@ -858,7 +846,7 @@ class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
     def test_empty_directory_has_zero_circuits(self):
         """Database built from an empty directory has length 0."""
         with tempfile.TemporaryDirectory() as empty:
-            db = TrackSegmentsDatabase(empty)
+            db = TrackSegmentsDatabase(empty, cache=False)
             self.assertEqual(len(db), 0)
 
     # --- Error handling -----------------------------------------------------------------------
@@ -867,7 +855,7 @@ class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
         """Non-existent directory should fail fast."""
         missing = os.path.join(self._tmp.name, "does_not_exist")
         with self.assertRaises(FileNotFoundError):
-            TrackSegmentsDatabase(missing)
+            TrackSegmentsDatabase(missing, cache=False)
 
     def test_invalid_json_raises_decode_error(self):
         """Malformed JSON should bubble up as a decode error."""
@@ -875,7 +863,7 @@ class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
         with open(bad_json, "w", encoding="utf-8") as fh:
             fh.write("{ not-valid-json }")
         with self.assertRaises(json.JSONDecodeError):
-            TrackSegmentsDatabase(self._tmp.name)
+            TrackSegmentsDatabase(self._tmp.name, cache=False)
 
     # --- get_sector() -------------------------------------------------------------------------
 
@@ -917,7 +905,7 @@ class TestShippedTrackSegments(F1TelemetryUnitTestsBase):
 
     def test_every_shipped_track_loads(self):
         """Every shipped track file validates and has its own circuit number."""
-        db = TrackSegmentsDatabase(self.ASSETS_DIR)
+        db = TrackSegmentsDatabase(self.ASSETS_DIR, cache=False)
         self.assertEqual(len(db), len(self._track_files()))
 
     def test_turn_numbers_are_unique_per_track(self):

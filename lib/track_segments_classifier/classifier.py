@@ -23,180 +23,125 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import bisect
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
+from functools import cached_property
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from lib.f1_types.packet_2_lap_data import LapData
 
-from .types import BaseSegmentInfo, SectorBoundaries, TrackData
+from .types import SectorBoundaries, SegmentInfo
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
-class TrackSegmentsClassifier:
+@dataclass(slots=True)
+class CacheState:
+    """Last-hit segment memo. Internal to TrackSegmentsClassifier."""
+    last: Optional[SegmentInfo] = None
+
+
+class TrackSegmentsClassifier(BaseModel):
     """
-    Utility class for determining track segment information from lap position.
+    Validated track segment data for one circuit, plus distance-to-segment lookup.
 
-    This class is intentionally lightweight and contains no file I/O. The caller
-    is responsible for loading JSON track data and providing it via `load_track_data`.
+    Build with `TrackSegmentsClassifier.model_validate({...json..., "use_cache": bool})`.
+
+    Fields
+    ------
+    circuit_name, circuit_number, track_length : circuit identity
+    segments : ordered, non-overlapping segments (straight / corner / complex_corner)
+    sectors : optional sector boundaries; must satisfy s1 < s2 < track_length
+    use_cache : required. True memoizes the last hit, which helps a single car moving
+        along the track and hurts random access (e.g. looking up many cars).
     """
 
-    def __init__(self) -> None:
-        self._track_data: Optional[TrackData] = None
-        self._segments: List[BaseSegmentInfo] = []
-        self._starts: List[float] = []  # sorted start_m values, parallel to _segments
-        self._last_segment: Optional[BaseSegmentInfo] = None # Cache
+    model_config = ConfigDict(frozen=True)
 
-    @property
-    def circuit_name(self) -> Optional[str]:
-        return self._track_data.circuit_name if self._track_data else None
+    circuit_name: str
+    circuit_number: int
+    track_length: float
+    segments: List[SegmentInfo]
+    sectors: Optional[SectorBoundaries] = None
+    use_cache: bool
 
-    @property
-    def circuit_number(self) -> Optional[int]:
-        return self._track_data.circuit_number if self._track_data else None
+    # Cache is a dataclass because pydantic has a custom __setattr__ that has a significant performance penalty
+    # This way, since the cache property is not being directly set by the user, we can avoid the overhead penalty
+    cache: CacheState = Field(default_factory=CacheState, exclude=True)
 
-    def load_track_data(self, track_data: Dict[str, Any]) -> None:
+    @model_validator(mode="after")
+    def _check_sectors_within_track(self) -> "TrackSegmentsClassifier":
+        if self.sectors is not None and self.sectors.s2 >= self.track_length:
+            raise ValueError(
+                f"sectors.s2 ({self.sectors.s2}) must be less than track_length ({self.track_length})"
+            )
+        return self
+
+    @field_validator("segments", mode="after")
+    @classmethod
+    def _check_order_and_overlap(cls, segments: List[SegmentInfo]) -> List[SegmentInfo]:
+        for i in range(1, len(segments)):
+            prev, curr = segments[i - 1], segments[i]
+            if curr.start_m < prev.start_m:
+                raise ValueError(
+                    f"segment {i} is out of order: start_m={curr.start_m} < previous start_m={prev.start_m}"
+                )
+            if curr.start_m < prev.end_m:
+                raise ValueError(
+                    f"segment {i} overlaps previous: start_m={curr.start_m} < previous end_m={prev.end_m}"
+                )
+        return segments
+
+    # Field validator rather than post-init: the model is frozen, so segments can't be reassigned afterwards.
+    # segment_id is the segment's index in the array.
+    @field_validator("segments", mode="after")
+    @classmethod
+    def _stamp_segment_ids(cls, segments: List[SegmentInfo]) -> List[SegmentInfo]:
+        return [seg.model_copy(update={"segment_id": idx}) for idx, seg in enumerate(segments)]
+
+    @cached_property
+    def starts(self) -> List[float]:
+        """Segment start_m values, parallel to `segments`, for bisect."""
+        return [seg.start_m for seg in self.segments]
+
+    def get_segment_info(self, lap_distance: float) -> Optional[SegmentInfo]:
         """
-        Load the track knowledge base.
-
-        Parameters
-        ----------
-        track_data : dict
-            Raw track data loaded from JSON.
-
-            Expected structure:
-
-            {
-                "circuit_name":   str,           (required)
-                "circuit_number": int,           (required)
-                "track_length":   float,         (required)
-                "segments": [
-                    {
-                        "type": str,
-                        "name": str,
-                        "start_m": float,
-                        "end_m": float,
-                        ...type-specific fields...
-                    }
-                ],
-                "sectors": {                     (optional)
-                    "s1": int,                   (required if sectors present; must be > 0)
-                    "s2": int,                   (required if sectors present; must be > s1 and < track_length)
-                }
-            }
-
-            Segments must be ordered by start_m and must not overlap.
-
-            Segment types:
-
-            straight
-                No additional fields.
-
-            corner
-                corner_number : int  (required)
-
-            complex_corner
-                corner_numbers : list[int]  (required)
+        Return the segment containing the given lap position, or None if it falls in an
+        undefined gap. Negative or >= track_length values (outlaps, start/finish) are
+        wrapped onto the lap first.
         """
-
-        self._track_data = TrackData.model_validate(track_data)
-        self._segments = list(self._track_data.segments)
-        self._starts = [seg.start_m for seg in self._segments]
-        self._last_segment = None
-
-    @property
-    def sectors(self) -> Optional[SectorBoundaries]:
-        """Return the sector boundaries for this track, or None if not defined."""
-        if self._track_data is None:
-            return None
-        return self._track_data.sectors
-
-    def get_segment_info(self, lap_distance: float) -> Optional[BaseSegmentInfo]:
-        """
-        Return the track segment corresponding to the given lap position.
-
-        Requires `load_track_data` to have been called first; there is no
-        meaningful segment lookup on an unloaded classifier.
-
-        Parameters
-        ----------
-        lap_distance : float
-            Current lap position in meters. May be negative or exceed
-            track_length (e.g. sim-emitted values during outlaps); the
-            position is normalized onto the lap before lookup.
-
-        Returns
-        -------
-        Optional[BaseSegmentInfo]
-            Strongly typed segment information if the position falls within
-            a defined segment, otherwise None.
-        """
-        norm_dist = self._normalize_lap_distance(lap_distance)
-        if self._last_segment and self._last_segment.contains(norm_dist):
-            return self._last_segment
-        self._last_segment = self._get_segment_info_impl(norm_dist)
-        return self._last_segment
+        norm_dist = lap_distance % self.track_length
+        if self.use_cache:
+            last = self.cache.last
+            if last is not None and last.start_m <= norm_dist < last.end_m:
+                return last
+            seg = self._lookup(norm_dist)
+            self.cache.last = seg
+            return seg
+        return self._lookup(norm_dist)
 
     def get_sector(self, lap_distance: float) -> Optional[LapData.Sector]:
         """
-        Return the sector corresponding to the given lap position.
-
-        Requires `load_track_data` to have been called first (this returns
-        None gracefully rather than asserting, since sector data is optional
-        even when a track is loaded).
-
-        Parameters
-        ----------
-        lap_distance : float
-            Current lap position in meters.
-
-        Returns
-        -------
-        Optional[LapData.Sector]
-            The sector if the position falls within a defined sector boundary,
-            otherwise None (no sector data loaded, or position is beyond s3).
+        Return the sector containing the given lap position, or None if this circuit
+        has no sector data.
         """
-
-        if self._track_data is None or self._track_data.sectors is None:
+        s = self.sectors
+        if s is None:
             return None
 
-        s = self._track_data.sectors
-        track_length = self._track_data.track_length
-        norm_dist = self._normalize_lap_distance(lap_distance)
-        if norm_dist == track_length:
-            norm_dist = 0
-        if 0 <= norm_dist < s.s1:
+        norm_dist = lap_distance % self.track_length
+        if norm_dist < s.s1:
             return LapData.Sector.SECTOR1
-        if s.s1 <= norm_dist < s.s2:
+        if norm_dist < s.s2:
             return LapData.Sector.SECTOR2
-        if s.s2 <= norm_dist < track_length:
-            return LapData.Sector.SECTOR3
-        return None
+        return LapData.Sector.SECTOR3
 
-    def _get_segment_info_impl(self, lap_distance: float) -> Optional[BaseSegmentInfo]:
-        if not self._starts:
-            return None
-
-        # Find the rightmost segment whose start_m <= lap_distance
-        idx = bisect.bisect_right(self._starts, lap_distance) - 1
+    def _lookup(self, norm_dist: float) -> Optional[SegmentInfo]:
+        # Rightmost segment whose start_m <= norm_dist; end_m is exclusive
+        idx = bisect.bisect_right(self.starts, norm_dist) - 1
         if idx < 0:
             return None
-
-        seg = self._segments[idx]
-        if lap_distance >= seg.end_m:
+        seg = self.segments[idx]
+        if norm_dist >= seg.end_m:
             return None
-
         return seg
-
-    def _normalize_lap_distance(self, lap_distance: float) -> float:
-        """
-        Normalize lap distance to the range [0, track_length).
-
-        Sim telemetry legitimately emits negative lap_distance values during
-        outlaps, and values can also land exactly on/just past track_length
-        at the start/finish line; both wrap onto the lap rather than being
-        treated as out-of-range.
-        """
-        assert self._track_data and self._track_data.track_length, (
-            "load_track_data() must be called before any get_* lookup"
-        )
-        track_length = self._track_data.track_length
-        return lap_distance % track_length
