@@ -28,6 +28,7 @@ from typing import Any, ClassVar, Dict, Optional, Set
 from pydantic import BaseModel, Field
 
 from .diff import ConfigDiffMixin
+from .utils import check_box_row_field
 
 # -------------------------------------- ENUMS -------------------------------------------------------------------------
 
@@ -204,46 +205,18 @@ class LapAnalyzerSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
-    record_in_race: bool = Field(
-        default=True,
-        description="Record laps during race sessions",
-        json_schema_extra={
-            "ui": {
-                "type" : "check_box",
-                "visible": True
-            }
-        }
-    )
-    record_in_quali: bool = Field(
-        default=True,
-        description="Record laps during qualifying sessions",
-        json_schema_extra={
-            "ui": {
-                "type" : "check_box",
-                "visible": True
-            }
-        }
-    )
-    record_in_fp: bool = Field(
-        default=False,
-        description="Record laps during free practice sessions",
-        json_schema_extra={
-            "ui": {
-                "type" : "check_box",
-                "visible": True
-            }
-        }
-    )
-    record_in_tt: bool = Field(
-        default=False,
-        description="Record laps during time trial sessions",
-        json_schema_extra={
-            "ui": {
-                "type" : "check_box",
-                "visible": True
-            }
-        }
-    )
+    record_in_race: bool = check_box_row_field(
+        "Record laps during race sessions", default=True,
+        row="Record laps during", row_label="Race")
+    record_in_quali: bool = check_box_row_field(
+        "Record laps during qualifying sessions", default=True,
+        row="Record laps during", row_label="Qualifying")
+    record_in_fp: bool = check_box_row_field(
+        "Record laps during free practice sessions", default=False,
+        row="Record laps during", row_label="Free Practice")
+    record_in_tt: bool = check_box_row_field(
+        "Record laps during time trial sessions", default=False,
+        row="Record laps during", row_label="Time Trial")
     Sensors: LapAnalyzerSensorSettings = Field(
         default_factory=LapAnalyzerSensorSettings,
         description="Sensors",

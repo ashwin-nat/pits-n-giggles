@@ -41,6 +41,7 @@ from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QDialog, QFrame,
 from lib.config import PngSettings
 
 from .collapsible_group import CollapsibleGroup
+from .inline_checkbox_row import InlineCheckBoxRow, RowItem
 from .lap_analyzer_page import LapAnalyzerPage
 from .overlay_settings_page import OverlaySettingsPage
 from .reorderable_collection import ReorderableCollection
@@ -425,9 +426,7 @@ class SettingsWindow(QDialog):
                 ungrouped.append((field_name, field_value, field_info))
 
         # --- Render ungrouped fields first ---
-        for field_name, field_value, field_info in ungrouped:
-            field_path = f"{category_name}.{field_name}"
-            self._render_field(field_name, field_value, field_path, field_info, layout)
+        self._render_fields(ungrouped, category_name, layout)
 
         # --- Render grouped fields in collapsible sections ---
         # Remember which collapsible containers belong to this category for search integration
@@ -439,9 +438,7 @@ class SettingsWindow(QDialog):
             group_container = self._create_collapsible_group(group_name)
             group_layout = group_container.content_layout
 
-            for field_name, field_value, field_info in fields:
-                field_path = f"{category_name}.{field_name}"
-                self._render_field(field_name, field_value, field_path, field_info, group_layout)
+            self._render_fields(fields, category_name, group_layout)
 
             layout.addWidget(group_container)
             category_collapsibles[group_name] = group_container
@@ -454,6 +451,48 @@ class SettingsWindow(QDialog):
         scroll.setWidget(content_widget)
 
         return scroll
+
+    def _render_fields(self,
+                       fields: List[Tuple[str, Any, FieldInfo]],
+                       category_name: str,
+                       layout: QVBoxLayout) -> None:
+        """Render fields in order. Fields sharing a ui 'row' title are drawn together as one
+        InlineCheckBoxRow, placed where the first of them appears."""
+        row_members: Dict[str, List[Tuple[str, Any, FieldInfo]]] = defaultdict(list)
+        for field in fields:
+            if row_title := (field[2].json_schema_extra or {}).get("ui", {}).get("row"):
+                row_members[row_title].append(field)
+
+        drawn_rows = set()
+        for field_name, field_value, field_info in fields:
+            row_title = (field_info.json_schema_extra or {}).get("ui", {}).get("row")
+            if not row_title:
+                self._render_field(field_name, field_value, f"{category_name}.{field_name}", field_info, layout)
+            elif row_title not in drawn_rows:
+                drawn_rows.add(row_title)
+                layout.addWidget(self._build_checkbox_row(row_title, row_members[row_title], category_name))
+
+    def _build_checkbox_row(self,
+                            title: str,
+                            members: List[Tuple[str, Any, FieldInfo]],
+                            category_name: str) -> InlineCheckBoxRow:
+        """Build one row of checkboxes for the fields sharing a 'row' title, and track them like any other field."""
+        items = []
+        for field_name, field_value, field_info in members:
+            ui_config = (field_info.json_schema_extra or {}).get("ui", {})
+            items.append(RowItem(
+                path=f"{category_name}.{field_name}",
+                label=ui_config.get("row_label") or field_info.description or field_name,
+                tooltip=field_info.description or field_name,
+                checked=bool(field_value)))
+
+        row = InlineCheckBoxRow(title, items, self._on_field_changed)
+        self.field_widgets.update(row.checkboxes)
+        self._register_searchable(
+            row,
+            " ".join([title, *(item.label for item in items)]),
+            " ".join(name for name, _, _ in members))
+        return row
 
     def _render_field(self,
                       field_name: str,

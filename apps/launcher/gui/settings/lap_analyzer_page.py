@@ -182,12 +182,13 @@ class LapAnalyzerPage(QWidget):
 
     def _build_general_group(self, category_model: BaseModel) -> HeaderCollapsibleGroup:
         general = HeaderCollapsibleGroup("General", self._icons, parent=self)
+        fields: List[Tuple[str, Any, FieldInfo]] = []
         for field_name, field_info in type(category_model).model_fields.items():
             field_value = getattr(category_model, field_name)
             if isinstance(field_value, BaseModel) or not self._settings_window._is_field_visible(field_info):
                 continue
-            self._settings_window._render_field(
-                field_name, field_value, f"{self._category_name}.{field_name}", field_info, general.content_layout)
+            fields.append((field_name, field_value, field_info))
+        self._settings_window._render_fields(fields, self._category_name, general.content_layout)
         return general
 
     def _build_presets_row(self) -> QHBoxLayout:
