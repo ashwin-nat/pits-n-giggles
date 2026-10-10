@@ -84,14 +84,14 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
                     "name": "",
                     "start_m": 1200,
                     "end_m": 1400,
-                    "corner_number": 5,
+                    "corner_number": 3,
                 },
                 {
                     "type": "complex_corner",
                     "name": "Pouhon",
                     "start_m": 1400,
                     "end_m": 1800,
-                    "corner_numbers": [6, 7],
+                    "corner_numbers": [4, 5],
                 },
             ]
         }
@@ -126,7 +126,7 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
         info = self.tracker.get_segment_info(1300)
 
         self.assertIsInstance(info, CornerSegmentInfo)
-        self.assertEqual(info.corner_number, 5)
+        self.assertEqual(info.corner_number, 3)
         self.assertEqual(info.name, "")
 
     def test_straight_segment_lookup(self):
@@ -168,8 +168,8 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
         info = self.tracker.get_segment_info(1600)
 
         self.assertEqual(len(info.corner_numbers), 2)
-        self.assertEqual(info.corner_numbers[0], 6)
-        self.assertEqual(info.corner_numbers[1], 7)
+        self.assertEqual(info.corner_numbers[0], 4)
+        self.assertEqual(info.corner_numbers[1], 5)
 
     def test_complex_corner_corner_numbers_is_tuple(self):
         """corner_numbers must be an immutable tuple."""
@@ -195,7 +195,7 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
         info = self.tracker.get_segment_info(1200)
         # 1200 is start of the unnamed corner (id 4), not end of straight
         self.assertIsInstance(info, CornerSegmentInfo)
-        self.assertEqual(info.corner_number, 5)
+        self.assertEqual(info.corner_number, 3)
 
     def test_position_just_before_end_is_inside(self):
         """One meter before end_m should still be inside the segment."""
@@ -459,6 +459,97 @@ class TestLastSegmentCache(F1TelemetryUnitTestsBase):
         self.assertEqual(first.name, "Start Straight")
         second = self.tracker.get_segment_info(400)
         self.assertEqual(second.name, "Turn One")
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+class TestSegmentValidation(F1TelemetryUnitTestsBase):
+    """Cross-segment checks: lap bounds and corner numbering."""
+
+    @staticmethod
+    def _track(segments: list, track_length: float = 1000) -> dict:
+        return {"circuit_name": "Validation Circuit", "circuit_number": 1,
+                "track_length": track_length, "segments": segments}
+
+    @staticmethod
+    def _corner(start: float, end: float, number: int) -> dict:
+        return {"type": "corner", "name": "", "start_m": start, "end_m": end, "corner_number": number}
+
+    @staticmethod
+    def _complex(start: float, end: float, numbers: list) -> dict:
+        return {"type": "complex_corner", "name": "", "start_m": start, "end_m": end, "corner_numbers": numbers}
+
+    @staticmethod
+    def _straight(start: float, end: float) -> dict:
+        return {"type": "straight", "name": "S", "start_m": start, "end_m": end}
+
+    def _assert_invalid(self, segments: list, message: str, track_length: float = 1000) -> None:
+        with self.assertRaisesRegex(ValidationError, message):
+            load(self._track(segments, track_length), use_cache=False)
+
+    # --- Corner numbering -----------------------------------------------------------------
+
+    def test_first_corner_not_one_raises(self):
+        """Numbering that starts above 1 is rejected and names the missing numbers."""
+        self._assert_invalid([self._corner(0, 100, 2)], "missing 1 before corner 2")
+
+    def test_duplicate_corner_number_raises(self):
+        """The same corner number on two segments is rejected."""
+        self._assert_invalid([self._corner(0, 100, 1), self._corner(200, 300, 1)], "duplicate or out of order")
+
+    def test_out_of_order_corner_numbers_raise(self):
+        """A corner number lower than one already seen is rejected."""
+        self._assert_invalid(
+            [self._corner(0, 100, 1), self._corner(200, 300, 3), self._corner(400, 500, 2)],
+            "missing 2 before corner 3",
+        )
+
+    def test_gap_between_corners_raises(self):
+        """A skipped corner number between two corner segments is rejected, listing every missing number."""
+        self._assert_invalid([self._corner(0, 100, 1), self._corner(200, 300, 4)], "missing 2, 3 before corner 4")
+
+    def test_gap_between_corner_and_complex_corner_raises(self):
+        """Corner and complex_corner numbers are counted together."""
+        self._assert_invalid([self._corner(0, 100, 1), self._complex(200, 400, [3, 4])], "missing 2 before corner 3")
+
+    def test_duplicate_across_corner_and_complex_corner_raises(self):
+        """A corner number repeated between a corner and a complex_corner is rejected."""
+        self._assert_invalid(
+            [self._corner(0, 100, 1), self._complex(200, 400, [1, 2])], "duplicate or out of order"
+        )
+
+    def test_complex_corner_first_not_one_raises(self):
+        """A complex_corner that opens the lap must start at 1."""
+        self._assert_invalid([self._complex(0, 200, [2, 3])], "missing 1 before corner 2")
+
+    def test_valid_numbering_with_straights_and_complex_corners(self):
+        """Contiguous 1..N across corners, complex corners and straights loads."""
+        track = load(self._track([
+            self._corner(0, 100, 1),
+            self._straight(100, 200),
+            self._complex(200, 400, [2, 3]),
+            self._straight(400, 500),
+            self._corner(500, 600, 4),
+        ]), use_cache=False)
+        self.assertEqual(len(track.segments), 5)
+
+    def test_track_without_corners_is_valid(self):
+        """A track with no corner segments has nothing to number and loads."""
+        load(self._track([self._straight(0, 500)]), use_cache=False)
+
+    # --- Lap bounds -----------------------------------------------------------------------
+
+    def test_segment_starting_below_zero_raises(self):
+        """A segment with start_m below 0 is rejected."""
+        self._assert_invalid([self._straight(-10, 100)], "starts before the lap")
+
+    def test_segment_ending_past_track_length_raises(self):
+        """A segment with end_m past track_length is rejected."""
+        self._assert_invalid([self._straight(900, 1001)], "ends past the lap")
+
+    def test_segment_ending_exactly_at_track_length_is_valid(self):
+        """end_m equal to track_length is allowed (end is exclusive)."""
+        load(self._track([self._straight(900, 1000)]), use_cache=False)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -908,19 +999,3 @@ class TestShippedTrackSegments(F1TelemetryUnitTestsBase):
         db = TrackSegmentsDatabase(self.ASSETS_DIR, cache=False)
         self.assertEqual(len(db), len(self._track_files()))
 
-    def test_turn_numbers_are_unique_per_track(self):
-        """Each turn number labels at most one segment of a track."""
-        duplicates = {}
-        for name in self._track_files():
-            with open(os.path.join(self.ASSETS_DIR, name), encoding="utf-8") as fh:
-                segments = json.load(fh)["segments"]
-            numbers = []
-            for seg in segments:
-                if seg["type"] == "corner":
-                    numbers.append(seg["corner_number"])
-                elif seg["type"] == "complex_corner":
-                    numbers.extend(seg["corner_numbers"])
-            repeated = sorted({n for n in numbers if numbers.count(n) > 1})
-            if repeated:
-                duplicates[name] = repeated
-        self.assertEqual(duplicates, {})

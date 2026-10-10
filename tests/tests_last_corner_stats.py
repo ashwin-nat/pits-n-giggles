@@ -78,7 +78,7 @@ TRACK_DATA = {
             "name": "Pouhon",
             "start_m": 2000,
             "end_m": 2400,
-            "corner_numbers": [6, 7],
+            "corner_numbers": [3, 4],
         },
         {
             "type": "straight",
@@ -206,7 +206,7 @@ def test_complex_corner_tracked_like_a_corner(tracker: LastCornerTracker):
     assert stats is not None
     assert isinstance(stats.segment, ComplexCornerSegmentInfo)
     assert stats.segment.name == "Pouhon"
-    assert stats.segment.corner_numbers == (6, 7)
+    assert stats.segment.corner_numbers == (3, 4)
     assert stats.min_speed_kmph == 150
 
 

@@ -25,13 +25,14 @@
 import bisect
 from dataclasses import dataclass
 from functools import cached_property
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from lib.f1_types.packet_2_lap_data import LapData
 
-from .types import SectorBoundaries, SegmentInfo
+from .types import (ComplexCornerSegmentInfo, CornerSegmentInfo,
+                    SectorBoundaries, SegmentInfo)
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -77,11 +78,20 @@ class TrackSegmentsClassifier(BaseModel):
             )
         return self
 
-    @field_validator("segments", mode="after")
-    @classmethod
-    def _check_order_and_overlap(cls, segments: List[SegmentInfo]) -> List[SegmentInfo]:
-        for i in range(1, len(segments)):
-            prev, curr = segments[i - 1], segments[i]
+    @model_validator(mode="after")
+    def _check_segments(self) -> "TrackSegmentsClassifier":
+        """Cross-segment checks: order, overlap, lap bounds and corner numbering."""
+        segments = self.segments
+        for i, curr in enumerate(segments):
+            if curr.start_m < 0:
+                raise ValueError(f"segment {i} starts before the lap: start_m={curr.start_m} < 0")
+            if curr.end_m > self.track_length:
+                raise ValueError(
+                    f"segment {i} ends past the lap: end_m={curr.end_m} > track_length={self.track_length}"
+                )
+            if i == 0:
+                continue
+            prev = segments[i - 1]
             if curr.start_m < prev.start_m:
                 raise ValueError(
                     f"segment {i} is out of order: start_m={curr.start_m} < previous start_m={prev.start_m}"
@@ -90,7 +100,29 @@ class TrackSegmentsClassifier(BaseModel):
                 raise ValueError(
                     f"segment {i} overlaps previous: start_m={curr.start_m} < previous end_m={prev.end_m}"
                 )
-        return segments
+
+        # Corner and complex_corner numbers are counted together, in lap order
+        expected = 1
+        for seg in segments:
+            if isinstance(seg, CornerSegmentInfo):
+                numbers: Sequence[int] = (seg.corner_number,)
+            elif isinstance(seg, ComplexCornerSegmentInfo):
+                numbers = seg.corner_numbers
+            else:
+                continue
+            for num in numbers:
+                if num == expected:
+                    expected += 1
+                elif num < expected:
+                    raise ValueError(
+                        f"corner {num} at {seg.start_m}m is a duplicate or out of order (expected {expected})"
+                    )
+                else:
+                    missing = ", ".join(str(n) for n in range(expected, num))
+                    raise ValueError(
+                        f"corner numbers must start at 1 and have no gaps: missing {missing} before corner {num}"
+                    )
+        return self
 
     # Field validator rather than post-init: the model is frozen, so segments can't be reassigned afterwards.
     # segment_id is the segment's index in the array.
