@@ -80,7 +80,7 @@ class HudOverlay(BaseOverlay):
 
         # Rev lights / powertrain
         self.set_qml_property("revLightsPct", data.rev_lights_pct)
-        self.set_qml_property("rpm",          data.circuit_pos_m) # TODO: temp. revert before PR
+        self.set_qml_property("rpm",          data.rpm)
         self.set_qml_property("gear",         data.gear)
         if self._speed_unit == OverlaysSpeedUnit.MPH:
             self.set_qml_property("speedKmph",    data.speed_mph)
