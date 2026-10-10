@@ -552,6 +552,41 @@ class TestSegmentValidation(F1TelemetryUnitTestsBase):
         load(self._track([self._straight(900, 1000)]), use_cache=False)
 
 
+    # --- Track length and non-finite values -----------------------------------------------
+
+    def test_zero_track_length_raises(self):
+        """track_length of 0 is rejected at load rather than dividing by zero in lookups."""
+        self._assert_invalid([], "track_length", track_length=0)
+
+    def test_negative_track_length_raises(self):
+        """A negative track_length is rejected."""
+        self._assert_invalid([], "track_length", track_length=-100)
+
+    def test_non_finite_track_length_raises(self):
+        """NaN and infinite track_length are rejected."""
+        for value in (float("nan"), float("inf")):
+            with self.subTest(value=value):
+                self._assert_invalid([], "track_length", track_length=value)
+
+    def test_non_finite_segment_bounds_raise(self):
+        """NaN and infinite start_m / end_m are rejected, since NaN slips past the ordering comparisons."""
+        for field in ("start_m", "end_m"):
+            for value in (float("nan"), float("inf"), float("-inf")):
+                with self.subTest(field=field, value=value):
+                    seg = self._straight(0, 100)
+                    seg[field] = value
+                    self._assert_invalid([seg], field)
+
+    # --- Immutability ---------------------------------------------------------------------
+
+    def test_segments_are_immutable(self):
+        """segments is a tuple, so callers cannot change it behind the cached start positions."""
+        track = load(self._track([self._straight(0, 500)]), use_cache=False)
+        self.assertIsInstance(track.segments, tuple)
+        self.assertIsInstance(track.starts, tuple)
+        with self.assertRaises(AttributeError):
+            track.segments.append(self._straight(500, 900))
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 class TestClassifierCacheToggle(F1TelemetryUnitTestsBase):

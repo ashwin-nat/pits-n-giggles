@@ -25,7 +25,7 @@
 import bisect
 from dataclasses import dataclass
 from functools import cached_property
-from typing import List, Optional, Sequence
+from typing import Optional, Sequence, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -57,12 +57,12 @@ class TrackSegmentsClassifier(BaseModel):
         along the track and hurts random access (e.g. looking up many cars).
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False)
 
     circuit_name: str
     circuit_number: int
-    track_length: float
-    segments: List[SegmentInfo]
+    track_length: float = Field(gt=0)
+    segments: Tuple[SegmentInfo, ...]
     sectors: Optional[SectorBoundaries] = None
     use_cache: bool
 
@@ -128,13 +128,13 @@ class TrackSegmentsClassifier(BaseModel):
     # segment_id is the segment's index in the array.
     @field_validator("segments", mode="after")
     @classmethod
-    def _stamp_segment_ids(cls, segments: List[SegmentInfo]) -> List[SegmentInfo]:
-        return [seg.model_copy(update={"segment_id": idx}) for idx, seg in enumerate(segments)]
+    def _stamp_segment_ids(cls, segments: Tuple[SegmentInfo, ...]) -> Tuple[SegmentInfo, ...]:
+        return tuple(seg.model_copy(update={"segment_id": idx}) for idx, seg in enumerate(segments))
 
     @cached_property
-    def starts(self) -> List[float]:
+    def starts(self) -> Tuple[float, ...]:
         """Segment start_m values, parallel to `segments`, for bisect."""
-        return [seg.start_m for seg in self.segments]
+        return tuple(seg.start_m for seg in self.segments)
 
     def get_segment_info(self, lap_distance: float) -> Optional[SegmentInfo]:
         """
