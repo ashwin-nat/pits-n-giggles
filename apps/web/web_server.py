@@ -52,6 +52,8 @@ _DRIVER_INFO_HTTP_STATUS = {
     "NOT_FOUND":      HTTPStatus.NOT_FOUND,
 }
 
+_HEADLESS_LIVE_UNAVAILABLE = {'error': 'live data unavailable (headless)'}
+
 _AUTO_OPEN_DASHBOARD_PATHS = {
     AutoOpenDashboardMode.HUB: '/',
     AutoOpenDashboardMode.DRIVER_VIEW: '/live',
@@ -145,7 +147,8 @@ class WebServer(BaseWebServer):
         self._defineHomeRoute()
         if not self.m_headless:
             self._defineTemplateFileRoutes()
-            self._defineDataRoutes()
+        self._defineLegacyRoute()
+        self._defineDataRoutes()
         self._defineSaveViewerRoutes()
 
     def _defineHomeRoute(self) -> None:
@@ -177,6 +180,9 @@ class WebServer(BaseWebServer):
         async def playerStreamOverlay() -> str:
             return await self.render_template('player-stream-overlay.html')
 
+    def _defineLegacyRoute(self) -> None:
+        """Define the saved-session driver view. Also served headless, it needs no live data."""
+
         @self.http_route('/legacy/<slug>')
         async def legacyView(slug: str) -> Any:
             await self._m_cache_ready.wait()
@@ -204,9 +210,10 @@ class WebServer(BaseWebServer):
                 return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
             return getTelemetryInfoFrom(data), HTTPStatus.OK
 
-        @self.http_route('/stream-overlay-info')
-        async def streamOverlayInfoHTTP() -> Tuple[Dict[str, Any], int]:
-            return (self.m_stream_overlay_cache or {}), HTTPStatus.OK
+        if not self.m_headless:
+            @self.http_route('/stream-overlay-info')
+            async def streamOverlayInfoHTTP() -> Tuple[Dict[str, Any], int]:
+                return (self.m_stream_overlay_cache or {}), HTTPStatus.OK
 
         @self.http_route('/race-info')
         async def raceInfoHTTP() -> Tuple[Dict[str, Any], int]:
@@ -216,6 +223,8 @@ class WebServer(BaseWebServer):
                 if data is None:
                     return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
                 return getRaceInfoFrom(data), HTTPStatus.OK
+            if self.m_dealer is None:
+                return _HEADLESS_LIVE_UNAVAILABLE, HTTPStatus.SERVICE_UNAVAILABLE
             rsp = await self.m_dealer.request(str(PngSubsysId.BACKEND), "race-info-request", {})
             if rsp.get("status") == "error":
                 return {'error': rsp.get("reason", "backend unavailable")}, HTTPStatus.SERVICE_UNAVAILABLE
@@ -235,6 +244,8 @@ class WebServer(BaseWebServer):
                 if driver_info := getDriverInfoFrom(data, int(index)):
                     return driver_info, HTTPStatus.OK
                 return {'error': 'Invalid parameter value', 'message': 'Invalid index'}, HTTPStatus.NOT_FOUND
+            if self.m_dealer is None:
+                return _HEADLESS_LIVE_UNAVAILABLE, HTTPStatus.SERVICE_UNAVAILABLE
             rsp = await self.m_dealer.request(str(PngSubsysId.BACKEND), "driver-info-request", {"index": index})
             if rsp.get("status") == "error":
                 return {'error': rsp.get("reason", "backend unavailable")}, HTTPStatus.SERVICE_UNAVAILABLE

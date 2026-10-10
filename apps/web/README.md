@@ -14,7 +14,8 @@ Never run the managed mode standalone: it fails the heartbeat check and self-ter
 ## Headless mode
 
 Serves saved sessions from disk with nothing else running. Not registered: the live pages
-(`/live`, `/eng-view`, ...) and their data endpoints. Not started: the management IPC server,
+(`/live`, `/eng-view`, ...). The saved-session Legacy View (`/legacy/<slug>`) and its `?slug=` data
+endpoints stay available; live requests to them return 503. Not started: the management IPC server,
 broker subscriber, backend dealer and the emit timers. The browser is not auto-opened, and the
 home page and sidebar hide the live-view links.
 
