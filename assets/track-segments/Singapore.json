@@ -47,6 +47,19 @@
     {
       "type": "straight",
       "start_m": 1080,
+      "end_m": 1380,
+      "name": "Raffles Boulevard"
+    },
+    {
+      "type": "corner",
+      "start_m": 1380,
+      "end_m": 1530,
+      "name": "",
+      "corner_number": 6
+    },
+    {
+      "type": "straight",
+      "start_m": 1530,
       "end_m": 1700,
       "name": "Raffles Boulevard"
     },
@@ -128,6 +141,19 @@
     {
       "type": "straight",
       "start_m": 3700,
+      "end_m": 3850,
+      "name": "Raffles Avenue"
+    },
+    {
+      "type": "corner",
+      "start_m": 3850,
+      "end_m": 3950,
+      "name": "",
+      "corner_number": 15
+    },
+    {
+      "type": "straight",
+      "start_m": 3950,
       "end_m": 4240,
       "name": "Raffles Avenue"
     },

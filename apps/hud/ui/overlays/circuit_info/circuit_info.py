@@ -61,7 +61,7 @@ class CircuitInfoOverlay(BaseOverlay):
         self.circuit_info_minimal = settings.HUD.circuit_info_minimal
         super().__init__(settings, logger)
 
-        self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[5] / "assets/track-segments")
+        self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[5] / "assets/track-segments", cache=True)
 
         # For high frequency/high refresh rate overlays, subscribe to HF types here and render in render_frame.
         self.subscribe_hf(HudOverlayData)

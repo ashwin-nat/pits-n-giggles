@@ -25,6 +25,7 @@ import json
 import os
 import sys
 import tempfile
+from typing import Iterator
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -77,7 +78,7 @@ TRACK_DATA = {
             "name": "Pouhon",
             "start_m": 2000,
             "end_m": 2400,
-            "corner_numbers": [6, 7],
+            "corner_numbers": [3, 4],
         },
         {
             "type": "straight",
@@ -90,12 +91,12 @@ TRACK_DATA = {
 
 
 @pytest.fixture
-def seg_db() -> TrackSegmentsDatabase:
+def seg_db() -> Iterator[TrackSegmentsDatabase]:
     with tempfile.TemporaryDirectory() as tmp_dir:
         path = os.path.join(tmp_dir, "spa.json")
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(TRACK_DATA, fh)
-        yield TrackSegmentsDatabase(tmp_dir)
+        yield TrackSegmentsDatabase(tmp_dir, cache=False)
 
 
 @pytest.fixture
@@ -205,7 +206,7 @@ def test_complex_corner_tracked_like_a_corner(tracker: LastCornerTracker):
     assert stats is not None
     assert isinstance(stats.segment, ComplexCornerSegmentInfo)
     assert stats.segment.name == "Pouhon"
-    assert stats.segment.corner_numbers == (6, 7)
+    assert stats.segment.corner_numbers == (3, 4)
     assert stats.min_speed_kmph == 150
 
 

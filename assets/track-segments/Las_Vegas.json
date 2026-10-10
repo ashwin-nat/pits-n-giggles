@@ -48,8 +48,17 @@
     {
       "type": "straight",
       "start_m": 2310,
-      "end_m": 3110,
+      "end_m": 2630,
       "name": "Sands Avenue"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 2630,
+      "end_m": 3110,
+      "corner_numbers": [
+        10,
+        11
+      ]
     },
     {
       "type": "corner",
@@ -61,6 +70,19 @@
     {
       "type": "straight",
       "start_m": 3310,
+      "end_m": 3900,
+      "name": "Las Vegas Strip"
+    },
+    {
+      "type": "corner",
+      "start_m": 3900,
+      "end_m": 4230,
+      "name": "",
+      "corner_number": 13
+    },
+    {
+      "type": "straight",
+      "start_m": 4230,
       "end_m": 5030,
       "name": "Las Vegas Strip"
     },
