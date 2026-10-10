@@ -95,7 +95,7 @@ class WebSubsystem(AsyncSubsystem[WebArgs]):
     def on_exit(self) -> None:
         """Tell a headless user the server is down, whichever way it got there."""
 
-        if self.args.headless:
+        if self.args.headless and self._headless_started:
             print("Web server stopped.", flush=True)
 
     @override
@@ -116,6 +116,7 @@ class WebSubsystem(AsyncSubsystem[WebArgs]):
         """Build the web server and wire the subscriber, dealer and emit timers to it."""
 
         super().__init__()
+        self._headless_started = False
         self.logger.info("Starting web app, version=%s", self.version)
 
         session_dir_setting = self.settings.Capture.session_dir_path
@@ -181,6 +182,7 @@ class WebSubsystem(AsyncSubsystem[WebArgs]):
     def _announce_headless(self) -> None:
         """Print the startup banner to stdout; the log file is not where a user looks first."""
 
+        self._headless_started = True
         print(f"Pits n' Giggles web server started (headless), version {self.version}\n"
               f"  Config: {Path(self.args.config_file).resolve()}\n"
               f"  Log:    {Path(self.args.log_file).resolve()}\n"
