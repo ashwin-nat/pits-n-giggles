@@ -105,8 +105,28 @@
     {
       "type": "straight",
       "start_m": 2960,
-      "end_m": 3650,
+      "end_m": 3230,
       "name": "Istiglaliyyat Street"
+    },
+    {
+      "type": "corner",
+      "start_m": 3230,
+      "end_m": 3385,
+      "name": "",
+      "corner_number": 13
+    },
+    {
+      "type": "straight",
+      "start_m": 3385,
+      "end_m": 3465,
+      "name": "Istiglaliyyat Street"
+    },
+    {
+      "type": "corner",
+      "start_m": 3465,
+      "end_m": 3650,
+      "name": "",
+      "corner_number": 14
     },
     {
       "type": "corner",
