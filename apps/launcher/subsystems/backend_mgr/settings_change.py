@@ -117,7 +117,7 @@ class BackendSettingsChangeBase(PngAppMgrBase):
             ],
             "Logging" : [],
             "Privacy" : [],
-            "LapRecording" : [],
+            "LapAnalyzer" : [],
             "StreamOverlay" : [],
             "TimeLossInPitsF1": [],
             "TimeLossInPitsF2": [],

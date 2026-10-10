@@ -138,6 +138,7 @@ class WebAppMgr(PngAppMgrBase):
                 "auto_open_dashboard",
             ],
             "HTTPS": [],
+            "SaveViewer": [],
         })
         self.debug_log(f"{self.DISPLAY_NAME} Settings changed: {diff}")
         # Update the port number
