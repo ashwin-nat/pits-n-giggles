@@ -144,12 +144,27 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
         self._shutdown_requested: asyncio.Event = asyncio.Event()
         self._shutdown_reason: str = "N/A"
 
+        self._data_plane_enabled: bool = self.should_run_data_plane()
         self._mgmt_server: Optional[IpcServerAsync] = self._build_mgmt_ipc()
         self._publisher: Optional[IpcPublisherAsync] = self._build_publisher()
         self._subscriber: Optional[IpcSubscriberAsync] = self._build_subscriber()
         self._dealer: Optional[IpcDealerAsync] = self._build_dealer()
         self._background_tasks: set = set()
         self._process_pool: Optional[ProcessPoolExecutor] = self._build_process_pool()
+
+    # -------------------------------------- MAY OVERRIDE --------------------------------------------------------------
+
+    def should_run_data_plane(self) -> bool:
+        """Whether to build the PUBSUB / DEALER endpoints this subsystem declares.
+
+        Called from __init__, so only self.args is set. False leaves self.publisher,
+        self.subscriber and self.dealer unavailable, so the subclass must not touch them.
+
+        Returns:
+            bool: True to build the declared endpoints
+        """
+
+        return True
 
     # -------------------------------------- MUST IMPLEMENT ------------------------------------------------------------
 
@@ -370,7 +385,7 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
             Optional[IpcPublisherAsync]: The publisher, or None unless PUBSUB is PUBLISHER
         """
 
-        if self.PUBSUB is not PubSubRole.PUBLISHER:
+        if not self._data_plane_enabled or self.PUBSUB is not PubSubRole.PUBLISHER:
             return None
         return IpcPublisherAsync(
             logger=self.logger, port=self.settings.Network.broker_xsub_port)
@@ -380,7 +395,7 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
             Optional[IpcSubscriberAsync]: The subscriber, or None unless PUBSUB is SUBSCRIBER
         """
 
-        if self.PUBSUB is not PubSubRole.SUBSCRIBER:
+        if not self._data_plane_enabled or self.PUBSUB is not PubSubRole.SUBSCRIBER:
             return None
         return IpcSubscriberAsync(
             port=self.settings.Network.broker_xpub_port, logger=self.logger)
@@ -390,7 +405,7 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
             Optional[IpcDealerAsync]: The dealer, or None unless DEALER is set
         """
 
-        if not self.DEALER:
+        if not self._data_plane_enabled or not self.DEALER:
             return None
         return IpcDealerAsync(
             host="127.0.0.1",
@@ -411,7 +426,7 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
         if self._subscriber is not None:
             self.add_task(self._subscriber.run(), name="Broker Subscriber Task")
 
-        if self.DEALER:
+        if self._dealer is not None:
             self.add_task(self._dealer.start(), name=f"{self.SUBSYS_ID} Dealer Recv")
 
         if self._mgmt_server is not None:

@@ -55,6 +55,8 @@ _DRIVER_INFO_HTTP_STATUS = {
     "NOT_FOUND":      HTTPStatus.NOT_FOUND,
 }
 
+_HEADLESS_LIVE_UNAVAILABLE = {'error': 'live data unavailable (headless)'}
+
 _AUTO_OPEN_DASHBOARD_PATHS = {
     AutoOpenDashboardMode.HUB: '/',
     AutoOpenDashboardMode.DRIVER_VIEW: '/live',
@@ -79,7 +81,8 @@ class WebServer(BaseWebServer):
                  viewer_dir: Path,
                  analyzer_dir: Path,
                  on_ready: Callable[[], None],
-                 debug_mode: bool = False):
+                 debug_mode: bool = False,
+                 headless: bool = False):
         """
         Initialize the WebServer.
 
@@ -94,6 +97,8 @@ class WebServer(BaseWebServer):
                 subsystem is only genuinely up at that point, not when it finishes constructing, so
                 it owns the timing of the init-complete token.
             debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
+            headless (bool, optional): Serve only the save-viewer routes (no live routes, no
+                browser auto-open). Defaults to False.
         """
         super().__init__(
             port=settings.Network.server_port,
@@ -108,6 +113,7 @@ class WebServer(BaseWebServer):
             key_path=settings.HTTPS.key_path,
             debug_mode=debug_mode)
         self.m_on_ready: Callable[[], None] = on_ready
+        self.m_headless: bool = headless
         self.m_dealer: Optional[IpcDealerAsync] = None
         self.m_race_table_cache: Optional[Dict[str, Any]] = None
         self.m_stream_overlay_cache: Optional[Dict[str, Any]] = None
@@ -165,17 +171,24 @@ class WebServer(BaseWebServer):
 
     def define_routes(self) -> None:
         """Define all HTTP routes for the web server."""
-        self._defineTemplateFileRoutes()
+        self._defineHomeRoute()
+        if not self.m_headless:
+            self._defineTemplateFileRoutes()
+        self._defineLegacyRoute()
         self._defineDataRoutes()
         define_save_viewer_routes(self)
         define_lap_analyzer_routes(self)
 
-    def _defineTemplateFileRoutes(self) -> None:
-        """Define routes for rendering HTML templates."""
+    def _defineHomeRoute(self) -> None:
+        """Define the hub page. Headless hides its live-view links."""
 
         @self.http_route('/')
         async def homeView() -> str:
-            return await self.render_template('home.html', active_page='home', version=self.m_ver_str)
+            return await self.render_template(
+                'home.html', active_page='home', version=self.m_ver_str, headless=self.m_headless)
+
+    def _defineTemplateFileRoutes(self) -> None:
+        """Define routes for rendering HTML templates."""
 
         @self.http_route('/live')
         async def liveView() -> str:
@@ -194,6 +207,9 @@ class WebServer(BaseWebServer):
         @self.http_route('/player-stream-overlay')
         async def playerStreamOverlay() -> str:
             return await self.render_template('player-stream-overlay.html')
+
+    def _defineLegacyRoute(self) -> None:
+        """Define the saved-session driver view. Also served headless, it needs no live data."""
 
         @self.http_route('/legacy/<slug>')
         async def legacyView(slug: str) -> Any:
@@ -222,9 +238,10 @@ class WebServer(BaseWebServer):
                 return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
             return getTelemetryInfoFrom(data), HTTPStatus.OK
 
-        @self.http_route('/stream-overlay-info')
-        async def streamOverlayInfoHTTP() -> Tuple[Dict[str, Any], int]:
-            return (self.m_stream_overlay_cache or {}), HTTPStatus.OK
+        if not self.m_headless:
+            @self.http_route('/stream-overlay-info')
+            async def streamOverlayInfoHTTP() -> Tuple[Dict[str, Any], int]:
+                return (self.m_stream_overlay_cache or {}), HTTPStatus.OK
 
         @self.http_route('/race-info')
         async def raceInfoHTTP() -> Tuple[Dict[str, Any], int]:
@@ -234,6 +251,8 @@ class WebServer(BaseWebServer):
                 if data is None:
                     return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
                 return getRaceInfoFrom(data), HTTPStatus.OK
+            if self.m_dealer is None:
+                return _HEADLESS_LIVE_UNAVAILABLE, HTTPStatus.SERVICE_UNAVAILABLE
             rsp = await self.m_dealer.request(str(PngSubsysId.BACKEND), "race-info-request", {})
             if rsp.get("status") == "error":
                 return {'error': rsp.get("reason", "backend unavailable")}, HTTPStatus.SERVICE_UNAVAILABLE
@@ -253,6 +272,8 @@ class WebServer(BaseWebServer):
                 if driver_info := getDriverInfoFrom(data, int(index)):
                     return driver_info, HTTPStatus.OK
                 return {'error': 'Invalid parameter value', 'message': 'Invalid index'}, HTTPStatus.NOT_FOUND
+            if self.m_dealer is None:
+                return _HEADLESS_LIVE_UNAVAILABLE, HTTPStatus.SERVICE_UNAVAILABLE
             rsp = await self.m_dealer.request(str(PngSubsysId.BACKEND), "driver-info-request", {"index": index})
             if rsp.get("status") == "error":
                 return {'error': rsp.get("reason", "backend unavailable")}, HTTPStatus.SERVICE_UNAVAILABLE
@@ -276,7 +297,7 @@ class WebServer(BaseWebServer):
         self._spawn_background_task(rebuild_lap_analyzer_cache(self), name="Lap Analyzer Initial Scan")
         self._spawn_background_task(lap_analyzer_watch_loop(self), name="Lap Analyzer Watch Loop")
 
-        if self.m_auto_open_dashboard != AutoOpenDashboardMode.DISABLED:
+        if not self.m_headless and self.m_auto_open_dashboard != AutoOpenDashboardMode.DISABLED:
             proto = 'https' if self.m_cert_path else 'http'
             path = _AUTO_OPEN_DASHBOARD_PATHS[self.m_auto_open_dashboard]
             webbrowser.open(f'{proto}://localhost:{self.m_port}{path}', new=2)

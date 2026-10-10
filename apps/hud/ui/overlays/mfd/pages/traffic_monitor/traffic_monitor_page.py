@@ -59,7 +59,9 @@ class TrafficMonitorPage(MfdPageBase):
 
     @final
     def setup_page(self):
-        self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[7] / "assets/track-segments")
+        # No caching because this is used for multiple cars.
+        # The cache will keep getting thrashed
+        self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[7] / "assets/track-segments", cache=False)
         self._differ = TableDiffer(self._stats)
 
         @self.on_event("race_table_update")

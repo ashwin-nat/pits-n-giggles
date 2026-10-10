@@ -40,18 +40,11 @@
       "start_m": 1175,
       "end_m": 1290,
       "name": "",
-      "corner_number": 5
-    },
-    {
-      "type": "corner",
-      "start_m": 1290,
-      "end_m": 1470,
-      "name": "",
       "corner_number": 6
     },
     {
       "type": "corner",
-      "start_m": 1470,
+      "start_m": 1290,
       "end_m": 1570,
       "name": "",
       "corner_number": 7
@@ -67,16 +60,32 @@
       ]
     },
     {
-      "type": "corner",
+      "type": "complex_corner",
       "start_m": 2550,
-      "end_m": 2850,
+      "end_m": 2880,
       "name": "The Hairpin",
-      "corner_number": 10
+      "corner_numbers": [
+        10,
+        11
+      ]
     },
     {
       "type": "straight",
-      "start_m": 2850,
-      "end_m": 3800,
+      "start_m": 2880,
+      "end_m": 3180,
+      "name": "Casino Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 3180,
+      "end_m": 3250,
+      "name": "",
+      "corner_number": 12
+    },
+    {
+      "type": "straight",
+      "start_m": 3250,
+      "end_m": 3850,
       "name": "Casino Straight"
     },
     {
@@ -85,8 +94,8 @@
       "end_m": 4070,
       "name": "Wall Of Champions",
       "corner_numbers": [
-        12,
-        13
+        13,
+        14
       ]
     },
     {

@@ -22,8 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import (Annotated, Any, ClassVar, Dict, List, Literal, Tuple,
-                    Union)
+from typing import Annotated, Any, ClassVar, Dict, Literal, Tuple, Union
 
 from pydantic import (BaseModel, ConfigDict, Field, field_validator,
                       model_validator)
@@ -46,7 +45,7 @@ class SectorBoundaries(BaseModel):
 
 
 class BaseSegmentInfo(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False)
 
     TYPE: ClassVar[str]
     type: str
@@ -130,42 +129,3 @@ SegmentInfo = Annotated[
     Union[StraightSegmentInfo, CornerSegmentInfo, ComplexCornerSegmentInfo],
     Field(discriminator="type")
 ]
-
-
-class TrackData(BaseModel):
-    circuit_name: str
-    circuit_number: int
-    track_length: float
-    segments: List[SegmentInfo]
-    sectors: SectorBoundaries
-
-    @model_validator(mode="after")
-    def _check_sectors_within_track(self) -> "TrackData":
-        if self.sectors.s2 >= self.track_length:
-            raise ValueError(
-                f"sectors.s2 ({self.sectors.s2}) must be less than track_length ({self.track_length})"
-            )
-        return self
-
-    @field_validator("segments", mode="after")
-    @classmethod
-    def _check_order_and_overlap(cls, segments: list) -> list:
-        for i in range(1, len(segments)):
-            prev, curr = segments[i - 1], segments[i]
-            if curr.start_m < prev.start_m:
-                raise ValueError(
-                    f"segment {i} is out of order: start_m={curr.start_m} < previous start_m={prev.start_m}"
-                )
-            if curr.start_m < prev.end_m:
-                raise ValueError(
-                    f"segment {i} overlaps previous: start_m={curr.start_m} < previous end_m={prev.end_m}"
-                )
-        return segments
-
-    @model_validator(mode="after")
-    def _stamp_segment_ids(self) -> "TrackData":
-        self.segments = [
-            seg.model_copy(update={"segment_id": idx})
-            for idx, seg in enumerate(self.segments)
-        ]
-        return self

@@ -68,7 +68,9 @@ _watch_stop = asyncio.Event()
 # recorded session -- unlike the pngt cache above, it needs no watch loop and no
 # readiness event. Built once at import time, same as session_state.py's own
 # TrackSegmentsDatabase construction.
-_track_segments_db = TrackSegmentsDatabase(Path(__file__).resolve().parents[2] / "assets" / "track-segments")
+# Only .segments is read (no position lookups), so the cache setting is irrelevant.
+_track_segments_db = TrackSegmentsDatabase(
+    Path(__file__).resolve().parents[2] / "assets" / "track-segments", cache=False)
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -191,7 +193,8 @@ async def render_lap_analyzer_index(server: "WebServer") -> Any:
     head_injection = f'{bootstrap_icons_link}<link rel="stylesheet" href="{sidebar_css_url}">'
     html = html.replace('</head>', f'{head_injection}</head>', 1)
 
-    sidebar_html = await server.render_template('partials/sidebar.html', active_page='lap-analyzer')
+    sidebar_html = await server.render_template(
+        'partials/sidebar.html', active_page='lap-analyzer', headless=server.m_headless)
     sidebar_js_url = url_for('static', filename='js/sidebar.js')
     html = html.replace('<body>', '<body class="png-has-sidebar">', 1)
     html = html.replace('<div id="root">', f'{sidebar_html}<div id="root">', 1)

@@ -135,7 +135,8 @@ async def render_save_viewer_index(server: "WebServer") -> Any:
     )
     html = html.replace('</head>', f'{head_injection}</head>', 1)
 
-    sidebar_html = await server.render_template('partials/sidebar.html', active_page='save-viewer')
+    sidebar_html = await server.render_template(
+        'partials/sidebar.html', active_page='save-viewer', headless=server.m_headless)
     sidebar_js_url = url_for('static', filename='js/sidebar.js')
     html = html.replace('<body class="', '<body class="png-has-sidebar ', 1)
     html = html.replace('<div id="root">', f'{sidebar_html}<div id="root">', 1)

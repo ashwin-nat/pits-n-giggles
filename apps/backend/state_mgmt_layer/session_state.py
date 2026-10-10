@@ -159,7 +159,7 @@ class SessionState:
         self.m_race_ctrl: SessionRaceControlManager = SessionRaceControlManager()
         self.m_flashback_occurred: bool = False
         self.m_track_segments_db = TrackSegmentsDatabase(
-            Path(__file__).parents[3] / "assets/track-segments"
+            Path(__file__).parents[3] / "assets/track-segments", cache=False
         )
         self.m_subsystem: AsyncSubsystem = ctx.subsystem
 

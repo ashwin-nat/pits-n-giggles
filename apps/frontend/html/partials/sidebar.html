@@ -7,6 +7,7 @@
       <i class="bi bi-house-door-fill png-sidebar-icon" aria-hidden="true"></i>
       <span class="png-sidebar-label">Home</span>
     </a>
+    {% if not headless %}
     <a class="png-sidebar-link{% if active_page == 'live' %} png-sidebar-link-active{% endif %}" href="/live" title="Driver View (Live)">
       <i class="bi bi-car-front-fill png-sidebar-icon" aria-hidden="true"></i>
       <span class="png-sidebar-label">Driver View</span>
@@ -15,6 +16,7 @@
       <i class="bi bi-wrench-adjustable png-sidebar-icon" aria-hidden="true"></i>
       <span class="png-sidebar-label">Engineer View</span>
     </a>
+    {% endif %}
     <a class="png-sidebar-link{% if active_page == 'save-viewer' %} png-sidebar-link-active{% endif %}" href="/save-viewer/" title="Save Data">
       <i class="bi bi-floppy-fill png-sidebar-icon" aria-hidden="true"></i>
       <span class="png-sidebar-label">Save Data</span>
