@@ -27,8 +27,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Tuple
 
 from lib.config import LapAnalyzerSettings
-from lib.pngt import (CompletedLap, DriverExportData, DriverRecord, SensorConfig,
-                      SessionMetadata, TrackInfo)
+from lib.pngt import (MANDATORY_TELEMETRY_KEYS, CompletedLap, DriverExportData,
+                      DriverRecord, SensorConfig, SessionMetadata, TrackInfo)
 
 from .data_per_driver.telemetry_recorder.telemetry_recorder import F1_SENSORS
 
@@ -36,8 +36,6 @@ if TYPE_CHECKING:
     from .session_state import SessionState
 
 # -------------------------------------- FUNCTIONS ----------------------------------------------------------------------
-
-_MANDATORY_KEYS = frozenset({"lap_distance", "lap_time_ms"})
 
 def selected_sensors(settings: LapAnalyzerSettings) -> list[SensorConfig]:
     """Configs of the sensors the user enabled. Empty means don't save."""
@@ -53,7 +51,7 @@ def _filter_lap(lap: CompletedLap, keep_keys: frozenset[str]) -> CompletedLap:
 
 def _filter_export(data: DriverExportData, sensor_keys: set[str]) -> DriverExportData:
     """Drop every sensor array not in sensor_keys, keeping the mandatory ones."""
-    keep_keys = _MANDATORY_KEYS | sensor_keys
+    keep_keys = frozenset(MANDATORY_TELEMETRY_KEYS) | sensor_keys
     return DriverExportData(
         driver_index=data.driver_index,
         completed_laps=[_filter_lap(lap, keep_keys) for lap in data.completed_laps],

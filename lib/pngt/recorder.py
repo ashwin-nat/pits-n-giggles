@@ -26,7 +26,8 @@ import bisect
 from dataclasses import dataclass
 from typing import Callable, Generic, Optional, Sequence, TypeVar
 
-from .dto import CompletedLap, DriverExportData, LapMetadata, SensorConfig
+from .dto import (MANDATORY_TELEMETRY_KEYS, CompletedLap, DriverExportData,
+                  LapMetadata, SensorConfig)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -147,7 +148,7 @@ class DriverTelemetryRecorder(Generic[S]):
         )
 
     def _new_buffers(self) -> dict[str, list]:
-        buffers: dict[str, list] = {"lap_distance": [], "lap_time_ms": []}
+        buffers: dict[str, list] = {key: [] for key in MANDATORY_TELEMETRY_KEYS}
         for sensor in self._sensors:
             buffers[sensor.config.key] = []
         return buffers

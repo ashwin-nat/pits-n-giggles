@@ -234,8 +234,7 @@ class SessionState:
         self.m_save_race_ctrl_msgs = settings.save_race_ctrl_msg
 
     def updateLapAnalyzerSettings(self, settings: LapAnalyzerSettings) -> None:
-        """Swap in the new lap analyzer settings. Every reader re-reads the reference at decision
-        time, so this is the whole change.
+        """Swap in the new lap analyzer settings.
 
         Args:
             settings (LapAnalyzerSettings): The new lap analyzer settings

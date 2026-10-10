@@ -902,7 +902,7 @@ class F1TelemetryHandler:
 
         Returns:
             Optional[Tuple[Path, tuple]]: (dest_path, write_session()'s args), or None if
-                session data isn't available to build a filename from.
+                session data isn't available to build a filename from, or no sensors are selected.
         """
         event_str = self.m_session_state_ref.getEventInfoStr()
         if not event_str:
@@ -915,7 +915,11 @@ class F1TelemetryHandler:
         dir_path.mkdir(parents=True, exist_ok=True)
         dest_path = dir_path / f"{event_str}{timestamp_str}.pngt"
 
-        return dest_path, build_pngt_write_args(self.m_session_state_ref, dest_path)
+        args = build_pngt_write_args(self.m_session_state_ref, dest_path)
+        if not args[2]:
+            # Settings were hot-swapped to no sensors after the caller's shouldSavePngtData()
+            return None
+        return dest_path, args
 
     def firePngtWrite(self, pngt_write: Optional[Tuple[Path, tuple]], session_uid: int) -> None:
         """Writes the .pngt in the background via fire_and_forget()

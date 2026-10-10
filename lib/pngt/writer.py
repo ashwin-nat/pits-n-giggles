@@ -32,8 +32,8 @@ import numpy as np
 
 from .archive import (HEADER_FORMAT, HEADER_VERSION, recompute_totals,
                       session_best_to_dict, write_json)
-from .dto import (CompletedLap, DriverExportData, DriverRecord, SensorConfig,
-                  SessionMetadata)
+from .dto import (MANDATORY_TELEMETRY_KEYS, CompletedLap, DriverExportData,
+                  DriverRecord, SensorConfig, SessionMetadata)
 
 # -------------------------------------- FUNCTIONS ----------------------------------------------------------------------
 
@@ -162,7 +162,7 @@ def _validate_lap(lap: CompletedLap, sensor_keys: set) -> None:
         # to 0 for a lap that's missing it entirely would be worse than failing fast.
         raise ValueError(f"Lap {lap.metadata.lap_number} telemetry is missing the mandatory 'lap_distance' array")
 
-    unknown_keys = set(lap.telemetry.keys()) - sensor_keys - {"lap_distance", "lap_time_ms"}
+    unknown_keys = set(lap.telemetry.keys()) - sensor_keys - set(MANDATORY_TELEMETRY_KEYS)
     if unknown_keys:
         raise ValueError(
             f"Unregistered sensor key(s) in telemetry for lap {lap.metadata.lap_number}: {sorted(unknown_keys)}"
