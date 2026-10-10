@@ -40,18 +40,11 @@
       "start_m": 1175,
       "end_m": 1290,
       "name": "",
-      "corner_number": 5
-    },
-    {
-      "type": "corner",
-      "start_m": 1290,
-      "end_m": 1470,
-      "name": "",
       "corner_number": 6
     },
     {
       "type": "corner",
-      "start_m": 1470,
+      "start_m": 1290,
       "end_m": 1570,
       "name": "",
       "corner_number": 7
@@ -85,8 +78,8 @@
       "end_m": 4070,
       "name": "Wall Of Champions",
       "corner_numbers": [
-        12,
-        13
+        13,
+        14
       ]
     },
     {

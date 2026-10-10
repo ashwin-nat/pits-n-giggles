@@ -905,3 +905,34 @@ class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
     def test_get_sector_no_sectors_in_circuit_returns_none(self):
         """get_sector returns None for a circuit with no sector data."""
         self.assertIsNone(self.db.get_sector(1, 100))
+
+
+class TestShippedTrackSegments(F1TelemetryUnitTestsBase):
+    """Checks on the track files shipped in assets/track-segments."""
+
+    ASSETS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'assets', 'track-segments'))
+
+    def _track_files(self) -> list:
+        return sorted(name for name in os.listdir(self.ASSETS_DIR) if name.endswith('.json'))
+
+    def test_every_shipped_track_loads(self):
+        """Every shipped track file validates and has its own circuit number."""
+        db = TrackSegmentsDatabase(self.ASSETS_DIR)
+        self.assertEqual(len(db), len(self._track_files()))
+
+    def test_turn_numbers_are_unique_per_track(self):
+        """Each turn number labels at most one segment of a track."""
+        duplicates = {}
+        for name in self._track_files():
+            with open(os.path.join(self.ASSETS_DIR, name), encoding="utf-8") as fh:
+                segments = json.load(fh)["segments"]
+            numbers = []
+            for seg in segments:
+                if seg["type"] == "corner":
+                    numbers.append(seg["corner_number"])
+                elif seg["type"] == "complex_corner":
+                    numbers.extend(seg["corner_numbers"])
+            repeated = sorted({n for n in numbers if numbers.count(n) > 1})
+            if repeated:
+                duplicates[name] = repeated
+        self.assertEqual(duplicates, {})
