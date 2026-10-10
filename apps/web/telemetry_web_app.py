@@ -133,7 +133,8 @@ class WebSubsystem(AsyncSubsystem[WebArgs]):
             on_ready=self._announce_headless if self.args.headless else self.notify_ready,
             debug_mode=self.args.debug,
             headless=self.args.headless)
-        self.add_task(self.web_server.run(), name="Web Server Task")
+        self.add_task(self._serve_headless() if self.args.headless else self.web_server.run(),
+                      name="Web Server Task")
         if self.args.headless:
             return
 
@@ -163,6 +164,15 @@ class WebSubsystem(AsyncSubsystem[WebArgs]):
                           name="Race Table Emit Task")
         self.add_periodic(refresh_interval, streamOverlayEmitTask, self.web_server,
                           name="Stream Overlay Emit Task")
+
+    async def _serve_headless(self) -> None:
+        """Run the server, then tear down. No launcher exists to ask for it, and uvicorn
+        consumes SIGINT without ending the process."""
+
+        try:
+            await self.web_server.run()
+        finally:
+            self.request_shutdown("web server exited")
 
     def _announce_headless(self) -> None:
         """Print the startup banner to stdout; the log file is not where a user looks first."""
