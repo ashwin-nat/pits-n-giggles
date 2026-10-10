@@ -25,7 +25,7 @@
 import json
 from typing import List, Tuple
 
-from lib.config import CaptureSettings, PngSettings
+from lib.config import CaptureSettings, LapAnalyzerSettings, PngSettings
 from lib.ipc import IpcClientSync
 
 from ..base_mgr import PngAppMgrBase
@@ -101,6 +101,10 @@ class BackendSettingsChangeBase(PngAppMgrBase):
         else:
             self.debug_log(f"{self.DISPLAY_NAME} Capture settings NO CHANGE")
 
+        # Lap analyzer settings are read at decision time by the backend - no restart needed
+        if self.curr_settings.diff(new_settings, {"LapAnalyzer": []}):
+            self.send_lap_analyzer_config_change(new_settings.LapAnalyzer)
+
         if restart_required_fields_diff := self.curr_settings.diff(new_settings, {
             "Network": [
                 "telemetry_port",
@@ -117,7 +121,6 @@ class BackendSettingsChangeBase(PngAppMgrBase):
             ],
             "Logging" : [],
             "Privacy" : [],
-            "LapAnalyzer" : [],
             "StreamOverlay" : [],
             "TimeLossInPitsF1": [],
             "TimeLossInPitsF2": [],
@@ -160,6 +163,12 @@ class BackendSettingsChangeBase(PngAppMgrBase):
         self.debug_log("Sending capture config change to backend...")
         self._send_simple_config_change("capture-config-change",
                                         {"capture": capture_settings.model_dump(mode="json")})
+
+    def send_lap_analyzer_config_change(self, lap_analyzer_settings: LapAnalyzerSettings) -> None:
+        """Send updated lap analyzer settings to the backend without restarting it."""
+        self.debug_log("Sending lap analyzer config change to backend...")
+        self._send_simple_config_change("lap-analyzer-config-change",
+                                        {"lap_analyzer": lap_analyzer_settings.model_dump(mode="json")})
 
     def _send_simple_config_change(self, command: str, value: dict) -> None:
         """Send a simple config change command to the backend without restarting it."""

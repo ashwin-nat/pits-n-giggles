@@ -30,6 +30,7 @@ from apps.backend.intf_layer import (highFreqLocalUpdateTask,
                                      lowFreqLocalUpdateTask)
 from apps.backend.intf_layer.ipc import (handleCaptureConfigChange,
                                          handleForwardingConfigChange,
+                                         handleLapAnalyzerConfigChange,
                                          handleManualSave,
                                          handleUdpActionCodeChange)
 from apps.backend.intf_layer.request_handlers import handleDriverInfoRequest
@@ -127,6 +128,10 @@ class BackendSubsystem(AsyncSubsystem[BackendArgs]):
         async def _capture_config_change(args: dict) -> dict:
             return await handleCaptureConfigChange(
                 args, self.logger, self.telemetry_handler, self.session_state)
+
+        @self.mgmt.on("lap-analyzer-config-change")
+        async def _lap_analyzer_config_change(args: dict) -> dict:
+            return await handleLapAnalyzerConfigChange(args, self.logger, self.session_state)
 
     def _register_publish_tasks(self) -> None:
         """The two periodic publishes. Aperiodic frontend/HUD notifications are fired directly

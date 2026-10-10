@@ -27,10 +27,21 @@ from pydantic import ValidationError
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
 from apps.backend.telemetry_layer import F1TelemetryHandler
-from lib.config import CaptureSettings
+from lib.config import CaptureSettings, LapAnalyzerSettings
 from lib.logger import PngLogger
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+def _formatDiff(diff: dict, prefix: str = "") -> list[str]:
+    """Flatten a (possibly nested) ConfigDiffMixin diff into 'path: old -> new' lines."""
+    lines = []
+    for key, value in diff.items():
+        path = f"{prefix}{key}"
+        if "old_value" in value and "new_value" in value:
+            lines.append(f"{path}: {value['old_value']} -> {value['new_value']}")
+        else:
+            lines.extend(_formatDiff(value, f"{path}."))
+    return lines
 
 async def handleManualSave(
         logger: PngLogger,
@@ -118,4 +129,23 @@ async def handleCaptureConfigChange(
     except Exception as e: # pylint: disable=broad-exception-caught
         logger.exception("Error updating capture settings: %s", e)
         return {'status': 'failure', 'message': f"Error updating capture settings: {e}"}
+    return {'status': 'success'}
+
+async def handleLapAnalyzerConfigChange(
+        msg: dict,
+        logger: PngLogger,
+        session_state: SessionState) -> dict:
+    """Handle lap-analyzer-config-change command: swap in the new lap analyzer settings without restarting
+    the backend. The launcher sends the whole LapAnalyzer section.
+    """
+
+    try:
+        lap_analyzer_settings = LapAnalyzerSettings(**msg['lap_analyzer'])
+    except (KeyError, TypeError, ValidationError) as e:
+        logger.error("Invalid lap analyzer config change payload: %s", e)
+        return {'status': 'failure', 'message': f"Invalid lap analyzer config change payload: {e}"}
+
+    diff = session_state.m_lap_analyzer_settings.diff(lap_analyzer_settings)
+    logger.silent("Received lap analyzer config change command. Changes: %s", ", ".join(_formatDiff(diff)))
+    session_state.updateLapAnalyzerSettings(lap_analyzer_settings)
     return {'status': 'success'}

@@ -77,7 +77,7 @@ class TelemetrySnapshot(BaseTelemetrySnapshot):
 
 def _label(field: str) -> str:
     """Manifest label for a LapAnalyzerSensorSettings field. A typo raises at import."""
-    return LapAnalyzerSensorSettings.model_fields[field].description
+    return LapAnalyzerSensorSettings.model_fields[field].description  # pylint: disable=unsubscriptable-object
 
 # LapAnalyzerSensorSettings field name -> how to record it: manifest description plus how to
 # read its value off a TelemetrySnapshot.
