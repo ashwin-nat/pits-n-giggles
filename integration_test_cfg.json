@@ -358,13 +358,28 @@
         "mcp_http_server_enable": true,
         "mcp_http_port": 4770
     },
-    "LapRecording": {
+    "LapAnalyzer": {
         "enable": true,
         "record_other_cars": true,
         "record_in_spectator_mode": true,
         "record_in_race": true,
         "record_in_quali": true,
         "record_in_fp": true,
-        "record_in_tt": true
+        "record_in_tt": true,
+        "Sensors": {
+            "throttle": true,
+            "brake": true,
+            "steering": true,
+            "speed": true,
+            "gear": true,
+            "engine_rpm": true,
+            "ers_deploy_mode": true,
+            "ers_store_energy_j": true,
+            "ers_store_energy_perc": true,
+            "tyre_wear_fl": true,
+            "tyre_wear_fr": true,
+            "tyre_wear_rl": true,
+            "tyre_wear_rr": true
+        }
     }
 }

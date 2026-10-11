@@ -228,7 +228,7 @@ class DataPerDriver:
 
         self.m_tel_rec: DriverTelemetryRecorder = DriverTelemetryRecorder(
             driver_index=index,
-            sensors=F1_SENSORS,
+            sensors=F1_SENSORS.values(),
         )
 
     @property

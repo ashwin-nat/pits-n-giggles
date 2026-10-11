@@ -36,12 +36,15 @@ from .schema.hud.layout import OverlayId, OverlayPosition
 from .schema.hud.mfd import MfdPageId, MfdPageSettings, MfdSettings
 from .schema.hud.timing_tower import (TimingTowerColId, TimingTowerColOptions,
                                       TimingTowerColSettings)
-from .schema.lap_recording import LapRecordingSettings
+from .schema.lap_analyzer import (SENSOR_GROUP_INFO, LapAnalyzerSensorSettings,
+                                  LapAnalyzerSettings, SensorGroup,
+                                  SensorPreset)
 from .schema.network import NetworkSettings
 from .schema.pit_time_loss import PitTimeLossF1, PitTimeLossF2
 from .schema.png import PngSettings
 from .schema.prediction import HarvestPowerSmoothing, PredictionSettings
 from .schema.privacy import PrivacySettings
+from .schema.save_viewer import SaveViewerSettings
 from .schema.stream_overlay import StreamOverlaySettings
 from .types.file_path_str import FilePathStr
 
@@ -52,7 +55,6 @@ __all__ = [
     'AutoOpenDashboardMode',
     'DisplaySettings',
     'ForwardingSettings',
-    'LapRecordingSettings',
     'NetworkSettings',
     'PitTimeLossF1',
     'PitTimeLossF2',
@@ -61,6 +63,12 @@ __all__ = [
     'HarvestPowerSmoothing',
     'PrivacySettings',
     'StreamOverlaySettings',
+    'SaveViewerSettings',
+    'LapAnalyzerSettings',
+    'LapAnalyzerSensorSettings',
+    'SensorGroup',
+    'SensorPreset',
+    'SENSOR_GROUP_INFO',
     'HttpsSettings',
     'HudSettings',
     'MfdPageId',

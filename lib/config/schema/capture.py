@@ -28,6 +28,7 @@ from typing import Any, ClassVar, Dict
 from pydantic import BaseModel, Field, field_validator
 
 from .diff import ConfigDiffMixin
+from .utils import check_box_row_field
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -38,46 +39,18 @@ class CaptureSettings(ConfigDiffMixin, BaseModel):
         "visible" : True,
     }
 
-    post_race_data_autosave: bool = Field(
-        default=True,
-        description="Autosave race data at the end of races",
-        json_schema_extra={
-            "ui": {
-                "type" : "check_box",
-                "visible": True
-            }
-        }
-    )
-    post_quali_data_autosave: bool = Field(
-        default=True,
-        description="Autosave qualifying data at the end of qualifying sessions",
-        json_schema_extra={
-            "ui": {
-                "type" : "check_box",
-                "visible": True
-            }
-        }
-    )
-    post_fp_data_autosave: bool = Field(
-        default=False,
-        description="Autosave free practice data at the end of free practice sessions",
-        json_schema_extra={
-            "ui": {
-                "type" : "check_box",
-                "visible": True
-            }
-        }
-    )
-    post_tt_data_autosave: bool = Field(
-        default=False,
-        description="Autosave time trial data at the end of time trial sessions",
-        json_schema_extra={
-            "ui": {
-                "type" : "check_box",
-                "visible": True
-            }
-        }
-    )
+    post_race_data_autosave: bool = check_box_row_field(
+        "Autosave race data at the end of races", default=True,
+        row="Autosave data at the end of", row_label="Race")
+    post_quali_data_autosave: bool = check_box_row_field(
+        "Autosave qualifying data at the end of qualifying sessions", default=True,
+        row="Autosave data at the end of", row_label="Qualifying")
+    post_fp_data_autosave: bool = check_box_row_field(
+        "Autosave free practice data at the end of free practice sessions", default=False,
+        row="Autosave data at the end of", row_label="Free Practice")
+    post_tt_data_autosave: bool = check_box_row_field(
+        "Autosave time trial data at the end of time trial sessions", default=False,
+        row="Autosave data at the end of", row_label="Time Trial")
     save_race_ctrl_msg: bool = Field(
         default=False,
         description="Save race control messages",

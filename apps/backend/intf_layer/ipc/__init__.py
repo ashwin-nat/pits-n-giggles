@@ -30,7 +30,8 @@ The server itself, and the shutdown / get-stats / heartbeat-missed handlers, are
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .command_handlers import (handleCaptureConfigChange,
-                               handleForwardingConfigChange, handleManualSave,
+                               handleForwardingConfigChange,
+                               handleLapAnalyzerConfigChange, handleManualSave,
                                handleUdpActionCodeChange)
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -38,6 +39,7 @@ from .command_handlers import (handleCaptureConfigChange,
 __all__ = [
     "handleCaptureConfigChange",
     "handleForwardingConfigChange",
+    "handleLapAnalyzerConfigChange",
     "handleManualSave",
     "handleUdpActionCodeChange",
 ]

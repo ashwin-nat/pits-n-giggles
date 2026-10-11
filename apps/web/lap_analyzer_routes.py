@@ -205,8 +205,9 @@ async def render_lap_analyzer_index(server: "WebServer") -> Any:
 
 def define_lap_analyzer_routes(server: "WebServer") -> None:
     """Define routes serving the lap-analyzer SPA under /lap-analyzer/* and its REST
-    API under /lap-analyzer/api/v1/*. The API is read-only for now -- mark-good/
-    delete are a later phase, per the write-API gate design in the API spec.
+    API under /lap-analyzer/api/v1/*. The only write operation is the session rename (PATCH),
+    gated by SaveViewer.enable_write_api; mark-good/delete are a later phase, per the
+    write-API gate design in the API spec.
     """
 
     @server.http_route('/lap-analyzer/')
@@ -304,6 +305,9 @@ def define_lap_analyzer_routes(server: "WebServer") -> None:
 
     @server.http_route('/lap-analyzer/api/v1/sessions/<session_id>/name', methods=['PATCH'])
     async def apiLapAnalyzerRenameSession(session_id: str):
+        if not server.m_enable_write_api:
+            return api_error('WRITE_API_DISABLED',
+                             'Write operations are disabled in settings'), HTTPStatus.FORBIDDEN
         await _cache_ready.wait()
         entry = _by_slug.get(session_id)
         if entry is None:

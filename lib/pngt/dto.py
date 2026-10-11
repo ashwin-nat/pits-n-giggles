@@ -26,6 +26,10 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+
+MANDATORY_TELEMETRY_KEYS = ("lap_distance", "lap_time_ms")
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class SensorType(Enum):

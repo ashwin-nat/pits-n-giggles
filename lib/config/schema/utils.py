@@ -119,6 +119,24 @@ def overlay_enable_field(description: str, *, default: Optional[bool] = True, vi
         }
     )
 
+def check_box_row_field(description: str, *, default: bool, row: str, row_label: str):
+    """
+    Create a check box that the settings window draws as one cell of a shared one-line row.
+    Fields with the same row title are drawn together; the description becomes the tooltip.
+    """
+    return Field(
+        default=default,
+        description=description,
+        json_schema_extra={
+            "ui": {
+                "type": "check_box",
+                "visible": True,
+                "row": row,
+                "row_label": row_label,
+            }
+        },
+    )
+
 def port_field(description: str, default: int, visible: Optional[bool] = True, port_type: PortType = PortType.TCP,
                ext_info: Optional[List[str]] = None):
     """

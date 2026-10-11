@@ -301,6 +301,7 @@ class PngLauncherWindow(QMainWindow):
             "download" : self._load_icon(icons_path_base / "download.svg"),
             "github" : self._load_icon(icons_path_base / "github.svg"),
             "lock" : self._load_icon(icons_path_base / "lock.svg"),
+            "public-only" : self._load_icon(icons_path_base / "public-only.svg"),
             "mfd-interact": self._load_icon(icons_path_base / "mfd-interact.svg"),
             "next-page" : self._load_icon(icons_path_base / "next-page.svg"),
             "prev-page" : self._load_icon(icons_path_base / "prev-page.svg"),
