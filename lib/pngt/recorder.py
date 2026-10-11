@@ -79,6 +79,7 @@ class DriverTelemetryRecorder(Generic[S]):
             raise ValueError(f"sensors must have unique keys, got duplicates in {keys!r}")
 
         self._last_frame_id: Optional[int] = None
+        self._lap_truncated = False
         self._current_lap_number: Optional[int] = None
         self._current_buffers: dict[str, list] = self._new_buffers()
         self._frame_id_buffer: list[int] = []
@@ -108,8 +109,12 @@ class DriverTelemetryRecorder(Generic[S]):
 
     def on_lap_change(self, metadata: LapMetadata) -> None:
         """Called when the sim's lap number increments by 1."""
-        if not self._current_buffers["lap_distance"]:
-            # No update() calls since init/last lap change -- no empty entry, but keep the lap number current.
+        if self._lap_truncated or not self._current_buffers["lap_distance"]:
+            # Nothing to keep: no samples since the last lap change, or a lap that resumed mid-way
+            # after discard_in_progress_lap(). Either way, keep the lap number current.
+            self._current_buffers = self._new_buffers()
+            self._frame_id_buffer = []
+            self._lap_truncated = False
             self._current_lap_number = metadata.lap_number + 1
             return
 
@@ -123,10 +128,12 @@ class DriverTelemetryRecorder(Generic[S]):
 
     def discard_in_progress_lap(self) -> None:
         """Drop the current lap's samples, so a pause in updates can't leave a hole mid-lap.
-        Completed laps are kept."""
+        Completed laps are kept. Samples recorded after this are dropped too at the next
+        on_lap_change(), since that lap no longer starts at its beginning."""
         self._current_buffers = self._new_buffers()
         self._frame_id_buffer = []
         self._last_frame_id = None
+        self._lap_truncated = True
 
     def export(self) -> DriverExportData:
         """May be called multiple times safely -- never mutates internal state."""

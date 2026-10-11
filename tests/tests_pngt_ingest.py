@@ -305,6 +305,21 @@ def test_recorder_discard_in_progress_lap_keeps_completed_laps_and_restarts_clea
         "lap_distance": [50.0], "lap_time_ms": [500], "speed": [9.0], "gear": [4],
     }
     assert export.in_progress_lap.metadata.lap_number == 2
+def test_recorder_lap_resumed_after_discard_is_not_saved_as_completed():
+    """A lap that restarts mid-way after a discard must not be exported as a full lap."""
+    recorder = _recorder()
+    recorder.update(_FakeSnapshot(lap_distance=1.0, lap_time_ms=10, speed=1.0, gear=1), frame_id=1)
+    recorder.discard_in_progress_lap()
+    recorder.update(_FakeSnapshot(lap_distance=50.0, lap_time_ms=500, speed=9.0, gear=4), frame_id=100)
+
+    recorder.on_lap_change(sample_lap_metadata(lap_number=1))
+    assert recorder.export().completed_laps == []
+
+    recorder.update(_FakeSnapshot(lap_distance=1.0, lap_time_ms=10, speed=2.0, gear=2), frame_id=200)
+    recorder.on_lap_change(sample_lap_metadata(lap_number=2))
+    export = recorder.export()
+    assert len(export.completed_laps) == 1
+    assert export.completed_laps[0].telemetry["lap_distance"] == [1.0]
 
 
 def test_recorder_lap_change_with_empty_buffers_still_advances_lap_number():

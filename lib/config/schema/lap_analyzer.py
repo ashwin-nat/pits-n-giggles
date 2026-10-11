@@ -92,11 +92,11 @@ class LapAnalyzerSensorSettings(ConfigDiffMixin, BaseModel):
     steering: bool = sensor_field(
         label="Steering", group=SensorGroup.DRIVER_INPUTS, restricted=False,
         presets={SensorPreset.BEGINNER, SensorPreset.ADVANCED})
+
+    # Car state
     gear: bool = sensor_field(
         label="Gear", group=SensorGroup.CAR_STATE, restricted=False,
         presets={SensorPreset.BEGINNER, SensorPreset.ADVANCED})
-
-    # Car state
     speed: bool = sensor_field(
         label="Speed", group=SensorGroup.CAR_STATE, restricted=False,
         presets={SensorPreset.BEGINNER, SensorPreset.ADVANCED})

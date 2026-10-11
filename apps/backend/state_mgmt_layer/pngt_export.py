@@ -84,6 +84,7 @@ def in_export_scope(
 def build_pngt_write_args(
     session_state: "SessionState",
     dest_path: Path,
+    lap_analyzer_settings: LapAnalyzerSettings,
 ) -> Tuple[Path, SessionMetadata, list[SensorConfig], list[DriverRecord], dict[int, DriverExportData]]:
     """Builds write_session()'s args from session_state -- F1-specific identity data
     the format-agnostic writer has no access to. Cheap (dict/list construction only)
@@ -92,12 +93,13 @@ def build_pngt_write_args(
         session_state (SessionState): The session to export.
         dest_path (Path): Where to write the .pngt file. Parent directory must already
             exist -- this function doesn't create it.
+        lap_analyzer_settings (LapAnalyzerSettings): Settings snapshot for the whole save,
+            so a hot swap mid-save can't give the sensor list and the driver scope different views.
 
     Returns:
         Tuple: (dest_path, session, sensors, drivers, driver_data), ready for
             write_session(*result).
     """
-    lap_analyzer_settings = session_state.m_lap_analyzer_settings
     sensors = selected_sensors(lap_analyzer_settings)
     sensor_keys = {sensor.key for sensor in sensors}
     is_spectating = bool(session_state.m_session_info.m_is_spectating)
