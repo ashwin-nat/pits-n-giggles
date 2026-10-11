@@ -304,6 +304,9 @@ def define_lap_analyzer_routes(server: "WebServer") -> None:
 
     @server.http_route('/lap-analyzer/api/v1/sessions/<session_id>/name', methods=['PATCH'])
     async def apiLapAnalyzerRenameSession(session_id: str):
+        if not server.m_enable_write_api:
+            return api_error('WRITE_API_DISABLED',
+                             'Write operations are disabled in settings'), HTTPStatus.FORBIDDEN
         await _cache_ready.wait()
         entry = _by_slug.get(session_id)
         if entry is None:

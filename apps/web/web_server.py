@@ -119,6 +119,7 @@ class WebServer(BaseWebServer):
         self.m_stream_overlay_cache: Optional[Dict[str, Any]] = None
         self.m_auto_open_dashboard = settings.Display.auto_open_dashboard
         self.m_save_viewer_poll_interval_secs = settings.Display.save_viewer_poll_interval_secs
+        self.m_enable_write_api: bool = settings.SaveViewer.enable_write_api
 
         self.m_session_dir: Path = session_dir
         # Holds every background task spawned via _spawn_background_task() below, for
