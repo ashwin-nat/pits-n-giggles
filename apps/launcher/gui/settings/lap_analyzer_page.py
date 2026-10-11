@@ -26,13 +26,14 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import (QCheckBox, QFrame, QHBoxLayout, QLabel,
-                               QPushButton, QScrollArea, QVBoxLayout, QWidget)
+                               QPushButton, QScrollArea, QToolButton,
+                               QVBoxLayout, QWidget)
 
-from lib.config import (SENSOR_GROUP_INFO,
-                        LapAnalyzerSensorSettings, SensorGroup, SensorPreset)
+from lib.config import (SENSOR_GROUP_INFO, LapAnalyzerSensorSettings,
+                        SensorGroup, SensorPreset)
 
 from .collapsible_group import HeaderCollapsibleGroup
 
@@ -155,8 +156,7 @@ class LapAnalyzerPage(QWidget):
         self._sensor_groups_widgets = list(sensor_groups.values())
         collapsibles.update(sensor_groups)
 
-        layout.addLayout(self._build_sensors_toolbar())
-        layout.addWidget(self._build_sensors_scroll_area(sensors_layout), stretch=1)
+        layout.addWidget(self._build_sensors_panel(sensors_layout), stretch=1)
 
         self._estimate_label = QLabel()
         self._estimate_label.setFont(QFont("Roboto", 10))
@@ -214,18 +214,45 @@ class LapAnalyzerPage(QWidget):
         row.addStretch()
         return row
 
-    def _build_sensors_toolbar(self) -> QHBoxLayout:
-        row = QHBoxLayout()
-        row.setSpacing(8)
+    def _build_sensors_panel(self, sensors_layout: QVBoxLayout) -> QFrame:
+        """Bordered container, styled like the collapsible groups, holding the toolbar and the scroll area."""
+        panel = QFrame()
+        panel.setObjectName("sensorsPanel")
+        panel.setStyleSheet("QFrame#sensorsPanel { background-color: #252526; border: 1px solid #4a4a4a;"
+                            " border-radius: 4px; }")
+        panel_layout = QVBoxLayout(panel)
+        panel_layout.setContentsMargins(0, 0, 0, 0)
+        panel_layout.setSpacing(0)
+        panel_layout.addWidget(self._build_sensors_toolbar())
+        panel_layout.addWidget(self._build_sensors_scroll_area(sensors_layout), stretch=1)
+        return panel
+
+    def _build_sensors_toolbar(self) -> QFrame:
+        toolbar = QFrame()
+        toolbar.setObjectName("sensorsToolbar")
+        toolbar.setStyleSheet("QFrame#sensorsToolbar { background-color: #2d2d30; border: none;"
+                          " border-bottom: 1px solid #4a4a4a; border-radius: 0px; }")
+        row = QHBoxLayout(toolbar)
+        row.setContentsMargins(12, 6, 8, 6)
+        row.setSpacing(4)
         title = QLabel("Sensors")
         title.setFont(QFont("Roboto", 10, QFont.Weight.Bold))
+        title.setStyleSheet("color: #d4d4d4; background: transparent; border: none;")
         row.addWidget(title)
         row.addStretch()
-        for text, collapsed in (("Expand all", False), ("Collapse all", True)):
-            button = QPushButton(text)
+        for icon_key, tooltip, collapsed in (("arrows-expand", "Expand all", False),
+                                             ("arrows-collapse", "Collapse all", True)):
+            button = QToolButton()
+            button.setIcon(self._icons[icon_key])
+            button.setIconSize(QSize(16, 16))
+            button.setToolTip(tooltip)
+            button.setCursor(Qt.CursorShape.PointingHandCursor)
+            button.setStyleSheet("QToolButton { background: transparent; border: none; border-radius: 4px;"
+                                 " padding: 4px; }"
+                                 " QToolButton:hover { background-color: #37373d; }")
             button.clicked.connect(lambda _checked=False, c=collapsed: self._set_all_collapsed(c))
             row.addWidget(button)
-        return row
+        return toolbar
 
     @staticmethod
     def _build_sensors_scroll_area(sensors_layout: QVBoxLayout) -> QScrollArea:
@@ -233,12 +260,16 @@ class LapAnalyzerPage(QWidget):
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setMinimumHeight(150)
-        scroll.setStyleSheet("QScrollArea { border: 1px solid #3e3e3e; border-radius: 4px; }"
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }"
                              "QScrollBar:vertical { width: 12px; }")
         body = QWidget()
+        body.setObjectName("sensorsBody")
+        body.setStyleSheet("QWidget#sensorsBody { background: transparent; }")
         body.setLayout(sensors_layout)
         sensors_layout.setContentsMargins(8, 8, 8, 8)
         scroll.setWidget(body)
+        scroll.viewport().setStyleSheet("background: transparent;")
         return scroll
 
     def _build_sensor_group(self, group: SensorGroup) -> HeaderCollapsibleGroup:

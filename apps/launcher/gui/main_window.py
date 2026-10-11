@@ -294,6 +294,8 @@ class PngLauncherWindow(QMainWindow):
         self.icons: Dict[str, QIcon] = {
             "arrow-down" : self._load_icon(icons_path_base / "arrow-down.svg"),
             "arrow-up" : self._load_icon(icons_path_base / "arrow-up.svg"),
+            "arrows-collapse" : self._load_icon(icons_path_base / "arrows-collapse.svg"),
+            "arrows-expand" : self._load_icon(icons_path_base / "arrows-expand.svg"),
             "caret-right" : self._load_icon(icons_path_base / "caret-right.svg"),
             "caret-down" : self._load_icon(icons_path_base / "caret-down.svg"),
             "dashboard" : self._load_icon(icons_path_base / "dashboard.svg"),
