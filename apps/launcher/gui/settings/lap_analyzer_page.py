@@ -130,19 +130,23 @@ class LapAnalyzerPage(QWidget):
         separator.setStyleSheet("background-color: #3e3e3e;")
         layout.addWidget(separator)
 
-        layout.addWidget(self._build_general_group(category_model))
+        # Same registry the generic pages use, so a search match expands the group holding it
+        collapsibles: Dict[str, HeaderCollapsibleGroup] = {}
+        general = self._build_general_group(category_model)
+        collapsibles["General"] = general
+        layout.addWidget(general)
         layout.addLayout(self._build_presets_row())
 
-        collapsibles: Dict[str, HeaderCollapsibleGroup] = {}
+        sensor_groups: Dict[str, HeaderCollapsibleGroup] = {}
         sensors_layout = QVBoxLayout()
         sensors_layout.setContentsMargins(0, 0, 0, 0)
         sensors_layout.setSpacing(8)
         for group in self._sensor_groups():
-            collapsibles[group.value] = self._build_sensor_group(group)
-            sensors_layout.addWidget(collapsibles[group.value])
+            sensor_groups[group.value] = self._build_sensor_group(group)
+            sensors_layout.addWidget(sensor_groups[group.value])
         sensors_layout.addStretch()
-        self._sensor_groups_widgets = list(collapsibles.values())
-        # Same registry the generic pages use, so a search match expands the group holding it
+        self._sensor_groups_widgets = list(sensor_groups.values())
+        collapsibles.update(sensor_groups)
         settings_window.collapsible_groups[len(settings_window.category_names)] = collapsibles
 
         layout.addLayout(self._build_sensors_toolbar())
@@ -340,14 +344,18 @@ class LapAnalyzerPage(QWidget):
     def _update_estimate(self) -> None:
         settings = self._settings
         enabled = [f for f in _SENSOR_FIELDS if getattr(settings.Sensors, f)]
-        if not settings.enable or not enabled:
+        any_session_type = (settings.record_in_race or settings.record_in_quali
+                            or settings.record_in_fp or settings.record_in_tt)
+        if not settings.enable or not enabled or not any_session_type:
             text = "Estimated size: nothing will be recorded"
         else:
             per_car = estimate_bytes_per_car(enabled)
             full_grid = _format_size(per_car * FULL_GRID_CARS)
             if settings.record_other_cars:
                 text = f"Estimated size per 45-min session: {full_grid} ({FULL_GRID_CARS} cars)"
-            else:
+            elif settings.record_in_spectator_mode:
                 text = (f"Estimated size per 45-min session: driving {_format_size(per_car)} (your car), "
                         f"spectating {full_grid} ({FULL_GRID_CARS} cars)")
+            else:
+                text = f"Estimated size per 45-min session: {_format_size(per_car)} (your car)"
         self._estimate_label.setText(text)

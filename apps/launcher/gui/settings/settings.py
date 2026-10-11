@@ -490,7 +490,7 @@ class SettingsWindow(QDialog):
         self.field_widgets.update(row.checkboxes)
         self._register_searchable(
             row,
-            " ".join([title, *(item.label for item in items)]),
+            " ".join([title, *(item.label for item in items), *(item.tooltip for item in items)]),
             " ".join(name for name, _, _ in members))
         return row
 
