@@ -32,12 +32,6 @@ from .utils import check_box_row_field
 
 # -------------------------------------- ENUMS -------------------------------------------------------------------------
 
-class SensorEntropy(str, Enum):
-    VERY_LOW = "very_low"
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-
 class SensorPreset(str, Enum):
     BEGINNER = "Beginner"
     ADVANCED = "Advanced"
@@ -50,17 +44,6 @@ class SensorGroup(str, Enum):
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
-# Compressed bytes per sample per entropy class. Calibrated by the calibrate-sensor-entropy skill.
-ENTROPY_BYTES_PER_SAMPLE: Dict[SensorEntropy, float] = {
-    SensorEntropy.VERY_LOW: 0.05,
-    SensorEntropy.LOW: 0.4,
-    SensorEntropy.MEDIUM: 0.7,
-    SensorEntropy.HIGH: 2.1,
-}
-
-# Lap distance + lap time, always recorded
-MANDATORY_BYTES_PER_SAMPLE = 4.65
-
 # Optional group tooltips. A group without an entry gets no tooltip.
 SENSOR_GROUP_INFO: Dict[SensorGroup, str] = {
     SensorGroup.ERS: "Energy recovery system state: deploy mode and battery charge",
@@ -68,7 +51,7 @@ SENSOR_GROUP_INFO: Dict[SensorGroup, str] = {
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def sensor_field(*, label: str, group: SensorGroup, restricted: bool, entropy: SensorEntropy,
+def sensor_field(*, label: str, group: SensorGroup, restricted: bool,
                  presets: Set[SensorPreset], info: Optional[str] = None):
     """
     Create a recordable sensor toggle. Defaults on iff it is in the Beginner preset.
@@ -86,7 +69,6 @@ def sensor_field(*, label: str, group: SensorGroup, restricted: bool, entropy: S
                 "info": info,
                 "group": group.value,
                 "restricted": restricted,
-                "entropy": entropy.value,
                 "presets": sorted(p.value for p in presets),
             },
         },
@@ -103,66 +85,53 @@ class LapAnalyzerSensorSettings(ConfigDiffMixin, BaseModel):
     # Inputs
     throttle: bool = sensor_field(
         label="Throttle", group=SensorGroup.DRIVER_INPUTS, restricted=False,
-        entropy=SensorEntropy.MEDIUM,
         presets={SensorPreset.BEGINNER, SensorPreset.ADVANCED})
     brake: bool = sensor_field(
         label="Brake", group=SensorGroup.DRIVER_INPUTS, restricted=False,
-        entropy=SensorEntropy.LOW,
         presets={SensorPreset.BEGINNER, SensorPreset.ADVANCED})
     steering: bool = sensor_field(
         label="Steering", group=SensorGroup.DRIVER_INPUTS, restricted=False,
-        entropy=SensorEntropy.HIGH,
         presets={SensorPreset.BEGINNER, SensorPreset.ADVANCED})
     gear: bool = sensor_field(
         label="Gear", group=SensorGroup.CAR_STATE, restricted=False,
-        entropy=SensorEntropy.VERY_LOW,
         presets={SensorPreset.BEGINNER, SensorPreset.ADVANCED})
 
     # Car state
     speed: bool = sensor_field(
         label="Speed", group=SensorGroup.CAR_STATE, restricted=False,
-        entropy=SensorEntropy.MEDIUM,
         presets={SensorPreset.BEGINNER, SensorPreset.ADVANCED})
     engine_rpm: bool = sensor_field(
         label="Engine RPM", group=SensorGroup.CAR_STATE, restricted=False,
-        entropy=SensorEntropy.HIGH,
         presets={SensorPreset.BEGINNER, SensorPreset.ADVANCED})
 
     # ERS
     ers_deploy_mode: bool = sensor_field(
         label="ERS Deploy Mode", group=SensorGroup.ERS, restricted=True,
-        entropy=SensorEntropy.VERY_LOW,
         presets={SensorPreset.ADVANCED})
     ers_store_energy_j: bool = sensor_field(
         label="ERS Store (J)", group=SensorGroup.ERS, restricted=True,
-        entropy=SensorEntropy.LOW,
         presets={SensorPreset.ADVANCED},
         info="Energy in the ERS battery, in joules")
     ers_store_energy_perc: bool = sensor_field(
         label="ERS Store Percentage", group=SensorGroup.ERS, restricted=True,
-        entropy=SensorEntropy.LOW,
         presets={SensorPreset.ADVANCED},
         info="ERS battery charge as a percentage of capacity (4 MJ)")
 
     # Tyre wear
     tyre_wear_fl: bool = sensor_field(
         label="Tyre Wear FL", group=SensorGroup.TYRE_WEAR, restricted=True,
-        entropy=SensorEntropy.LOW,
         presets={SensorPreset.ADVANCED},
         info="Front left tyre wear %")
     tyre_wear_fr: bool = sensor_field(
         label="Tyre Wear FR", group=SensorGroup.TYRE_WEAR, restricted=True,
-        entropy=SensorEntropy.LOW,
         presets={SensorPreset.ADVANCED},
         info="Front right tyre wear %")
     tyre_wear_rl: bool = sensor_field(
         label="Tyre Wear RL", group=SensorGroup.TYRE_WEAR, restricted=True,
-        entropy=SensorEntropy.LOW,
         presets={SensorPreset.ADVANCED},
         info="Rear left tyre wear %")
     tyre_wear_rr: bool = sensor_field(
         label="Tyre Wear RR", group=SensorGroup.TYRE_WEAR, restricted=True,
-        entropy=SensorEntropy.LOW,
         presets={SensorPreset.ADVANCED},
         info="Rear right tyre wear %")
 

@@ -30,8 +30,8 @@ from pydantic import ValidationError
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.config import (ENTROPY_BYTES_PER_SAMPLE, SENSOR_GROUP_INFO, PngSettings,
-                        SensorEntropy, SensorGroup, SensorPreset,
+from lib.config import (SENSOR_GROUP_INFO, PngSettings,
+                        SensorGroup, SensorPreset,
                         LapAnalyzerSettings, LapAnalyzerSensorSettings)
 
 from .tests_config_base import TestF1ConfigBase
@@ -136,7 +136,6 @@ def _sensor_meta(field: str) -> dict:
 @pytest.mark.parametrize("field", SENSOR_FIELDS)
 def test_sensor_annotation_complete(field):
     meta = _sensor_meta(field)
-    assert SensorEntropy(meta["entropy"]) in ENTROPY_BYTES_PER_SAMPLE
     assert SensorGroup(meta["group"])
     assert isinstance(meta["restricted"], bool)
     assert meta["info"] is None or meta["info"].strip()
@@ -158,10 +157,6 @@ def test_beginner_preset_contents():
 
 def test_advanced_preset_is_every_sensor():
     assert all(SensorPreset.ADVANCED.value in _sensor_meta(f)["presets"] for f in SENSOR_FIELDS)
-
-
-def test_every_entropy_class_has_bytes_coefficient():
-    assert set(ENTROPY_BYTES_PER_SAMPLE) == set(SensorEntropy)
 
 
 def test_group_info_keys_are_known_groups():

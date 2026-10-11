@@ -36,10 +36,9 @@ from .schema.hud.layout import OverlayId, OverlayPosition
 from .schema.hud.mfd import MfdPageId, MfdPageSettings, MfdSettings
 from .schema.hud.timing_tower import (TimingTowerColId, TimingTowerColOptions,
                                       TimingTowerColSettings)
-from .schema.lap_analyzer import (ENTROPY_BYTES_PER_SAMPLE,
-                                   MANDATORY_BYTES_PER_SAMPLE, SENSOR_GROUP_INFO,
-                                   LapAnalyzerSensorSettings, LapAnalyzerSettings,
-                                   SensorEntropy, SensorGroup, SensorPreset)
+from .schema.lap_analyzer import (SENSOR_GROUP_INFO, LapAnalyzerSensorSettings,
+                                  LapAnalyzerSettings, SensorGroup,
+                                  SensorPreset)
 from .schema.network import NetworkSettings
 from .schema.pit_time_loss import PitTimeLossF1, PitTimeLossF2
 from .schema.png import PngSettings
@@ -67,11 +66,8 @@ __all__ = [
     'SaveViewerSettings',
     'LapAnalyzerSettings',
     'LapAnalyzerSensorSettings',
-    'SensorEntropy',
     'SensorGroup',
     'SensorPreset',
-    'ENTROPY_BYTES_PER_SAMPLE',
-    'MANDATORY_BYTES_PER_SAMPLE',
     'SENSOR_GROUP_INFO',
     'HttpsSettings',
     'HudSettings',

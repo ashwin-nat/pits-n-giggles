@@ -31,9 +31,8 @@ from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import (QCheckBox, QFrame, QHBoxLayout, QLabel,
                                QPushButton, QScrollArea, QVBoxLayout, QWidget)
 
-from lib.config import (ENTROPY_BYTES_PER_SAMPLE, MANDATORY_BYTES_PER_SAMPLE,
-                        SENSOR_GROUP_INFO, LapAnalyzerSensorSettings,
-                        SensorEntropy, SensorGroup, SensorPreset)
+from lib.config import (SENSOR_GROUP_INFO,
+                        LapAnalyzerSensorSettings, SensorGroup, SensorPreset)
 
 from .collapsible_group import HeaderCollapsibleGroup
 
@@ -45,6 +44,11 @@ if TYPE_CHECKING:
 SAMPLE_RATE_HZ = 60
 SESSION_SECONDS = 45 * 60
 FULL_GRID_CARS = 22
+BYTES_PER_RAW_SAMPLE = 4  # float32
+MANDATORY_CHANNELS = 2  # lap distance and lap time
+
+# Assume every sensor compresses similarly for simplicity. This is the number arrived at by checking a few pngt files
+COMPRESSION_RATIO = 3.75
 
 PUBLIC_ONLY_TOOLTIP = ("Public only: other drivers' values read zero if their in-game telemetry is set to "
                        "Restricted. Your own car is always recorded.")
@@ -72,9 +76,8 @@ def _format_size(num_bytes: float) -> str:
 
 def estimate_bytes_per_car(enabled_fields: List[str]) -> float:
     """Estimated .pngt size of one car's session, given the enabled sensor fields."""
-    per_sample = MANDATORY_BYTES_PER_SAMPLE + sum(
-        ENTROPY_BYTES_PER_SAMPLE[SensorEntropy(_sensor_meta(f)["entropy"])] for f in enabled_fields)
-    return per_sample * SAMPLE_RATE_HZ * SESSION_SECONDS
+    raw_per_sample = (MANDATORY_CHANNELS + len(enabled_fields)) * BYTES_PER_RAW_SAMPLE
+    return raw_per_sample / COMPRESSION_RATIO * SAMPLE_RATE_HZ * SESSION_SECONDS
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
