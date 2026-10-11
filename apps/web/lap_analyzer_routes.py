@@ -205,8 +205,9 @@ async def render_lap_analyzer_index(server: "WebServer") -> Any:
 
 def define_lap_analyzer_routes(server: "WebServer") -> None:
     """Define routes serving the lap-analyzer SPA under /lap-analyzer/* and its REST
-    API under /lap-analyzer/api/v1/*. The API is read-only for now -- mark-good/
-    delete are a later phase, per the write-API gate design in the API spec.
+    API under /lap-analyzer/api/v1/*. The only write operation is the session rename (PATCH),
+    gated by SaveViewer.enable_write_api; mark-good/delete are a later phase, per the
+    write-API gate design in the API spec.
     """
 
     @server.http_route('/lap-analyzer/')

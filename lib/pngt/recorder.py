@@ -109,7 +109,9 @@ class DriverTelemetryRecorder(Generic[S]):
     def on_lap_change(self, metadata: LapMetadata) -> None:
         """Called when the sim's lap number increments by 1."""
         if not self._current_buffers["lap_distance"]:
-            return  # No update() calls since init/last lap change -- discard, no empty entry.
+            # No update() calls since init/last lap change -- no empty entry, but keep the lap number current.
+            self._current_lap_number = metadata.lap_number + 1
+            return
 
         lap = CompletedLap(metadata=metadata, telemetry=self._copy_buffers(self._current_buffers))
         self._completed_laps.append(
