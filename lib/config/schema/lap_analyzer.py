@@ -33,8 +33,10 @@ from .utils import check_box_row_field
 # -------------------------------------- ENUMS -------------------------------------------------------------------------
 
 class SensorPreset(str, Enum):
-    BEGINNER = "Beginner"
+    MINIMAL = "Minimal"
+    DEFAULT = "Default"
     ADVANCED = "Advanced"
+    ALL = "All"
 
 class SensorGroup(str, Enum):
     DRIVER_INPUTS = "Driver Inputs"
@@ -54,11 +56,11 @@ SENSOR_GROUP_INFO: Dict[SensorGroup, str] = {
 def sensor_field(*, label: str, group: SensorGroup, restricted: bool,
                  presets: Set[SensorPreset], info: Optional[str] = None):
     """
-    Create a recordable sensor toggle. Defaults on iff it is in the Beginner preset.
+    Create a recordable sensor toggle. Defaults on iff it is in the Default preset.
     """
     assert label, "sensor_field needs a non-empty label, the launcher sorts and displays by it"
     return Field(
-        default=SensorPreset.BEGINNER in presets,
+        default=SensorPreset.DEFAULT in presets,
         description=label,
         json_schema_extra={
             "ui": {
@@ -85,54 +87,54 @@ class LapAnalyzerSensorSettings(ConfigDiffMixin, BaseModel):
     # Inputs
     throttle: bool = sensor_field(
         label="Throttle", group=SensorGroup.DRIVER_INPUTS, restricted=False,
-        presets={SensorPreset.BEGINNER, SensorPreset.ADVANCED})
+        presets={SensorPreset.MINIMAL, SensorPreset.DEFAULT, SensorPreset.ADVANCED, SensorPreset.ALL})
     brake: bool = sensor_field(
         label="Brake", group=SensorGroup.DRIVER_INPUTS, restricted=False,
-        presets={SensorPreset.BEGINNER, SensorPreset.ADVANCED})
+        presets={SensorPreset.MINIMAL, SensorPreset.DEFAULT, SensorPreset.ADVANCED, SensorPreset.ALL})
     steering: bool = sensor_field(
         label="Steering", group=SensorGroup.DRIVER_INPUTS, restricted=False,
-        presets={SensorPreset.BEGINNER, SensorPreset.ADVANCED})
+        presets={SensorPreset.MINIMAL, SensorPreset.DEFAULT, SensorPreset.ADVANCED, SensorPreset.ALL})
 
     # Car state
     gear: bool = sensor_field(
         label="Gear", group=SensorGroup.CAR_STATE, restricted=False,
-        presets={SensorPreset.BEGINNER, SensorPreset.ADVANCED})
+        presets={SensorPreset.DEFAULT, SensorPreset.ADVANCED, SensorPreset.ALL})
     speed: bool = sensor_field(
         label="Speed", group=SensorGroup.CAR_STATE, restricted=False,
-        presets={SensorPreset.BEGINNER, SensorPreset.ADVANCED})
+        presets={SensorPreset.MINIMAL, SensorPreset.DEFAULT, SensorPreset.ADVANCED, SensorPreset.ALL})
     engine_rpm: bool = sensor_field(
         label="Engine RPM", group=SensorGroup.CAR_STATE, restricted=False,
-        presets={SensorPreset.BEGINNER, SensorPreset.ADVANCED})
+        presets={SensorPreset.DEFAULT, SensorPreset.ADVANCED, SensorPreset.ALL})
 
     # ERS
     ers_deploy_mode: bool = sensor_field(
         label="ERS Deploy Mode", group=SensorGroup.ERS, restricted=True,
-        presets={SensorPreset.ADVANCED})
+        presets={SensorPreset.DEFAULT, SensorPreset.ADVANCED, SensorPreset.ALL})
     ers_store_energy_j: bool = sensor_field(
         label="ERS Store (J)", group=SensorGroup.ERS, restricted=True,
-        presets={SensorPreset.ADVANCED},
+        presets={SensorPreset.ALL},
         info="Energy in the ERS battery, in joules")
     ers_store_energy_perc: bool = sensor_field(
         label="ERS Store Percentage", group=SensorGroup.ERS, restricted=True,
-        presets={SensorPreset.ADVANCED},
+        presets={SensorPreset.DEFAULT, SensorPreset.ADVANCED, SensorPreset.ALL},
         info="ERS battery charge as a percentage of capacity (4 MJ)")
 
     # Tyre wear
     tyre_wear_fl: bool = sensor_field(
         label="Tyre Wear FL", group=SensorGroup.TYRE_WEAR, restricted=True,
-        presets={SensorPreset.ADVANCED},
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
         info="Front left tyre wear %")
     tyre_wear_fr: bool = sensor_field(
         label="Tyre Wear FR", group=SensorGroup.TYRE_WEAR, restricted=True,
-        presets={SensorPreset.ADVANCED},
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
         info="Front right tyre wear %")
     tyre_wear_rl: bool = sensor_field(
         label="Tyre Wear RL", group=SensorGroup.TYRE_WEAR, restricted=True,
-        presets={SensorPreset.ADVANCED},
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
         info="Rear left tyre wear %")
     tyre_wear_rr: bool = sensor_field(
         label="Tyre Wear RR", group=SensorGroup.TYRE_WEAR, restricted=True,
-        presets={SensorPreset.ADVANCED},
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
         info="Rear right tyre wear %")
 
 class LapAnalyzerSettings(ConfigDiffMixin, BaseModel):

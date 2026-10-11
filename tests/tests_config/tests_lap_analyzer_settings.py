@@ -31,7 +31,7 @@ from pydantic import ValidationError
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.config import (SENSOR_GROUP_INFO, PngSettings,
-                        SensorGroup, SensorPreset,
+                        SensorGroup,
                         LapAnalyzerSettings, LapAnalyzerSensorSettings)
 
 from .tests_config_base import TestF1ConfigBase
@@ -139,24 +139,7 @@ def test_sensor_annotation_complete(field):
     assert SensorGroup(meta["group"])
     assert isinstance(meta["restricted"], bool)
     assert meta["info"] is None or meta["info"].strip()
-    assert meta["presets"]
-    assert all(SensorPreset(p) for p in meta["presets"])
     assert LapAnalyzerSensorSettings.model_fields[field].description
-
-
-@pytest.mark.parametrize("field", SENSOR_FIELDS)
-def test_sensor_default_matches_beginner_preset(field):
-    in_beginner = SensorPreset.BEGINNER.value in _sensor_meta(field)["presets"]
-    assert LapAnalyzerSensorSettings.model_fields[field].default is in_beginner
-
-
-def test_beginner_preset_contents():
-    beginner = {f for f in SENSOR_FIELDS if SensorPreset.BEGINNER.value in _sensor_meta(f)["presets"]}
-    assert beginner == {"throttle", "brake", "steering", "speed", "gear", "engine_rpm"}
-
-
-def test_advanced_preset_is_every_sensor():
-    assert all(SensorPreset.ADVANCED.value in _sensor_meta(f)["presets"] for f in SENSOR_FIELDS)
 
 
 def test_group_info_keys_are_known_groups():

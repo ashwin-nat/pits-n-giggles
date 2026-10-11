@@ -92,7 +92,8 @@ def test_manifest_label_comes_from_own_config_field(field):
 # selected_sensors()
 # ----------------------------------------------------------------------------------------------------------------------
 
-BEGINNER_KEYS = {"throttle", "brake", "steering", "speed", "gear", "engine_rpm"}
+DEFAULT_KEYS = {"throttle", "brake", "steering", "speed", "gear", "engine_rpm",
+                "ers.deploy_mode", "ers.store_energy"}
 
 
 def _all_off() -> dict:
@@ -103,8 +104,8 @@ def test_selected_sensors_disabled_is_empty():
     assert selected_sensors(LapAnalyzerSettings(enable=False)) == []
 
 
-def test_selected_sensors_defaults_are_beginner_six():
-    assert {s.key for s in selected_sensors(LapAnalyzerSettings())} == BEGINNER_KEYS
+def test_selected_sensors_defaults():
+    assert {s.key for s in selected_sensors(LapAnalyzerSettings())} == DEFAULT_KEYS
 
 
 def test_selected_sensors_all_off_is_empty():
