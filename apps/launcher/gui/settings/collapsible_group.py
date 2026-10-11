@@ -129,7 +129,8 @@ class CollapsibleGroup(QWidget):
     def expand_if_has_visible_children(self) -> None:
         for i in range(self._content_layout.count()):
             w = self._content_layout.itemAt(i).widget()
-            if w is not None and w.isVisible():
+            # isVisibleTo ignores the collapsed body being hidden, unlike isVisible
+            if w is not None and w.isVisibleTo(self._content_wrapper):
                 if self._is_collapsed:
                     self.set_collapsed(False)
                 return
