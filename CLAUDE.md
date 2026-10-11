@@ -151,6 +151,7 @@ These files define step-by-step procedures for common dev tasks. Read the releva
 - `.claude/commands/add-mcp-tool.md` — Scaffold a new MCP tool in `apps/mcp_server/`. Use when adding a new tool to the MCP server.
 - `.claude/commands/add-config-field.md` — Add a new config field with validation, subsystem wiring, and tests. Use when adding any new field to `png_config.json`.
 - `.claude/commands/diff-report.md` — Analyze (or run) `tests/integration_test/runner.py --base <commit>` and summarize what actually changed. Use when asked to check whether a refactor changed behavior, or to make sense of a `--base` diff report.
+- `.claude/commands/calibrate-sensor-entropy.md` � Re-measure per-sensor compressed size from `.pngt` recordings and update the Lap Analyzer entropy classes. Use when the recorder format or sensor set changes, or the settings-page size estimate looks off.
 
 ### IPC Pattern
 

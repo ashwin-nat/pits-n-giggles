@@ -10,6 +10,7 @@ poetry run python -m apps.dev_tools.telemetry_recorder
 poetry run python -m apps.dev_tools.compress_pcap <src-file> <dst-file>
 poetry run python -m apps.dev_tools.udp_action_code_injector --action-code <code>
 poetry run python -m apps.dev_tools.check_save_invariants "data/**/*.json"
+poetry run python -m apps.dev_tools.pngt_sensor_stats --dir data
 ```
 
 ## Save Invariant Checker
@@ -29,6 +30,17 @@ since neither reports tyre wear. Skips are counted in the per-file summary, so a
 hides the fact that nothing was checked.
 
 The same checks run automatically after every replay in `tests/integration_test/runner.py`.
+
+## PNGT Sensor Stats
+
+Per-sensor size statistics for `.pngt` lap recordings: sample counts, declared and observed range,
+raw and compressed bytes, and compressed bytes per sample with the nearest entropy class. Used by the
+`calibrate-sensor-entropy` skill to keep the Lap Analyzer size estimate honest.
+
+- `--file <x.pngt>` or `--dir <dir>` (recursive), one of them required
+- `--json` — JSON on stdout instead of the table
+- Aggregates over all matched files. A `*` marks a key whose manifest entry differs between files
+- Header line gives file count, sample rows and whole-file bytes per row
 
 ## UDP Action Code Injector
 
