@@ -73,6 +73,7 @@ def sensor_field(*, label: str, group: SensorGroup, restricted: bool, entropy: S
     """
     Create a recordable sensor toggle. Defaults on iff it is in the Beginner preset.
     """
+    assert label, "sensor_field needs a non-empty label, the launcher sorts and displays by it"
     return Field(
         default=SensorPreset.BEGINNER in presets,
         description=label,

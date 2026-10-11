@@ -377,6 +377,7 @@ class SettingsWindow(QDialog):
         if page_type == "lap_analyzer":
             page = LapAnalyzerPage(category_name, category_model, self)
             self.custom_pages[category_name] = page
+            self.collapsible_groups[len(self.category_names)] = page.collapsibles
             return page
 
         scroll = QScrollArea()
@@ -458,6 +459,7 @@ class SettingsWindow(QDialog):
                        layout: QVBoxLayout) -> None:
         """Render fields in order. Fields sharing a ui 'row' title are drawn together as one
         InlineCheckBoxRow, placed where the first of them appears."""
+        fields = [f for f in fields if self._is_field_visible(f[2])]
         row_members: Dict[str, List[Tuple[str, Any, FieldInfo]]] = defaultdict(list)
         for field in fields:
             if row_title := (field[2].json_schema_extra or {}).get("ui", {}).get("row"):
@@ -1351,10 +1353,14 @@ class SettingsWindow(QDialog):
             field_info = self._get_field_info_from_path(field_path)
             if (field_info.json_schema_extra or {}).get("udp_action_code"):
                 self._refresh_udp_action_pane()
-            for page in self.custom_pages.values():
-                page.on_field_changed(field_path)
         except Exception as e: # pylint: disable=broad-exception-caught
             self.parent_window.error_log(f"Error updating field {field_path}: {e}")
+            return
+        for page in self.custom_pages.values():
+            try:
+                page.on_field_changed(field_path)
+            except Exception as e: # pylint: disable=broad-exception-caught
+                self.parent_window.error_log(f"Error refreshing {type(page).__name__} after {field_path} changed: {e}")
 
     def _on_slider_changed(self, field_path: str, value: int, label: QLabel):
         # find field_info from path

@@ -25,7 +25,7 @@
 from dataclasses import dataclass
 from typing import Callable, Dict, Optional, Sequence
 
-from PySide6.QtCore import QRect, QRectF, Qt
+from PySide6.QtCore import QRect, QRectF
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QRegion
 from PySide6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QWidget
 
@@ -71,6 +71,7 @@ class InlineCheckBoxRow(QWidget):
         self._title_label.setStyleSheet("background: transparent; border: none;")
         self._title_label.adjustSize()
         self._title_label.move(_TITLE_INDENT, 0)
+        self.setMinimumWidth(self._title_label.width() + 2 * _TITLE_INDENT)  # keep a long title from clipping
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(_TITLE_INDENT, self._title_label.height() // 2 + 8, _TITLE_INDENT, 8)
@@ -81,8 +82,7 @@ class InlineCheckBoxRow(QWidget):
             checkbox.setStyleSheet("QCheckBox { background: transparent; }")
             checkbox.setChecked(item.checked)
             checkbox.setToolTip(item.tooltip)
-            checkbox.stateChanged.connect(
-                lambda state, p=item.path: on_changed(p, state == Qt.CheckState.Checked.value))
+            checkbox.toggled.connect(lambda checked, p=item.path: on_changed(p, checked))
             self.checkboxes[item.path] = checkbox
             layout.addWidget(checkbox)
         layout.addStretch()

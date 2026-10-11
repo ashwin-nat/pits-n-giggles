@@ -114,6 +114,11 @@ class LapAnalyzerPage(QWidget):
         self._leaf_checkboxes: Dict[str, QCheckBox] = {}
         self._group_boxes: Dict[str, Tuple[GroupCheckBox, List[str]]] = {}
         self._sensor_groups_widgets: List[HeaderCollapsibleGroup] = []
+        self._bulk_updating = False
+
+        # Same registry shape the generic pages use, so a search match expands the group holding it.
+        # The settings window files it under this category's index.
+        self.collapsibles: Dict[str, HeaderCollapsibleGroup] = {}
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
@@ -130,8 +135,7 @@ class LapAnalyzerPage(QWidget):
         separator.setStyleSheet("background-color: #3e3e3e;")
         layout.addWidget(separator)
 
-        # Same registry the generic pages use, so a search match expands the group holding it
-        collapsibles: Dict[str, HeaderCollapsibleGroup] = {}
+        collapsibles = self.collapsibles
         general = self._build_general_group(category_model)
         collapsibles["General"] = general
         layout.addWidget(general)
@@ -147,7 +151,6 @@ class LapAnalyzerPage(QWidget):
         sensors_layout.addStretch()
         self._sensor_groups_widgets = list(sensor_groups.values())
         collapsibles.update(sensor_groups)
-        settings_window.collapsible_groups[len(settings_window.category_names)] = collapsibles
 
         layout.addLayout(self._build_sensors_toolbar())
         layout.addWidget(self._build_sensors_scroll_area(sensors_layout), stretch=1)
@@ -169,7 +172,7 @@ class LapAnalyzerPage(QWidget):
 
     def on_field_changed(self, field_path: str) -> None:
         """Called by the settings window after any field changed, to keep derived widgets current."""
-        if field_path.startswith(f"{self._category_name}."):
+        if not self._bulk_updating and field_path.startswith(f"{self._category_name}."):
             self.refresh()
 
     # ----------------------------------------------- BUILDERS --------------------------------------------------------
@@ -269,8 +272,7 @@ class LapAnalyzerPage(QWidget):
 
         checkbox = QCheckBox()
         checkbox.setChecked(bool(getattr(self._settings.Sensors, field)))
-        checkbox.stateChanged.connect(
-            lambda state, p=field_path: self._settings_window._on_field_changed(p, state == Qt.CheckState.Checked.value))
+        checkbox.toggled.connect(lambda checked, p=field_path: self._settings_window._on_field_changed(p, checked))
         self._settings_window.field_widgets[field_path] = checkbox
         self._leaf_checkboxes[field] = checkbox
 
@@ -314,9 +316,18 @@ class LapAnalyzerPage(QWidget):
 
     # ----------------------------------------------- BEHAVIOUR -------------------------------------------------------
 
+    def _set_leaves(self, targets: Dict[str, bool]) -> None:
+        """Set many leaf checkboxes, refreshing the derived widgets once instead of once per leaf."""
+        self._bulk_updating = True
+        try:
+            for field, checked in targets.items():
+                self._leaf_checkboxes[field].setChecked(checked)
+        finally:
+            self._bulk_updating = False
+        self.refresh()
+
     def _apply_preset(self, preset: SensorPreset) -> None:
-        for field, checkbox in self._leaf_checkboxes.items():
-            checkbox.setChecked(preset.value in _sensor_meta(field)["presets"])
+        self._set_leaves({field: preset.value in _sensor_meta(field)["presets"] for field in self._leaf_checkboxes})
 
     def _set_all_collapsed(self, collapsed: bool) -> None:
         for group in self._sensor_groups_widgets:
@@ -325,8 +336,7 @@ class LapAnalyzerPage(QWidget):
     def _on_group_clicked(self, group_name: str) -> None:
         group_checkbox, fields = self._group_boxes[group_name]
         check = group_checkbox.checkState() == Qt.CheckState.Checked
-        for field in fields:
-            self._leaf_checkboxes[field].setChecked(check)
+        self._set_leaves({field: check for field in fields})
 
     def _update_group_state(self, group_name: str) -> None:
         group_checkbox, fields = self._group_boxes[group_name]
