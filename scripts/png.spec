@@ -35,7 +35,10 @@ import shutil
 import tempfile
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files, copy_metadata
 from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT, BUNDLE
-from meta.meta import APP_NAME_SNAKE
+import re
+from PyInstaller.utils.win32.versioninfo import (
+    FixedFileInfo, StringFileInfo, StringStruct, StringTable, VarFileInfo, VarStruct, VSVersionInfo)
+from meta.meta import APP_NAME, APP_NAME_SNAKE
 from lib.version import get_build_version
 
 # --------------------------------------------------------------------------------------------------
@@ -84,6 +87,35 @@ APP_BASENAME = f"{APP_NAME_SNAKE}_{BUILD_VERSION}"
 # a separate, dev-only opt-in, --no-heartbeat-stop, which no build ever bakes in.
 
 FORCE_DEBUG_MODE = "--force-debug" in sys.argv[1:]
+
+# --------------------------------------------------------------------------------------------------
+# Windows version resource (Explorer's Details tab)
+#
+# SignPath Foundation requires ProductName/ProductVersion on everything it signs, and the artifact
+# configuration matches against them. The numeric fields take only digits, so they drop any suffix.
+# --------------------------------------------------------------------------------------------------
+
+def make_version_info(version_str):
+    """Build the VSVersionInfo for the Windows exe from a version like "5.0.0-beta.1+abc1234"."""
+    numeric = tuple(int(n) for n in re.match(r"(\d+)\.(\d+)\.(\d+)", version_str).groups()) + (0,)
+    strings = [
+        StringStruct("FileDescription", APP_NAME),
+        StringStruct("FileVersion", version_str),
+        StringStruct("InternalName", APP_NAME_SNAKE),
+        StringStruct("LegalCopyright", "Copyright (c) Ashwin Natarajan. MIT License."),
+        StringStruct("OriginalFilename", f"{APP_BASENAME}.exe"),
+        StringStruct("ProductName", APP_NAME),
+        StringStruct("ProductVersion", version_str),
+    ]
+    return VSVersionInfo(
+        ffi=FixedFileInfo(filevers=numeric, prodvers=numeric),
+        kids=[
+            StringFileInfo([StringTable("040904B0", strings)]),  # en-US, Unicode
+            VarFileInfo([VarStruct("Translation", [0x0409, 1200])]),
+        ],
+    )
+
+VERSION_INFO = make_version_info(BUILD_VERSION) if platform.system() == "Windows" else None
 
 # --------------------------------------------------------------------------------------------------
 # Runtime hook: inject PNG_VERSION env var before app starts
@@ -245,6 +277,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=ICON_PATH,
+    version=VERSION_INFO,
     stdout=None,
     stderr=None,
 )
