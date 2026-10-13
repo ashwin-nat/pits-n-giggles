@@ -15,11 +15,17 @@
 #     and there is a small performance cost. Heartbeat handling is unaffected, so a
 #     debug build still recovers a wedged subsystem the same way a stable one does.
 #
+#   sign (checkbox, default on)
+#     Signs the Windows exe through SignPath's release-signing policy. Each request
+#     waits in the Build job until it is approved in the SignPath portal. Untick only
+#     to ship an unsigned build deliberately.
+#
 # The workflow will:
 #   - Auto-detect the single existing draft release (fails loudly if 0 or >1).
 #   - Check out the exact tagged commit.
 #   - Verify meta/meta.py version matches the release tag (safety guard).
 #   - Build Windows (.exe) and macOS (.zip of .app) artifacts in parallel.
+#   - Sign the Windows exe with SignPath (see the sign input above).
 #   - Run smoke tests on both platforms.
 #   - Generate SHA256 checksums for all artifacts.
 #   - Wipe any existing assets from the draft release (idempotent re-runs).
@@ -46,6 +52,10 @@
 # key by creating an account at virustotal.com and copying it from your
 # account's API Key page. The free tier (500 scans/day, 4 req/min) is
 # sufficient for this release cadence.
+#
+# Signing needs the SIGNPATH_API_TOKEN secret (the SignPath CI user's token) and
+# the SIGNPATH_ORGANIZATION_ID / SIGNPATH_PROJECT_SLUG repo variables, plus the
+# SignPath GitHub App installed on the repo.
 
 name: Release
 
@@ -56,6 +66,11 @@ on:
         description: 'Force debug logging on in the built app (intended for betas/RCs)'
         type: boolean
         default: false
+        required: false
+      sign:
+        description: 'Sign the Windows exe with SignPath (release-signing; needs approval in the portal)'
+        type: boolean
+        default: true
         required: false
 
 permissions:
@@ -198,6 +213,46 @@ jobs:
         run: poetry run python scripts/build.py --release ${{ inputs.debug_build && '--debug' || '' }}
         shell: bash
 
+      # Same three steps as common-build.yml, on the release policy. The request waits for
+      # manual approval in the SignPath portal, hence the hour-long timeout.
+      - name: Upload unsigned exe for signing
+        if: inputs.sign && runner.os == 'Windows'
+        id: upload-unsigned
+        uses: actions/upload-artifact@v5
+        with:
+          name: unsigned-exe
+          path: dist/*.exe
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Sign exe with SignPath
+        if: inputs.sign && runner.os == 'Windows'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: release-signing
+          github-artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: dist-signed
+
+      - name: Replace unsigned exe with signed one
+        if: inputs.sign && runner.os == 'Windows'
+        run: |
+          Remove-Item dist\*.exe
+          Copy-Item dist-signed\*.exe dist\
+          Get-AuthenticodeSignature (Get-ChildItem dist\*.exe) | Format-List
+        shell: pwsh
+
+      - name: Delete unsigned exe artifact
+        if: always() && steps.upload-unsigned.outputs.artifact-id != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/${{ steps.upload-unsigned.outputs.artifact-id }}"
+        shell: bash
+
       - name: Smoke test
         run: |
           if [[ "$RUNNER_OS" == "macOS" ]]; then
@@ -268,6 +323,9 @@ jobs:
         with:
           path: release-assets
           merge-multiple: true   # flattens subdirs → single directory
+          # unsigned-exe holds a file named exactly like the signed exe; flattened in, it
+          # could overwrite it. One minimatch string: newline-separated lists match nothing.
+          pattern: '!unsigned-exe'
 
       - name: List downloaded files
         run: ls -lh release-assets/

@@ -20,8 +20,10 @@ on:
 # Checkout and artifact upload only. The artifact upload authenticates with the Actions
 # runtime token, not GITHUB_TOKEN, so it is unaffected by this. release.yml is the only
 # workflow that publishes, and it declares its own wider scope.
+# actions: write is only for deleting the unsigned exe artifact after signing.
 permissions:
   contents: read
+  actions: write
 
 jobs:
   build:
@@ -123,6 +125,14 @@ jobs:
           Copy-Item dist-signed\*.exe dist\
           Get-AuthenticodeSignature (Get-ChildItem dist\*.exe) | Format-List
         shell: pwsh
+
+      # SignPath has finished with it by now; only the signed exe should be downloadable.
+      - name: Delete unsigned exe artifact
+        if: always() && steps.upload-unsigned.outputs.artifact-id != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/${{ steps.upload-unsigned.outputs.artifact-id }}"
+        shell: bash
 
       - name: Prepare artifact
         id: prep-artifact
