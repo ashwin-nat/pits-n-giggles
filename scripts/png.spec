@@ -36,8 +36,6 @@ import tempfile
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files, copy_metadata
 from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT, BUNDLE
 import re
-from PyInstaller.utils.win32.versioninfo import (
-    FixedFileInfo, StringFileInfo, StringStruct, StringTable, VarFileInfo, VarStruct, VSVersionInfo)
 from meta.meta import APP_NAME, APP_NAME_SNAKE
 from lib.version import get_build_version
 
@@ -97,6 +95,10 @@ FORCE_DEBUG_MODE = "--force-debug" in sys.argv[1:]
 
 def make_version_info(version_str):
     """Build the VSVersionInfo for the Windows exe from a version like "5.0.0-beta.1+abc1234"."""
+    # Imported here: the win32 utils pull in pefile, which is only installed on Windows.
+    from PyInstaller.utils.win32.versioninfo import (
+        FixedFileInfo, StringFileInfo, StringStruct, StringTable, VarFileInfo, VarStruct, VSVersionInfo)
+
     numeric = tuple(int(n) for n in re.match(r"(\d+)\.(\d+)\.(\d+)", version_str).groups()) + (0,)
     strings = [
         StringStruct("FileDescription", APP_NAME),
