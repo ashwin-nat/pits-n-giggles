@@ -84,7 +84,7 @@ Click any driver (preferably not during a fast lap):
 ## Installation
 
 ### Windows
-Download the EXE from the [Releases Page](https://github.com/ashwin-nat/pits-n-giggles/releases).
+Download the EXE from the [Releases Page](https://github.com/ashwin-nat/pits-n-giggles/releases). Release builds are code signed; see the [code signing policy](#code-signing-policy).
 
 ### macOS
 Build from source (macOS executables require mac hardware).
@@ -93,6 +93,28 @@ See **[RUNNING.md](docs/RUNNING.md)**.
 ### Manual / Source Installation
 - How to run → **[RUNNING.md](docs/RUNNING.md)**
 - How to build → **[BUILDING.md](docs/BUILDING.md)**
+
+---
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+The Windows release EXE is built from this repository by GitHub Actions and signed through SignPath. Each signing request is approved by hand before it is signed.
+
+**Team roles**
+- Committers and reviewers: [ashwin-nat](https://github.com/ashwin-nat)
+- Approvers: [ashwin-nat](https://github.com/ashwin-nat)
+
+Contributions from anyone else come in as pull requests and are reviewed before they are merged.
+
+**Privacy policy**
+
+Pits n' Giggles does not collect, store or send any personal data, and it has no analytics or usage tracking. It contacts two outside services, and sends neither any information about you or your sessions:
+- **GitHub** (`api.github.com`): the launcher checks for a newer release when it starts.
+- **OpenF1** (`api.openf1.org`): in F1 Time Trial sessions, the app looks up the real-world pole lap for the circuit and season.
+
+Telemetry from the game stays on your machine. The dashboards and overlays are served only to devices you connect yourself.
 
 ---
 

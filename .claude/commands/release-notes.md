@@ -57,4 +57,10 @@ Generate user-facing release notes for the next release of Pits n' Giggles.
 
 7. **Credit contributors.** Check `git log ... --format="%an|%ae"` for authors other than `ashwin-nat`. If any exist, extract their GitHub username from the noreply email (`<id>+<username>@users.noreply.github.com`) and add a `### Contributors` section at the end crediting them by `@username` with a brief summary of what they worked on.
 
+8. **End with the code signing footer**, verbatim (required by the SignPath Foundation terms):
+   ```markdown
+   ---
+   Windows builds are code signed. Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org). See the [code signing policy](https://github.com/ashwin-nat/pits-n-giggles#code-signing-policy).
+   ```
+
 If there are no user-facing changes (e.g. the only commits are CI/internal), say so explicitly rather than generating empty notes.
