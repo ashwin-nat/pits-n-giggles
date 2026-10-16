@@ -527,8 +527,8 @@ class F1PacketCapture:
                 self._read_per_packet_body(file)
 
         if self.m_header.num_packets != len(self.m_packet_history):
-            print(f"[WARN]: Number of packets in the file {self.m_header.num_packets} does not match the header "
-                             f"{len(self.m_packet_history)}. Possibly corrupt file", file=sys.stderr)
+            print(f"[WARN]: Header declares {self.m_header.num_packets} packets but the file contains "
+                  f"{len(self.m_packet_history)}. Possibly corrupt file", file=sys.stderr)
 
     def _read_per_packet_body(self, file) -> None:
         """Read a body where each packet is framed and (optionally) compressed on its own."""
