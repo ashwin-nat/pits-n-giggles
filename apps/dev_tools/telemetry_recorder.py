@@ -26,17 +26,30 @@ import os
 import sys
 import time
 import tkinter as tk
-from threading import Condition, Lock, Thread
-from tkinter import filedialog, messagebox
-from typing import Tuple
+from threading import Condition, Event, Lock, Thread
+from tkinter import filedialog, messagebox, ttk
+from typing import Callable, Optional, Tuple
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.packet_cap import F1PacketCapture
 from lib.socket_receiver import UdpTransport
+from lib.wdt import WatchDogTimerSync
 
 g_start_condition = Condition()
+
+# Set while packets are arriving. The watchdog callbacks run on other threads, so they only flip this
+# flag and the Tk thread polls it.
+g_receiving = Event()
+
+def _on_receive_status(receiving: bool) -> None:
+    if receiving:
+        g_receiving.set()
+    else:
+        g_receiving.clear()
+
+g_receive_wdt = WatchDogTimerSync(status_callback=_on_receive_status, timeout=1.0, check_interval=0.25)
 g_port_num = None
 
 class PacketCaptureTable:
@@ -53,12 +66,17 @@ class PacketCaptureTable:
     def add(self, packet: bytes) -> None:
         """
         Add a packet to the packet list while acquiring a lock to ensure thread safety.
+        If the lock is held (a save is in progress) the packet is dropped, so the receiver never blocks.
 
         Parameters:
             packet (bytes): The raw packet to be added to the table.
         """
-        with self.m_lock:
+        if not self.m_lock.acquire(blocking=False):
+            return
+        try:
             self.m_packet_capture.add(packet)
+        finally:
+            self.m_lock.release()
 
     def clear(self) -> int:
         """
@@ -79,18 +97,24 @@ class PacketCaptureTable:
         with self.m_lock:
             return self.m_packet_capture.getNumPackets()
 
-    def dumpToFile(self, path: str) -> Tuple[str, int, int]:
+    def dumpToFile(self, path: str, progress_callback: Optional[Callable[[int, int], None]] = None,
+                   clear: bool = False) -> Tuple[str, int, int]:
         """
         Dumps the packet history to a file while acquiring a lock to ensure thread safety.
 
         Parameters:
             path (str): The path to the file to be written to.
+            progress_callback (Callable): Called with (packets written so far, total packets)
+            clear (bool): If true, clear the packet history after a successful write, under the same lock
 
         Returns:
             Tuple[str, int, int]: A tuple containing the filename, number of packets, and number of bytes written.
         """
         with self.m_lock:
-            return self.m_packet_capture.dumpToFile(path)
+            result = self.m_packet_capture.dumpToFile(path, progress_update_callback=progress_callback)
+            if clear:
+                self.m_packet_capture.clear()
+            return result
 
 g_capture_table = PacketCaptureTable()
 
@@ -122,6 +146,28 @@ class SimpleApp:
         self.save_button = tk.Button(root, text="Save to File", command=self.save_to_file, state="disabled")
         self.save_button.pack(pady=10)
 
+        # Save progress (shown only while saving). The worker thread writes save_progress and save_result,
+        # the UI thread polls them.
+        self.save_label = tk.Label(root, text="Saving...")
+        self.save_bar = ttk.Progressbar(root, mode="determinate", maximum=100, length=300)
+        self.save_progress = (0, 0)
+        self.save_result = None
+
+        # Live status line, driven by the watchdog flag
+        self.listening = False
+        self.rx_label = tk.Label(root, text="Not listening", fg="gray")
+        self.rx_label.pack(side="bottom", pady=5)
+        self._update_rx_status()
+
+    def _update_rx_status(self) -> None:
+        if not self.listening:
+            self.rx_label.config(text="Not listening", fg="gray")
+        elif g_receiving.is_set():
+            self.rx_label.config(text="Receiving telemetry", fg="green")
+        else:
+            self.rx_label.config(text="Waiting for telemetry...", fg="gray")
+        self.root.after(300, self._update_rx_status)
+
     def start_capture(self):
         port = self.port_entry.get()
         if port.isdigit():
@@ -133,6 +179,7 @@ class SimpleApp:
             self.clear_button.config(state="normal")
             self.save_button.config(state="normal")
 
+            self.listening = True
             global g_port_num
             g_port_num = int(port)
             with g_start_condition:
@@ -149,15 +196,53 @@ class SimpleApp:
     def save_to_file(self):
         file_path = filedialog.asksaveasfilename(defaultextension=".f1pcap",
                                                  filetypes=[("F1 Packet Capture", "*.f1pcap"), ("All files", "*.*")])
-        if file_path:
-            global g_capture_table
-            _, num_packets, _ = g_capture_table.dumpToFile(file_path)
-            g_capture_table.clear()
-            if num_packets == 0:
-                messagebox.showinfo("Info", "No data to save!")
-            else:
-                messagebox.showinfo("Info", f"Data has been successfully written to file {file_path}. "
-                                            f"Number of packets is {num_packets}")
+        if not file_path:
+            return
+
+        # Compression takes a while, so write on a worker thread and keep the window responsive
+        self.save_progress = (0, 0)
+        self.save_result = None
+        self.clear_button.config(state="disabled")
+        self.save_button.config(state="disabled")
+        self.save_bar.config(value=0)
+        self.save_label.pack()
+        self.save_bar.pack(pady=5)
+        Thread(target=self._save_worker, args=(file_path,), daemon=True).start()
+        self.root.after(100, self._poll_save, file_path)
+
+    def _on_save_progress(self, current: int, total: int) -> None:
+        self.save_progress = (current + 1, total)
+
+    def _save_worker(self, file_path: str) -> None:
+        try:
+            _, num_packets, _ = g_capture_table.dumpToFile(file_path, self._on_save_progress, clear=True)
+            self.save_result = (num_packets, None)
+        except Exception as e:  # pylint: disable=broad-except
+            self.save_result = (0, e)
+
+    def _poll_save(self, file_path: str) -> None:
+        written, total = self.save_progress
+        if total:
+            self.save_bar.config(value=100 * written / total)
+            self.save_label.config(text=f"Saving... {written}/{total} packets")
+
+        if self.save_result is None:
+            self.root.after(100, self._poll_save, file_path)
+            return
+
+        num_packets, error = self.save_result
+        self.save_label.pack_forget()
+        self.save_bar.pack_forget()
+        self.save_label.config(text="Saving...")
+        self.clear_button.config(state="normal")
+        self.save_button.config(state="normal")
+        if error is not None:
+            messagebox.showerror("Error", f"Failed to write {file_path}: {error}. Captured data is still in memory.")
+        elif num_packets == 0:
+            messagebox.showinfo("Info", "No data to save!")
+        else:
+            messagebox.showinfo("Info", f"Data has been successfully written to file {file_path}. "
+                                        f"Number of packets is {num_packets}")
 
 async def async_telemetry_main():
     """Main function for async telemetry. This runs its own asyncio event loop"""
@@ -174,6 +259,7 @@ async def async_telemetry_main():
 
     @transport.on_packet
     async def handle(raw_packet: bytes) -> None:
+        g_receive_wdt.kick()
         g_capture_table.add(raw_packet)
 
     await transport.run()
@@ -186,6 +272,7 @@ if __name__ == "__main__":
     )
     f1_telemetry_thread.start()
 
+    g_receive_wdt.start()
     time.sleep(1)
     root = tk.Tk()
     app = SimpleApp(root)
