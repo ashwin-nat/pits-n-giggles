@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import lzma
 import struct
 import sys
 import time
@@ -72,6 +73,7 @@ class CompressionMode(IntEnum):
     """Compression scheme of a capture file, stored in the low 4 bits of the header flags byte."""
     NONE = 0
     PER_PACKET_ZLIB = 1
+    GLOBAL_LZMA = 2
 
 class F1PktCapFileHeader:
     """Represents the header of a file containing F1 UDP telemetry packets.
@@ -97,6 +99,10 @@ class F1PktCapFileHeader:
     SUPPORTED_MAJOR_VERSION = 1
 
     COMPRESSION_MODE_MASK = 0x0F
+
+    # First minor version whose packet timestamps are float64. Earlier files use float32,
+    # which cannot resolve better than ~128 s at epoch magnitudes.
+    FLOAT64_TIMESTAMP_MINOR_VERSION = 2
 
     def __init__(self,
                 major_version: int = 1,
@@ -181,6 +187,13 @@ class F1PktCapFileHeader:
     def is_compressed(self) -> bool:
         """Getter for compressed."""
         return self._compression_mode != CompressionMode.NONE
+
+    @property
+    def timestamp_format(self) -> str:
+        """struct format character of the per-packet timestamp: 'd' (float64) or 'f' (legacy float32)."""
+        if self._minor_version >= F1PktCapFileHeader.FLOAT64_TIMESTAMP_MINOR_VERSION:
+            return 'd'
+        return 'f'
 
     def getEndiannessStr(self) -> str:
         """Get the endianness as a string for struct library.
@@ -271,13 +284,13 @@ class F1PktCapFileHeader:
 class F1PktCapMessage:
     """Represents an entry in the F1PacketCapture."""
 
-    HEADER_LEN = 8
-
     # Offset | Size | Description
     # -------+------+----------------------------------------
-    #  0     | 4    | Timestamp (float)
-    #  4     | 4    | Data length (uint32)
-    #  8     | N    | Packet data (raw or compressed)
+    #  0     | 8    | Timestamp (float64; float32 in files below minor version 2)
+    #  8     | 4    | Data length (uint32)
+    #  12    | N    | Packet data (raw or compressed)
+    # In the global compression modes this framing is inside the compressed stream, and the
+    # data is always raw.
 
     def __init__(self, data: bytes, timestamp: float = None, is_little_endian: bool = True):
         """
@@ -297,23 +310,25 @@ class F1PktCapMessage:
         """Getter for the raw data of the entry."""
         return self._m_data
 
-    def to_bytes(self, compression_helper: CompressionHelper) -> bytes:
+    def to_bytes(self, compression_helper: CompressionHelper, timestamp_format: str = 'd') -> bytes:
         """
         Convert the entry to bytes for serialization.
 
         Parameters:
         - compression_helper (CompressionHelper): Compression helper object for compression.
+        - timestamp_format (str): struct format character of the timestamp ('d' or legacy 'f').
 
         Returns:
         - bytes: Serialized bytes representation of the entry.
         """
-        timestamp_bytes = struct.pack(f'{self.m_endianness_str}f', self.m_timestamp)
+        timestamp_bytes = struct.pack(f'{self.m_endianness_str}{timestamp_format}', self.m_timestamp)
         compressed_data = compression_helper.compress(self.m_data)
         data_length_bytes = struct.pack(f'{self.m_endianness_str}I', len(compressed_data))
         return timestamp_bytes + data_length_bytes + compressed_data
 
     @classmethod
-    def from_bytes(cls, data: bytes, is_little_endian: bool, compression_helper: CompressionHelper):
+    def from_bytes(cls, data: bytes, is_little_endian: bool, compression_helper: CompressionHelper,
+                   timestamp_format: str = 'd'):
         """
         Create a F1PktCapMessage from serialized bytes.
 
@@ -321,6 +336,7 @@ class F1PktCapMessage:
         - data (bytes): Serialized bytes containing timestamp and payload length followed by the payload.
         - is_little_endian (bool): Whether the data is in little endian format.
         - compression_helper (CompressionHelper): Compression helper object for decompression.
+        - timestamp_format (str): struct format character of the timestamp ('d' or legacy 'f').
 
         Returns:
         - F1PktCapMessage: Deserialized entry.
@@ -328,10 +344,11 @@ class F1PktCapMessage:
         Raises:
         - ValueError: If the length of the payload does not match the expected length specified in the header.
         """
-        # Rest of the code remains the same
         endianness_str = '<' if is_little_endian else '>'
-        timestamp, length = struct.unpack(f'{endianness_str}fI', data[:8])
-        compressed_payload = data[8:]
+        frame_fmt = f'{endianness_str}{timestamp_format}I'
+        frame_len = struct.calcsize(frame_fmt)
+        timestamp, length = struct.unpack(frame_fmt, data[:frame_len])
+        compressed_payload = data[frame_len:]
         payload = compression_helper.decompress(compressed_payload)
         if len(compressed_payload) != length:
             raise ValueError(f"Data length mismatch. Header length: {length}, Actual length: {len(compressed_payload)}")
@@ -341,7 +358,9 @@ class F1PacketCapture:
     """Represents a collection of F1PktCapMessage objects."""
 
     major_ver = 1
-    minor_ver = 1
+    minor_ver = 2
+    lzma_preset = 6  # preset 9 gains 0.2% for 6x the encoder memory
+    lzma_read_chunk = 1 << 20
     is_little_endian = (sys.byteorder == "little")
     file_extension = "f1pcap"
 
@@ -358,29 +377,36 @@ class F1PacketCapture:
             raise ValueError("Must specify either compressed or file_name")
 
         self.m_packet_history: List[F1PktCapMessage] = []
-        self.is_compressed = compressed
+        self.compression_mode = CompressionMode.NONE
+        self.is_compressed = False
+        self.m_compression_helper: Optional[CompressionHelper] = NoCompressionHelper()
 
         if file_name:
             self.readFromFile(file_name)
         else:
+            self.set_compressed(compressed)
             self.m_header = F1PktCapFileHeader(
                 major_version=self.major_ver,
                 minor_version=self.minor_ver,
                 num_packets=0,
                 is_little_endian=self.is_little_endian,
-                is_compressed=compressed)
-            if compressed:
-                self.m_compression_helper: CompressionHelper = ZlibCompressionHelper()
-            else:
-                self.m_compression_helper: CompressionHelper = NoCompressionHelper()
+                compression_mode=self.compression_mode)
+
+    def set_compression_mode(self, mode: CompressionMode):
+        """Set the compression mode used by dumpToFile."""
+        self.compression_mode = mode
+        self.is_compressed = mode != CompressionMode.NONE
+        # Only the per-packet mode goes through a helper; global modes compress the whole body
+        if mode == CompressionMode.PER_PACKET_ZLIB:
+            self.m_compression_helper = ZlibCompressionHelper()
+        elif mode == CompressionMode.NONE:
+            self.m_compression_helper = NoCompressionHelper()
+        else:
+            self.m_compression_helper = None
 
     def set_compressed(self, compressed: bool):
-        """Set the compression state and update the compression helper accordingly."""
-        self.is_compressed = compressed
-        if compressed:
-            self.m_compression_helper = ZlibCompressionHelper()
-        else:
-            self.m_compression_helper = NoCompressionHelper()
+        """Compress with the current default scheme (global LZMA) if true, else store raw."""
+        self.set_compression_mode(CompressionMode.GLOBAL_LZMA if compressed else CompressionMode.NONE)
 
     def add(self, data: bytes, timestamp: float = None):
         """
@@ -431,7 +457,6 @@ class F1PacketCapture:
             timestamp_str = time.strftime("%Y%m%d%H%M%S", time.localtime())
             file_name = f"capture_{timestamp_str}.{self.file_extension}"
 
-        byte_count = 0
         packets_snapshot = list(self.m_packet_history)
         total_packet_count = len(packets_snapshot)
 
@@ -441,24 +466,43 @@ class F1PacketCapture:
             minor_version=self.minor_ver,
             num_packets=total_packet_count,
             is_little_endian=self.is_little_endian,
-            is_compressed=self.is_compressed)
+            compression_mode=self.compression_mode)
 
-        # Write to file
+        byte_count = 0
         with open(file_name, "wb") as file:
-            # First, write the header
             file.write(header.to_bytes())
-            # Next write all packets
-            for curr_packet_count, entry in enumerate(packets_snapshot):
-                data_to_write = entry.to_bytes(self.m_compression_helper)
-                file.write(data_to_write)
-                byte_count += len(data_to_write)
-                if progress_update_callback:
-                    if progress_update_callback_arg:
-                        progress_update_callback(curr_packet_count, total_packet_count, progress_update_callback_arg)
-                    else:
-                        progress_update_callback(curr_packet_count, total_packet_count)
+            if self.compression_mode == CompressionMode.GLOBAL_LZMA:
+                # Stream into the compressor so the body is never held in memory a second time
+                frame_fmt = f'{header.getEndiannessStr()}{header.timestamp_format}I'
+                compressor = lzma.LZMACompressor(format=lzma.FORMAT_XZ, preset=self.lzma_preset)
+                for curr_packet_count, entry in enumerate(packets_snapshot):
+                    chunk = (compressor.compress(struct.pack(frame_fmt, entry.m_timestamp, len(entry.m_data)))
+                             + compressor.compress(entry.m_data))
+                    file.write(chunk)
+                    byte_count += len(chunk)
+                    self._notify_progress(progress_update_callback, progress_update_callback_arg,
+                                          curr_packet_count, total_packet_count)
+                tail = compressor.flush()
+                file.write(tail)
+                byte_count += len(tail)
+            else:
+                for curr_packet_count, entry in enumerate(packets_snapshot):
+                    data_to_write = entry.to_bytes(self.m_compression_helper, header.timestamp_format)
+                    file.write(data_to_write)
+                    byte_count += len(data_to_write)
+                    self._notify_progress(progress_update_callback, progress_update_callback_arg,
+                                          curr_packet_count, total_packet_count)
 
         return file_name, total_packet_count, byte_count
+
+    @staticmethod
+    def _notify_progress(callback: Optional[Callable], callback_arg: Optional[Any], current: int, total: int) -> None:
+        """Invoke the dumpToFile progress callback, if any."""
+        if callback:
+            if callback_arg:
+                callback(current, total, callback_arg)
+            else:
+                callback(current, total)
 
     def readFromFile(self, file_name: str) -> None:
         """
@@ -468,44 +512,76 @@ class F1PacketCapture:
             - file_name (str): The name of the file to read from.
 
         Raises:
-            - ValueError: If the file header is invalid (see F1PktCapFileHeader.from_bytes)
+            - ValueError: If the file header is invalid (see F1PktCapFileHeader.from_bytes),
+                or a compressed body is corrupt. A body that is merely cut short is read as far
+                as it goes, with a warning.
         """
 
         with open(file_name, "rb") as file:
             # First, fetch the file header
             self.m_header = F1PktCapFileHeader.from_bytes(file.read(F1PktCapFileHeader.HEADER_LEN))
-            endianness_str = self.m_header.getEndiannessStr()
-            if self.m_header.compression_mode == CompressionMode.PER_PACKET_ZLIB:
-                self.m_compression_helper = ZlibCompressionHelper()
+            self.set_compression_mode(self.m_header.compression_mode)
+            if self.compression_mode == CompressionMode.GLOBAL_LZMA:
+                self._read_global_lzma_body(file)
             else:
-                self.m_compression_helper = NoCompressionHelper()
-
-            # Next process all the packets
-            while True:
-                entry_header_bytes = file.read(8)  # Assuming a fixed size for the header
-                if not entry_header_bytes:
-                    break
-
-                timestamp_bytes = entry_header_bytes[:4]
-                data_length_bytes = entry_header_bytes[4:]
-                data_length = struct.unpack(f'{endianness_str}I', data_length_bytes)[0]
-
-                payload = file.read(data_length)
-
-                # Concatenate timestamp_bytes, data_length_bytes, and payload
-                entry_data = timestamp_bytes + data_length_bytes + payload
-
-                # Use F1PktCapMessage.from_bytes to create the entry
-                entry = F1PktCapMessage.from_bytes(
-                    entry_data,
-                    self.m_header.is_little_endian,
-                    self.m_compression_helper
-                )
-                self.m_packet_history.append(entry)
+                self._read_per_packet_body(file)
 
         if self.m_header.num_packets != len(self.m_packet_history):
             print(f"[WARN]: Number of packets in the file {self.m_header.num_packets} does not match the header "
                              f"{len(self.m_packet_history)}. Possibly corrupt file", file=sys.stderr)
+
+    def _read_per_packet_body(self, file) -> None:
+        """Read a body where each packet is framed and (optionally) compressed on its own."""
+        endianness_str = self.m_header.getEndiannessStr()
+        ts_fmt = self.m_header.timestamp_format
+        frame_len = struct.calcsize(f'{endianness_str}{ts_fmt}I')
+        while True:
+            frame_bytes = file.read(frame_len)
+            if not frame_bytes:
+                break
+
+            data_length = struct.unpack(f'{endianness_str}I', frame_bytes[-4:])[0]
+            payload = file.read(data_length)
+
+            entry = F1PktCapMessage.from_bytes(
+                frame_bytes + payload,
+                self.m_header.is_little_endian,
+                self.m_compression_helper,
+                ts_fmt
+            )
+            self.m_packet_history.append(entry)
+
+    def _read_global_lzma_body(self, file) -> None:
+        """Read a body that is one LZMA stream of framed raw packets.
+
+        Decodes incrementally, so a stream cut off mid-write still yields every complete packet.
+        """
+        frame_fmt = f'{self.m_header.getEndiannessStr()}{self.m_header.timestamp_format}I'
+        frame_len = struct.calcsize(frame_fmt)
+        decompressor = lzma.LZMADecompressor(format=lzma.FORMAT_XZ)
+        buf = bytearray()
+        while not decompressor.eof:
+            chunk = file.read(self.lzma_read_chunk)
+            if not chunk:
+                break
+            try:
+                buf += decompressor.decompress(chunk)
+            except lzma.LZMAError as e:
+                raise ValueError(f"LZMA decompression failed: {e}") from e
+
+            pos = 0
+            while len(buf) - pos >= frame_len:
+                timestamp, length = struct.unpack_from(frame_fmt, buf, pos)
+                end = pos + frame_len + length
+                if end > len(buf):
+                    break
+                self.m_packet_history.append(
+                    F1PktCapMessage(bytes(buf[pos + frame_len:end]), timestamp, self.m_header.is_little_endian))
+                pos = end
+            del buf[:pos]
+
+        if not decompressor.eof or buf:
+            print("[WARN]: Compressed body ends early. Possibly truncated file", file=sys.stderr)
 
     def getPackets(self) -> Generator[Tuple[float, bytes], None, None]:
         """
