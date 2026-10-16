@@ -284,6 +284,9 @@ class F1PktCapFileHeader:
 class F1PktCapMessage:
     """Represents an entry in the F1PacketCapture."""
 
+    # A recording holds one of these per packet, so skip the per-instance __dict__
+    __slots__ = ('_m_data', 'm_timestamp', 'm_endianness_str')
+
     # Offset | Size | Description
     # -------+------+----------------------------------------
     #  0     | 8    | Timestamp (float64; float32 in files below minor version 2)
