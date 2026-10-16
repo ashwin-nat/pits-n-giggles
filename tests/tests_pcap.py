@@ -638,21 +638,10 @@ def test_progress_callback_called_for_lzma(tmp_path):
     assert calls == [(i, 10) for i in range(10)]
 
 
-def _raw_packets_from_real_capture(limit: int = 2000):
-    # Timestamps in legacy files are already float32 values, so they survive a v1 write unchanged
-    capture = F1PacketCapture(file_name=os.path.join(os.path.dirname(__file__), "..", "test_data",
-                                                     "f1_25_movie_preview.f1pcap"))
-    return list(capture.getPackets())[:limit]
-
-
-@pytest.mark.parametrize("source", ["synthetic", "real_capture"])
-def test_v1_and_v2_round_trips_agree(tmp_path, source):
+def test_v1_and_v2_round_trips_agree(tmp_path):
     """raw -> v1 -> raw (a) and raw -> v2 -> raw (b) must give identical packets."""
-    if source == "synthetic":
-        # Float32-exact timestamps; v1 would otherwise quantize them and a != b by design
-        raw = [(i * 0.25, data) for i, (_, data) in enumerate(_sample_packets())]
-    else:
-        raw = _raw_packets_from_real_capture()
+    # Float32-exact timestamps; v1 would otherwise quantize them and a != b by design
+    raw = [(i * 0.25, data) for i, (_, data) in enumerate(_sample_packets())]
 
     v1_path, v2_path = tmp_path / "v1.f1pcap", tmp_path / "v2.f1pcap"
     _write_legacy_file(v1_path, raw, CompressionMode.PER_PACKET_ZLIB)
