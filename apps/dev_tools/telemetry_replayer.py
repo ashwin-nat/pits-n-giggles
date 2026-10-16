@@ -199,7 +199,7 @@ def _send_udp_mode(
 
         if prev_timestamp is not None:
             sleep_duration = timestamp - prev_timestamp
-            if sleep_duration == 0:
+            if sleep_duration <= 0:
                 sleep_duration = 0.01667  # 16.67ms is time interval on 60 Hz telemetry rate.
             time.sleep(sleep_duration / speed_multiplier)
 

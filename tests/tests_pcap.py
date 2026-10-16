@@ -23,14 +23,18 @@
 
 import os
 import random
+import struct
 import sys
 import time
 import tempfile
 
+import pytest
+
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.packet_cap import F1PacketCapture, F1PktCapFileHeader, F1PktCapMessage
+from lib.packet_cap import (CompressionMode, F1PacketCapture, F1PktCapFileHeader, F1PktCapMessage,
+                            NoCompressionHelper, ZlibCompressionHelper)
 from tests_base import F1TelemetryUnitTestsBase
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -220,7 +224,7 @@ class TestF1PacketCaptureHeader(TestF1PacketCapture):
     def test_to_bytes_and_from_bytes(self):
         # Test serialization and deserialization
         header1 = F1PktCapFileHeader(
-            major_version=3,
+            major_version=1,
             minor_version=8,
             num_packets=1000,
             is_little_endian=True,
@@ -432,3 +436,285 @@ class TestF1PacketCaptureCompression(TestF1PacketCapture):
         # Clean up
         os.remove(uncompressed_filename)
         os.remove(compressed_filename)
+
+# ----------------------------------------------------------------------------------------------
+# Header validation (native pytest style)
+# ----------------------------------------------------------------------------------------------
+
+def _header_bytes(magic=b'F1UDP\0', flags=1, version=(1 << 7) | (1 << 4) | 1, num_packets=0) -> bytes:
+    return struct.pack(F1PktCapFileHeader.HEADER_STRUCT_STR, magic, flags, version, num_packets)
+
+
+@pytest.mark.parametrize("flags, mode", [
+    (0, CompressionMode.NONE),
+    (1, CompressionMode.PER_PACKET_ZLIB),
+])
+def test_header_compression_mode_roundtrip(flags, mode):
+    header = F1PktCapFileHeader.from_bytes(_header_bytes(flags=flags))
+    assert header.compression_mode == mode
+    assert header.get_flags() == flags
+    assert F1PktCapFileHeader.from_bytes(header.to_bytes()).compression_mode == mode
+
+
+@pytest.mark.parametrize("mode, expected", [
+    (CompressionMode.NONE, False),
+    (CompressionMode.PER_PACKET_ZLIB, True),
+])
+def test_header_is_compressed_follows_mode(mode, expected):
+    assert F1PktCapFileHeader(compression_mode=mode).is_compressed is expected
+
+
+@pytest.mark.parametrize("flags", [3, 4, 0x0F])
+def test_header_rejects_unknown_compression_mode(flags):
+    with pytest.raises(ValueError, match="compression mode"):
+        F1PktCapFileHeader.from_bytes(_header_bytes(flags=flags))
+
+
+def test_header_rejects_bad_magic():
+    with pytest.raises(ValueError, match="magic"):
+        F1PktCapFileHeader.from_bytes(_header_bytes(magic=b'NOPE!\0'))
+
+
+def test_header_rejects_newer_major_version():
+    with pytest.raises(ValueError, match="major version"):
+        F1PktCapFileHeader.from_bytes(_header_bytes(version=(1 << 7) | (3 << 4)))
+
+
+@pytest.mark.parametrize("length", [0, 5, F1PktCapFileHeader.HEADER_LEN - 1])
+def test_header_rejects_truncated(length):
+    with pytest.raises(ValueError, match="Truncated"):
+        F1PktCapFileHeader.from_bytes(_header_bytes()[:length])
+
+
+def test_read_unknown_mode_fails_before_body(tmp_path):
+    path = tmp_path / "bad.f1pcap"
+    path.write_bytes(_header_bytes(flags=7) + b"\x00" * 64)
+    with pytest.raises(ValueError, match="compression mode"):
+        F1PacketCapture(file_name=str(path))
+
+
+def test_message_length_mismatch_reports_compressed_length():
+    msg = F1PktCapMessage(b"hello").to_bytes(NoCompressionHelper())
+    corrupt = msg[:8] + struct.pack('<I', 99) + msg[12:]
+    with pytest.raises(ValueError, match=f"Actual length: {len(b'hello')}"):
+        F1PktCapMessage.from_bytes(corrupt, True, NoCompressionHelper())
+
+
+# ----------------------------------------------------------------------------------------------
+# Compression modes and format versions (native pytest style)
+# ----------------------------------------------------------------------------------------------
+
+ALL_MODES = [CompressionMode.NONE, CompressionMode.PER_PACKET_ZLIB, CompressionMode.GLOBAL_LZMA]
+
+
+def _sample_packets(count: int = 200):
+    base = 1727844608.0
+    return [(base + i * 0.0167, bytes([i % 251]) * (45 + (i * 37) % 1400)) for i in range(count)]
+
+
+def _write_capture(path, packets, mode):
+    capture = F1PacketCapture(compressed=False)
+    capture.set_compression_mode(mode)
+    for timestamp, data in packets:
+        capture.add(data, timestamp)
+    capture.dumpToFile(str(path))
+
+
+@pytest.mark.parametrize("mode", ALL_MODES)
+def test_roundtrip_every_mode(tmp_path, mode):
+    path = tmp_path / "cap.f1pcap"
+    packets = _sample_packets()
+    _write_capture(path, packets, mode)
+
+    loaded = F1PacketCapture(file_name=str(path))
+    assert loaded.m_header.compression_mode == mode
+    assert loaded.compression_mode == mode
+    assert loaded.m_header.major_version == F1PacketCapture.major_ver == 2
+    assert loaded.m_header.minor_version == F1PacketCapture.minor_ver
+    assert list(loaded.getPackets()) == packets
+
+
+def test_timestamps_keep_sub_second_resolution(tmp_path):
+    path = tmp_path / "cap.f1pcap"
+    packets = _sample_packets()
+    _write_capture(path, packets, CompressionMode.GLOBAL_LZMA)
+    timestamps = [t for t, _ in F1PacketCapture(file_name=str(path)).getPackets()]
+    assert len(set(timestamps)) == len(packets)
+
+
+def test_compressed_true_defaults_to_global_lzma():
+    assert F1PacketCapture(compressed=True).compression_mode == CompressionMode.GLOBAL_LZMA
+    assert F1PacketCapture(compressed=False).compression_mode == CompressionMode.NONE
+
+
+def test_global_lzma_is_smaller_than_per_packet(tmp_path):
+    packets = _sample_packets(500)
+    sizes = {}
+    for mode in (CompressionMode.PER_PACKET_ZLIB, CompressionMode.GLOBAL_LZMA):
+        path = tmp_path / f"{mode.name}.f1pcap"
+        _write_capture(path, packets, mode)
+        sizes[mode] = path.stat().st_size
+    assert sizes[CompressionMode.GLOBAL_LZMA] < sizes[CompressionMode.PER_PACKET_ZLIB]
+
+
+def _write_legacy_file(path, packets, mode):
+    """Hand-build a minor-version-1 file: float32 timestamps, same layout as pre-LZMA writers."""
+    helper = ZlibCompressionHelper() if mode == CompressionMode.PER_PACKET_ZLIB else NoCompressionHelper()
+    header = F1PktCapFileHeader(minor_version=1, num_packets=len(packets), compression_mode=mode)
+    with open(path, "wb") as f:
+        f.write(header.to_bytes())
+        for timestamp, data in packets:
+            body = helper.compress(data)
+            f.write(struct.pack('<fI', timestamp, len(body)) + body)
+
+
+@pytest.mark.parametrize("mode", [CompressionMode.NONE, CompressionMode.PER_PACKET_ZLIB])
+def test_reads_legacy_float32_files(tmp_path, mode):
+    path = tmp_path / "legacy.f1pcap"
+    packets = [(float(i), bytes([i]) * (i + 1)) for i in range(50)]
+    _write_legacy_file(path, packets, mode)
+
+    loaded = F1PacketCapture(file_name=str(path))
+    assert (loaded.m_header.major_version, loaded.m_header.minor_version) == (1, 1)
+    assert loaded.m_header.timestamp_format == 'f'
+    assert list(loaded.getPackets()) == packets
+
+
+def test_legacy_file_rewrites_as_lzma(tmp_path):
+    legacy, converted = tmp_path / "legacy.f1pcap", tmp_path / "new.f1pcap"
+    packets = [(float(i), bytes([i]) * (i + 1)) for i in range(50)]
+    _write_legacy_file(legacy, packets, CompressionMode.PER_PACKET_ZLIB)
+
+    capture = F1PacketCapture(file_name=str(legacy))
+    capture.set_compressed(True)
+    capture.dumpToFile(str(converted))
+
+    reloaded = F1PacketCapture(file_name=str(converted))
+    assert reloaded.m_header.compression_mode == CompressionMode.GLOBAL_LZMA
+    assert list(reloaded.getPackets()) == packets
+
+
+def test_lzma_reads_across_chunk_boundaries(tmp_path, monkeypatch):
+    path = tmp_path / "cap.f1pcap"
+    packets = _sample_packets(300)
+    _write_capture(path, packets, CompressionMode.GLOBAL_LZMA)
+    monkeypatch.setattr(F1PacketCapture, "lzma_read_chunk", 64)
+    assert list(F1PacketCapture(file_name=str(path)).getPackets()) == packets
+
+
+@pytest.mark.parametrize("fraction", [0.5, 0.9])
+def test_truncated_lzma_body_recovers_prefix(tmp_path, capsys, fraction):
+    path = tmp_path / "cap.f1pcap"
+    packets = _sample_packets(2000)
+    _write_capture(path, packets, CompressionMode.GLOBAL_LZMA)
+    raw = path.read_bytes()
+    path.write_bytes(raw[:int(len(raw) * fraction)])
+
+    loaded = F1PacketCapture(file_name=str(path))
+    recovered = list(loaded.getPackets())
+    assert 0 < len(recovered) < len(packets)
+    assert recovered == packets[:len(recovered)]
+    assert loaded.getNumPackets() == len(recovered)
+    assert "truncated" in capsys.readouterr().err
+
+
+def test_corrupt_lzma_body_raises(tmp_path):
+    path = tmp_path / "cap.f1pcap"
+    _write_capture(path, _sample_packets(500), CompressionMode.GLOBAL_LZMA)
+    raw = bytearray(path.read_bytes())
+    mid = len(raw) // 2
+    raw[mid:mid + 64] = bytes(64)
+    path.write_bytes(bytes(raw))
+    with pytest.raises(ValueError, match="LZMA"):
+        F1PacketCapture(file_name=str(path))
+
+
+def test_progress_callback_called_for_lzma(tmp_path):
+    calls = []
+    capture = F1PacketCapture(compressed=True)
+    for timestamp, data in _sample_packets(10):
+        capture.add(data, timestamp)
+    capture.dumpToFile(str(tmp_path / "cap.f1pcap"), lambda cur, total: calls.append((cur, total)))
+    assert calls == [(i, 10) for i in range(10)]
+
+
+def test_v1_and_v2_round_trips_agree(tmp_path):
+    """raw -> v1 -> raw (a) and raw -> v2 -> raw (b) must give identical packets."""
+    # Float32-exact timestamps; v1 would otherwise quantize them and a != b by design
+    raw = [(i * 0.25, data) for i, (_, data) in enumerate(_sample_packets())]
+
+    v1_path, v2_path = tmp_path / "v1.f1pcap", tmp_path / "v2.f1pcap"
+    _write_legacy_file(v1_path, raw, CompressionMode.PER_PACKET_ZLIB)
+    _write_capture(v2_path, raw, CompressionMode.GLOBAL_LZMA)
+
+    v1 = F1PacketCapture(file_name=str(v1_path))
+    v2 = F1PacketCapture(file_name=str(v2_path))
+    assert v1.m_header.major_version == 1
+    assert v2.m_header.major_version == 2
+
+    a = list(v1.getPackets())
+    b = list(v2.getPackets())
+    assert a == b
+    assert a == raw
+
+
+# ----------------------------------------------------------------------------------------------
+# compress_pcap converter (native pytest style)
+# ----------------------------------------------------------------------------------------------
+
+def test_convert_file_preserves_packets(tmp_path):
+    from apps.dev_tools.compress_pcap import convert_file
+    src, dst = tmp_path / "legacy.f1pcap", tmp_path / "new.f1pcap"
+    packets = [(float(i), bytes([i]) * (i + 1)) for i in range(50)]
+    _write_legacy_file(src, packets, CompressionMode.PER_PACKET_ZLIB)
+
+    count, _, _ = convert_file(str(src), str(dst))
+
+    assert count == 50
+    converted = F1PacketCapture(file_name=str(dst))
+    assert converted.compression_mode == CompressionMode.GLOBAL_LZMA
+    assert list(converted.getPackets()) == packets
+
+
+def test_convert_file_tolerates_stale_source_header_count(tmp_path):
+    from apps.dev_tools.compress_pcap import convert_file
+    src, dst = tmp_path / "stale.f1pcap", tmp_path / "new.f1pcap"
+    packets = [(float(i), bytes([i]) * (i + 1)) for i in range(50)]
+    _write_legacy_file(src, packets, CompressionMode.PER_PACKET_ZLIB)
+    raw = bytearray(src.read_bytes())
+    struct.pack_into('<I', raw, 8, 40)  # header claims 40 packets, body holds 50
+    src.write_bytes(bytes(raw))
+
+    count, _, _ = convert_file(str(src), str(dst))
+
+    assert count == 50
+    assert list(F1PacketCapture(file_name=str(dst)).getPackets()) == packets
+
+
+def test_progress_callback_arg_zero_is_passed(tmp_path):
+    calls = []
+    capture = F1PacketCapture(compressed=True)
+    for timestamp, data in _sample_packets(3):
+        capture.add(data, timestamp)
+    capture.dumpToFile(str(tmp_path / "cap.f1pcap"), lambda cur, total, arg: calls.append(arg), 0)
+    assert calls == [0, 0, 0]
+
+
+def test_read_corrects_stale_header_count(tmp_path):
+    path = tmp_path / "stale.f1pcap"
+    packets = [(float(i), bytes([i]) * (i + 1)) for i in range(50)]
+    _write_legacy_file(path, packets, CompressionMode.PER_PACKET_ZLIB)
+    raw = bytearray(path.read_bytes())
+    struct.pack_into('<I', raw, 8, 40)  # header claims 40 packets, body holds 50
+    path.write_bytes(bytes(raw))
+    assert F1PacketCapture(file_name=str(path)).getNumPackets() == 50
+
+
+def test_convert_file_rejects_same_src_and_dst(tmp_path):
+    from apps.dev_tools.compress_pcap import convert_file
+    path = tmp_path / "cap.f1pcap"
+    _write_capture(path, _sample_packets(5), CompressionMode.NONE)
+    original = path.read_bytes()
+    with pytest.raises(AssertionError):
+        convert_file(str(path), str(path))
+    assert path.read_bytes() == original
