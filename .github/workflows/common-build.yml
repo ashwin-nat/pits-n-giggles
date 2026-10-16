@@ -69,7 +69,7 @@ jobs:
           node-version: '22'
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: '10'
 
@@ -99,7 +99,7 @@ jobs:
       - name: Upload unsigned exe for signing
         if: inputs.sign && runner.os == 'Windows'
         id: upload-unsigned
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: unsigned-exe
           path: dist/*.exe
@@ -152,7 +152,7 @@ jobs:
         shell: bash
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.prep-artifact.outputs.artifact_name }}
           path: ${{ steps.prep-artifact.outputs.artifact_path }}
