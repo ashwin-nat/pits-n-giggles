@@ -8,6 +8,11 @@ on:
         type: boolean
         default: false
         required: false
+      sign:
+        description: 'Sign the Windows exe with SignPath (test-signing policy)'
+        type: boolean
+        default: false
+        required: false
   push:
     tags:
       - 'v*'
@@ -15,8 +20,10 @@ on:
 # Checkout and artifact upload only. The artifact upload authenticates with the Actions
 # runtime token, not GITHUB_TOKEN, so it is unaffected by this. release.yml is the only
 # workflow that publishes, and it declares its own wider scope.
+# actions: write is only for deleting the unsigned exe artifact after signing.
 permissions:
   contents: read
+  actions: write
 
 jobs:
   build:
@@ -62,7 +69,7 @@ jobs:
           node-version: '22'
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: '10'
 
@@ -87,6 +94,46 @@ jobs:
           poetry run python scripts/build.py ${{ inputs.debug_build && '--debug' || '' }}
         shell: bash
 
+      # SignPath only accepts a workflow artifact as input, so the unsigned exe goes up
+      # under its own name and the signed one replaces it in dist/ before anything else.
+      - name: Upload unsigned exe for signing
+        if: inputs.sign && runner.os == 'Windows'
+        id: upload-unsigned
+        uses: actions/upload-artifact@v7
+        with:
+          name: unsigned-exe
+          path: dist/*.exe
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Sign exe with SignPath
+        if: inputs.sign && runner.os == 'Windows'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: test-signing
+          github-artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: dist-signed
+
+      - name: Replace unsigned exe with signed one
+        if: inputs.sign && runner.os == 'Windows'
+        run: |
+          Remove-Item dist\*.exe
+          Copy-Item dist-signed\*.exe dist\
+          Get-AuthenticodeSignature (Get-ChildItem dist\*.exe) | Format-List
+        shell: pwsh
+
+      # SignPath has finished with it by now; only the signed exe should be downloadable.
+      - name: Delete unsigned exe artifact
+        if: always() && steps.upload-unsigned.outputs.artifact-id != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/${{ steps.upload-unsigned.outputs.artifact-id }}"
+        shell: bash
+
       - name: Prepare artifact
         id: prep-artifact
         run: |
@@ -105,7 +152,7 @@ jobs:
         shell: bash
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.prep-artifact.outputs.artifact_name }}
           path: ${{ steps.prep-artifact.outputs.artifact_path }}
