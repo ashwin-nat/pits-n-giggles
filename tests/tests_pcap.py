@@ -665,3 +665,21 @@ def test_v1_and_v2_round_trips_agree(tmp_path, source):
     b = list(v2.getPackets())
     assert a == b
     assert a == raw
+
+
+# ----------------------------------------------------------------------------------------------
+# compress_pcap converter (native pytest style)
+# ----------------------------------------------------------------------------------------------
+
+def test_convert_file_preserves_packets(tmp_path):
+    from apps.dev_tools.compress_pcap import convert_file
+    src, dst = tmp_path / "legacy.f1pcap", tmp_path / "new.f1pcap"
+    packets = [(float(i), bytes([i]) * (i + 1)) for i in range(50)]
+    _write_legacy_file(src, packets, CompressionMode.PER_PACKET_ZLIB)
+
+    count, _, _ = convert_file(str(src), str(dst))
+
+    assert count == 50
+    converted = F1PacketCapture(file_name=str(dst))
+    assert converted.compression_mode == CompressionMode.GLOBAL_LZMA
+    assert list(converted.getPackets()) == packets
