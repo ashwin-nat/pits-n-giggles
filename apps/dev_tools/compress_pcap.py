@@ -44,13 +44,15 @@ def convert_file(src: str, dst: str) -> Tuple[int, int, int]:
     source.set_compressed(True)
     source.dumpToFile(dst)
 
+    # Compare loaded packets, not header counts: a source header can be stale, and dumpToFile rewrites it
     written = F1PacketCapture(file_name=dst)
-    if source.getNumPackets() != written.getNumPackets():
-        raise ValueError(f"Packet count mismatch: {source.getNumPackets()} vs {written.getNumPackets()}")
+    num_packets = len(source.m_packet_history)
+    if num_packets != len(written.m_packet_history):
+        raise ValueError(f"Packet count mismatch: {num_packets} vs {len(written.m_packet_history)}")
     for idx, (before, after) in enumerate(zip(source.getPackets(), written.getPackets())):
         if before != after:
             raise ValueError(f"Packet {idx} differs after conversion")
-    return source.getNumPackets(), os.path.getsize(src), os.path.getsize(dst)
+    return num_packets, os.path.getsize(src), os.path.getsize(dst)
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:

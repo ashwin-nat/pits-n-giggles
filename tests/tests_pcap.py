@@ -683,3 +683,18 @@ def test_convert_file_preserves_packets(tmp_path):
     converted = F1PacketCapture(file_name=str(dst))
     assert converted.compression_mode == CompressionMode.GLOBAL_LZMA
     assert list(converted.getPackets()) == packets
+
+
+def test_convert_file_tolerates_stale_source_header_count(tmp_path):
+    from apps.dev_tools.compress_pcap import convert_file
+    src, dst = tmp_path / "stale.f1pcap", tmp_path / "new.f1pcap"
+    packets = [(float(i), bytes([i]) * (i + 1)) for i in range(50)]
+    _write_legacy_file(src, packets, CompressionMode.PER_PACKET_ZLIB)
+    raw = bytearray(src.read_bytes())
+    struct.pack_into('<I', raw, 8, 40)  # header claims 40 packets, body holds 50
+    src.write_bytes(bytes(raw))
+
+    count, _, _ = convert_file(str(src), str(dst))
+
+    assert count == 50
+    assert list(F1PacketCapture(file_name=str(dst)).getPackets()) == packets
