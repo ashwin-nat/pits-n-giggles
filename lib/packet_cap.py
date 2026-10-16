@@ -96,13 +96,13 @@ class F1PktCapFileHeader:
     HEADER_LEN = struct.calcsize(HEADER_STRUCT_STR)
 
     # Highest major version this reader understands
-    SUPPORTED_MAJOR_VERSION = 1
+    SUPPORTED_MAJOR_VERSION = 2
 
     COMPRESSION_MODE_MASK = 0x0F
 
-    # First minor version whose packet timestamps are float64. Earlier files use float32,
+    # First major version whose packet timestamps are float64. Major 1 files use float32,
     # which cannot resolve better than ~128 s at epoch magnitudes.
-    FLOAT64_TIMESTAMP_MINOR_VERSION = 2
+    FLOAT64_TIMESTAMP_MAJOR_VERSION = 2
 
     def __init__(self,
                 major_version: int = 1,
@@ -191,7 +191,7 @@ class F1PktCapFileHeader:
     @property
     def timestamp_format(self) -> str:
         """struct format character of the per-packet timestamp: 'd' (float64) or 'f' (legacy float32)."""
-        if self._minor_version >= F1PktCapFileHeader.FLOAT64_TIMESTAMP_MINOR_VERSION:
+        if self._major_version >= F1PktCapFileHeader.FLOAT64_TIMESTAMP_MAJOR_VERSION:
             return 'd'
         return 'f'
 
@@ -289,7 +289,7 @@ class F1PktCapMessage:
 
     # Offset | Size | Description
     # -------+------+----------------------------------------
-    #  0     | 8    | Timestamp (float64; float32 in files below minor version 2)
+    #  0     | 8    | Timestamp (float64; float32 in major version 1 files)
     #  8     | 4    | Data length (uint32)
     #  12    | N    | Packet data (raw or compressed)
     # In the global compression modes this framing is inside the compressed stream, and the
@@ -360,8 +360,8 @@ class F1PktCapMessage:
 class F1PacketCapture:
     """Represents a collection of F1PktCapMessage objects."""
 
-    major_ver = 1
-    minor_ver = 2
+    major_ver = 2
+    minor_ver = 0
     lzma_preset = 6  # preset 9 gains 0.2% for 6x the encoder memory
     lzma_read_chunk = 1 << 20
     is_little_endian = (sys.byteorder == "little")
@@ -502,7 +502,7 @@ class F1PacketCapture:
     def _notify_progress(callback: Optional[Callable], callback_arg: Optional[Any], current: int, total: int) -> None:
         """Invoke the dumpToFile progress callback, if any."""
         if callback:
-            if callback_arg:
+            if callback_arg is not None:
                 callback(current, total, callback_arg)
             else:
                 callback(current, total)
@@ -516,8 +516,8 @@ class F1PacketCapture:
 
         Raises:
             - ValueError: If the file header is invalid (see F1PktCapFileHeader.from_bytes),
-                or a compressed body is corrupt. A body that is merely cut short is read as far
-                as it goes, with a warning.
+                or a compressed body is corrupt. Only a global LZMA body that is merely cut short
+                is read as far as it goes (with a warning); other modes raise.
         """
 
         with open(file_name, "rb") as file:
@@ -532,6 +532,7 @@ class F1PacketCapture:
         if self.m_header.num_packets != len(self.m_packet_history):
             print(f"[WARN]: Header declares {self.m_header.num_packets} packets but the file contains "
                   f"{len(self.m_packet_history)}. Possibly corrupt file", file=sys.stderr)
+            self.m_header.num_packets = len(self.m_packet_history)
 
     def _read_per_packet_body(self, file) -> None:
         """Read a body where each packet is framed and (optionally) compressed on its own."""
@@ -573,14 +574,16 @@ class F1PacketCapture:
                 raise ValueError(f"LZMA decompression failed: {e}") from e
 
             pos = 0
-            while len(buf) - pos >= frame_len:
-                timestamp, length = struct.unpack_from(frame_fmt, buf, pos)
-                end = pos + frame_len + length
-                if end > len(buf):
-                    break
-                self.m_packet_history.append(
-                    F1PktCapMessage(bytes(buf[pos + frame_len:end]), timestamp, self.m_header.is_little_endian))
-                pos = end
+            # A memoryview slice avoids the temporary bytearray copy; it must be released before buf is resized
+            with memoryview(buf) as view:
+                while len(buf) - pos >= frame_len:
+                    timestamp, length = struct.unpack_from(frame_fmt, buf, pos)
+                    end = pos + frame_len + length
+                    if end > len(buf):
+                        break
+                    self.m_packet_history.append(
+                        F1PktCapMessage(bytes(view[pos + frame_len:end]), timestamp, self.m_header.is_little_endian))
+                    pos = end
             del buf[:pos]
 
         if not decompressor.eof or buf:

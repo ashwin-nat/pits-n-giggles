@@ -97,20 +97,24 @@ class PacketCaptureTable:
         with self.m_lock:
             return self.m_packet_capture.getNumPackets()
 
-    def dumpToFile(self, path: str, progress_callback: Optional[Callable[[int, int], None]] = None
-                   ) -> Tuple[str, int, int]:
+    def dumpToFile(self, path: str, progress_callback: Optional[Callable[[int, int], None]] = None,
+                   clear: bool = False) -> Tuple[str, int, int]:
         """
         Dumps the packet history to a file while acquiring a lock to ensure thread safety.
 
         Parameters:
             path (str): The path to the file to be written to.
             progress_callback (Callable): Called with (packets written so far, total packets)
+            clear (bool): If true, clear the packet history after a successful write, under the same lock
 
         Returns:
             Tuple[str, int, int]: A tuple containing the filename, number of packets, and number of bytes written.
         """
         with self.m_lock:
-            return self.m_packet_capture.dumpToFile(path, progress_update_callback=progress_callback)
+            result = self.m_packet_capture.dumpToFile(path, progress_update_callback=progress_callback)
+            if clear:
+                self.m_packet_capture.clear()
+            return result
 
 g_capture_table = PacketCaptureTable()
 
@@ -211,8 +215,7 @@ class SimpleApp:
 
     def _save_worker(self, file_path: str) -> None:
         try:
-            _, num_packets, _ = g_capture_table.dumpToFile(file_path, self._on_save_progress)
-            g_capture_table.clear()
+            _, num_packets, _ = g_capture_table.dumpToFile(file_path, self._on_save_progress, clear=True)
             self.save_result = (num_packets, None)
         except Exception as e:  # pylint: disable=broad-except
             self.save_result = (0, e)

@@ -477,7 +477,7 @@ def test_header_rejects_bad_magic():
 
 def test_header_rejects_newer_major_version():
     with pytest.raises(ValueError, match="major version"):
-        F1PktCapFileHeader.from_bytes(_header_bytes(version=(1 << 7) | (2 << 4)))
+        F1PktCapFileHeader.from_bytes(_header_bytes(version=(1 << 7) | (3 << 4)))
 
 
 @pytest.mark.parametrize("length", [0, 5, F1PktCapFileHeader.HEADER_LEN - 1])
@@ -529,6 +529,7 @@ def test_roundtrip_every_mode(tmp_path, mode):
     loaded = F1PacketCapture(file_name=str(path))
     assert loaded.m_header.compression_mode == mode
     assert loaded.compression_mode == mode
+    assert loaded.m_header.major_version == F1PacketCapture.major_ver == 2
     assert loaded.m_header.minor_version == F1PacketCapture.minor_ver
     assert list(loaded.getPackets()) == packets
 
@@ -574,7 +575,7 @@ def test_reads_legacy_float32_files(tmp_path, mode):
     _write_legacy_file(path, packets, mode)
 
     loaded = F1PacketCapture(file_name=str(path))
-    assert loaded.m_header.minor_version == 1
+    assert (loaded.m_header.major_version, loaded.m_header.minor_version) == (1, 1)
     assert loaded.m_header.timestamp_format == 'f'
     assert list(loaded.getPackets()) == packets
 
@@ -613,6 +614,7 @@ def test_truncated_lzma_body_recovers_prefix(tmp_path, capsys, fraction):
     recovered = list(loaded.getPackets())
     assert 0 < len(recovered) < len(packets)
     assert recovered == packets[:len(recovered)]
+    assert loaded.getNumPackets() == len(recovered)
     assert "truncated" in capsys.readouterr().err
 
 
@@ -658,8 +660,8 @@ def test_v1_and_v2_round_trips_agree(tmp_path, source):
 
     v1 = F1PacketCapture(file_name=str(v1_path))
     v2 = F1PacketCapture(file_name=str(v2_path))
-    assert v1.m_header.minor_version == 1
-    assert v2.m_header.minor_version == 2
+    assert v1.m_header.major_version == 1
+    assert v2.m_header.major_version == 2
 
     a = list(v1.getPackets())
     b = list(v2.getPackets())
@@ -698,3 +700,32 @@ def test_convert_file_tolerates_stale_source_header_count(tmp_path):
 
     assert count == 50
     assert list(F1PacketCapture(file_name=str(dst)).getPackets()) == packets
+
+
+def test_progress_callback_arg_zero_is_passed(tmp_path):
+    calls = []
+    capture = F1PacketCapture(compressed=True)
+    for timestamp, data in _sample_packets(3):
+        capture.add(data, timestamp)
+    capture.dumpToFile(str(tmp_path / "cap.f1pcap"), lambda cur, total, arg: calls.append(arg), 0)
+    assert calls == [0, 0, 0]
+
+
+def test_read_corrects_stale_header_count(tmp_path):
+    path = tmp_path / "stale.f1pcap"
+    packets = [(float(i), bytes([i]) * (i + 1)) for i in range(50)]
+    _write_legacy_file(path, packets, CompressionMode.PER_PACKET_ZLIB)
+    raw = bytearray(path.read_bytes())
+    struct.pack_into('<I', raw, 8, 40)  # header claims 40 packets, body holds 50
+    path.write_bytes(bytes(raw))
+    assert F1PacketCapture(file_name=str(path)).getNumPackets() == 50
+
+
+def test_convert_file_rejects_same_src_and_dst(tmp_path):
+    from apps.dev_tools.compress_pcap import convert_file
+    path = tmp_path / "cap.f1pcap"
+    _write_capture(path, _sample_packets(5), CompressionMode.NONE)
+    original = path.read_bytes()
+    with pytest.raises(AssertionError):
+        convert_file(str(path), str(path))
+    assert path.read_bytes() == original

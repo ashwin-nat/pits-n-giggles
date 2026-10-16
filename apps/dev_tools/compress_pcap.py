@@ -40,6 +40,7 @@ def convert_file(src: str, dst: str) -> Tuple[int, int, int]:
     Raises:
         ValueError: If dst does not read back identical to src. dst is left on disk for inspection.
     """
+    assert os.path.normcase(os.path.abspath(src)) != os.path.normcase(os.path.abspath(dst)), "src and dst must differ"
     source = F1PacketCapture(file_name=src)
     source.set_compressed(True)
     source.dumpToFile(dst)
