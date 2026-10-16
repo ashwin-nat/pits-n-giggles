@@ -25,6 +25,7 @@ import sys
 import time
 import zlib
 from abc import ABC, abstractmethod
+from enum import IntEnum
 from typing import Any, Callable, Generator, List, Optional, Tuple
 
 
@@ -67,12 +68,17 @@ class ZlibCompressionHelper(CompressionHelper):
     def is_compressed(self) -> bool:
         return True
 
+class CompressionMode(IntEnum):
+    """Compression scheme of a capture file, stored in the low 4 bits of the header flags byte."""
+    NONE = 0
+    PER_PACKET_ZLIB = 1
+
 class F1PktCapFileHeader:
     """Represents the header of a file containing F1 UDP telemetry packets.
     Offset | Size | Description
     -------+------+----------------------------------------
      0     | 6    | Magic Number ("F1UDP\0")
-     6     | 1    | Flags byte (bit 0: compression flag)
+     6     | 1    | Flags byte (bits 3-0: CompressionMode, bits 7-4: reserved)
      7     | 1    | Version byte:
            |      |   bit 7: Endianness (1=little, 0=big)
            |      |   bits 6-4: Major version (3 bits, max 7)
@@ -87,12 +93,18 @@ class F1PktCapFileHeader:
     HEADER_STRUCT_STR = '<6sBBI'
     HEADER_LEN = struct.calcsize(HEADER_STRUCT_STR)
 
+    # Highest major version this reader understands
+    SUPPORTED_MAJOR_VERSION = 1
+
+    COMPRESSION_MODE_MASK = 0x0F
+
     def __init__(self,
                 major_version: int = 1,
                 minor_version: int = 0,
                 num_packets: int = 0,
                 is_little_endian: bool = True,
-                is_compressed: bool = True):
+                is_compressed: bool = True,
+                compression_mode: Optional[CompressionMode] = None):
         """
         Initialize an F1PktCapFileHeader.
 
@@ -101,7 +113,8 @@ class F1PktCapFileHeader:
         - minor_version (int): Minor version number of the file format (default is 0).
         - num_packets (int): Number of telemetry packets in the file.
         - is_little_endian (bool): If the actual file contents is in little endian
-        - is_compressed (bool): If each packet is compressed
+        - is_compressed (bool): If each packet is compressed. Ignored if compression_mode is given
+        - compression_mode (CompressionMode): Compression scheme of the file body
         """
         if major_version > 7: # Major version is only 3 bits
             raise ValueError("Major version is only 3 bits. Cannot go higher than 7")
@@ -111,7 +124,9 @@ class F1PktCapFileHeader:
         self._minor_version = minor_version
         self._num_packets = num_packets
         self._is_little_endian = is_little_endian
-        self._is_compressed = is_compressed
+        if compression_mode is None:
+            compression_mode = CompressionMode.PER_PACKET_ZLIB if is_compressed else CompressionMode.NONE
+        self._compression_mode = compression_mode
 
     @property
     def major_version(self) -> int:
@@ -158,9 +173,14 @@ class F1PktCapFileHeader:
         self._num_packets = value
 
     @property
+    def compression_mode(self) -> CompressionMode:
+        """Getter for the compression mode."""
+        return self._compression_mode
+
+    @property
     def is_compressed(self) -> bool:
         """Getter for compressed."""
-        return self._is_compressed
+        return self._compression_mode != CompressionMode.NONE
 
     def getEndiannessStr(self) -> str:
         """Get the endianness as a string for struct library.
@@ -173,9 +193,8 @@ class F1PktCapFileHeader:
     def get_flags(self) -> int:
         """Get the flags as an integer."""
 
-        # Currently, only the compressed flag is supported
-        # This is the 0th/least significant bit
-        return int(self._is_compressed)
+        # Low 4 bits: compression mode. High 4 bits are reserved
+        return int(self._compression_mode)
 
     def to_bytes(self) -> bytes:
         """
@@ -188,7 +207,7 @@ class F1PktCapFileHeader:
         # Most significant bit is endianness
         # Next 3 most significant bits is major version
         # 4 least significant bits is minor version
-        flags_byte      = self.get_flags() # 0th bit indicates
+        flags_byte      = self.get_flags()
         version_byte    = 0
         version_byte    += int(self._is_little_endian) << 7
         version_byte    += (self._major_version << 4)
@@ -210,26 +229,44 @@ class F1PktCapFileHeader:
 
         Returns:
         - F1PktCapFileHeader: Deserialized file header.
+
+        Raises:
+        - ValueError: If the header is truncated, the magic number is wrong, the major version is
+            newer than supported, or the compression mode is unknown
         """
+        if len(data) != F1PktCapFileHeader.HEADER_LEN:
+            raise ValueError(f"Truncated file header. Expected {F1PktCapFileHeader.HEADER_LEN} bytes, "
+                             f"got {len(data)}")
         result = struct.unpack(F1PktCapFileHeader.HEADER_STRUCT_STR, data)
         (
-            _, # magic_number,
+            magic_number,
             flags_byte,
             version_packed,
             num_packets
         ) = result
 
-        is_compressed = bool(flags_byte & 0x01)
+        if magic_number != F1PktCapFileHeader.MAGIC_NUMBER:
+            raise ValueError(f"Not an f1pcap file. Bad magic number: {magic_number!r}")
+
         is_little_endian = bool((version_packed >> 7) & 0x01)
         major_version = (version_packed >> 4) & 0x07
         minor_version = version_packed & 0x0F
+        if major_version > F1PktCapFileHeader.SUPPORTED_MAJOR_VERSION:
+            raise ValueError(f"Unsupported f1pcap major version {major_version}. "
+                             f"Highest supported is {F1PktCapFileHeader.SUPPORTED_MAJOR_VERSION}")
+
+        mode_value = flags_byte & F1PktCapFileHeader.COMPRESSION_MODE_MASK
+        try:
+            compression_mode = CompressionMode(mode_value)
+        except ValueError as e:
+            raise ValueError(f"Unknown f1pcap compression mode {mode_value}") from e
 
         return F1PktCapFileHeader(
             major_version=major_version,
             minor_version=minor_version,
             num_packets=num_packets,
             is_little_endian=is_little_endian,
-            is_compressed=is_compressed)
+            compression_mode=compression_mode)
 
 class F1PktCapMessage:
     """Represents an entry in the F1PacketCapture."""
@@ -297,7 +334,7 @@ class F1PktCapMessage:
         compressed_payload = data[8:]
         payload = compression_helper.decompress(compressed_payload)
         if len(compressed_payload) != length:
-            raise ValueError(f"Data length mismatch. Header length: {length}, Actual length: {len(payload)}")
+            raise ValueError(f"Data length mismatch. Header length: {length}, Actual length: {len(compressed_payload)}")
         return F1PktCapMessage(payload, timestamp)
 
 class F1PacketCapture:
@@ -431,15 +468,14 @@ class F1PacketCapture:
             - file_name (str): The name of the file to read from.
 
         Raises:
-            - ValueError: If the number of packets mentioned in the file does not match
-                the number of packets in the file body
+            - ValueError: If the file header is invalid (see F1PktCapFileHeader.from_bytes)
         """
 
         with open(file_name, "rb") as file:
             # First, fetch the file header
             self.m_header = F1PktCapFileHeader.from_bytes(file.read(F1PktCapFileHeader.HEADER_LEN))
             endianness_str = self.m_header.getEndiannessStr()
-            if self.m_header.is_compressed:
+            if self.m_header.compression_mode == CompressionMode.PER_PACKET_ZLIB:
                 self.m_compression_helper = ZlibCompressionHelper()
             else:
                 self.m_compression_helper = NoCompressionHelper()

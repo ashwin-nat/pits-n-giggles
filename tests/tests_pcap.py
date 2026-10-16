@@ -23,14 +23,18 @@
 
 import os
 import random
+import struct
 import sys
 import time
 import tempfile
 
+import pytest
+
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.packet_cap import F1PacketCapture, F1PktCapFileHeader, F1PktCapMessage
+from lib.packet_cap import (CompressionMode, F1PacketCapture, F1PktCapFileHeader, F1PktCapMessage,
+                            NoCompressionHelper)
 from tests_base import F1TelemetryUnitTestsBase
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -220,7 +224,7 @@ class TestF1PacketCaptureHeader(TestF1PacketCapture):
     def test_to_bytes_and_from_bytes(self):
         # Test serialization and deserialization
         header1 = F1PktCapFileHeader(
-            major_version=3,
+            major_version=1,
             minor_version=8,
             num_packets=1000,
             is_little_endian=True,
@@ -432,3 +436,65 @@ class TestF1PacketCaptureCompression(TestF1PacketCapture):
         # Clean up
         os.remove(uncompressed_filename)
         os.remove(compressed_filename)
+
+# ----------------------------------------------------------------------------------------------
+# Header validation (native pytest style)
+# ----------------------------------------------------------------------------------------------
+
+def _header_bytes(magic=b'F1UDP\0', flags=1, version=(1 << 7) | (1 << 4) | 1, num_packets=0) -> bytes:
+    return struct.pack(F1PktCapFileHeader.HEADER_STRUCT_STR, magic, flags, version, num_packets)
+
+
+@pytest.mark.parametrize("flags, mode", [
+    (0, CompressionMode.NONE),
+    (1, CompressionMode.PER_PACKET_ZLIB),
+])
+def test_header_compression_mode_roundtrip(flags, mode):
+    header = F1PktCapFileHeader.from_bytes(_header_bytes(flags=flags))
+    assert header.compression_mode == mode
+    assert header.get_flags() == flags
+    assert F1PktCapFileHeader.from_bytes(header.to_bytes()).compression_mode == mode
+
+
+@pytest.mark.parametrize("mode, expected", [
+    (CompressionMode.NONE, False),
+    (CompressionMode.PER_PACKET_ZLIB, True),
+])
+def test_header_is_compressed_follows_mode(mode, expected):
+    assert F1PktCapFileHeader(compression_mode=mode).is_compressed is expected
+
+
+@pytest.mark.parametrize("flags", [2, 3, 0x0F])
+def test_header_rejects_unknown_compression_mode(flags):
+    with pytest.raises(ValueError, match="compression mode"):
+        F1PktCapFileHeader.from_bytes(_header_bytes(flags=flags))
+
+
+def test_header_rejects_bad_magic():
+    with pytest.raises(ValueError, match="magic"):
+        F1PktCapFileHeader.from_bytes(_header_bytes(magic=b'NOPE!\0'))
+
+
+def test_header_rejects_newer_major_version():
+    with pytest.raises(ValueError, match="major version"):
+        F1PktCapFileHeader.from_bytes(_header_bytes(version=(1 << 7) | (2 << 4)))
+
+
+@pytest.mark.parametrize("length", [0, 5, F1PktCapFileHeader.HEADER_LEN - 1])
+def test_header_rejects_truncated(length):
+    with pytest.raises(ValueError, match="Truncated"):
+        F1PktCapFileHeader.from_bytes(_header_bytes()[:length])
+
+
+def test_read_unknown_mode_fails_before_body(tmp_path):
+    path = tmp_path / "bad.f1pcap"
+    path.write_bytes(_header_bytes(flags=7) + b"\x00" * 64)
+    with pytest.raises(ValueError, match="compression mode"):
+        F1PacketCapture(file_name=str(path))
+
+
+def test_message_length_mismatch_reports_compressed_length():
+    msg = F1PktCapMessage(b"hello").to_bytes(NoCompressionHelper())
+    corrupt = msg[:4] + struct.pack('<I', 99) + msg[8:]
+    with pytest.raises(ValueError, match=f"Actual length: {len(b'hello')}"):
+        F1PktCapMessage.from_bytes(corrupt, True, NoCompressionHelper())
