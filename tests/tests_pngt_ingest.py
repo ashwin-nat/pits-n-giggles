@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import itertools
 import os
 import sys
 from dataclasses import dataclass
@@ -75,6 +76,26 @@ def _sensors() -> list[RecordedSensor[_FakeSnapshot]]:
 def _recorder() -> DriverTelemetryRecorder:
     return DriverTelemetryRecorder(driver_index=0, sensors=_sensors())
 
+
+_FRAME_IDS = itertools.count()  # frame IDs only go back on a flashback
+
+
+def _drive(recorder: DriverTelemetryRecorder, distances, *, lap: int, t0: int = 0, step_ms: int = 100) -> None:
+    """Feed one sample per distance, the lap timer counting up from t0."""
+    for i, distance in enumerate(distances):
+        recorder.update(_FakeSnapshot(lap_distance=distance, lap_time_ms=t0 + i * step_ms, speed=1.0, gear=1),
+                        frame_id=next(_FRAME_IDS), lap_number=lap)
+
+
+def _land(recorder: DriverTelemetryRecorder, distance: float, *, lap: int, t: int = 0) -> None:
+    """A flashback, then the packet the car landed in."""
+    recorder.on_flashback(lap, distance)
+    recorder.update(_FakeSnapshot(lap_distance=distance, lap_time_ms=t, speed=1.0, gear=1), frame_id=0, lap_number=lap)
+
+
+def _distances(lap) -> list:
+    return lap.telemetry["lap_distance"]
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Construction
 # ----------------------------------------------------------------------------------------------------------------------
@@ -101,9 +122,9 @@ def test_recorder_export_before_any_update():
 def test_recorder_normal_accumulation():
     recorder = _recorder()
 
-    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=100.0, gear=3), frame_id=1)
-    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=0, speed=150.0, gear=4), frame_id=2)
-    recorder.update(_FakeSnapshot(lap_distance=20.0, lap_time_ms=0, speed=200.0, gear=5), frame_id=3)
+    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=100.0, gear=3), frame_id=1, lap_number=1)
+    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=0, speed=150.0, gear=4), frame_id=2, lap_number=1)
+    recorder.update(_FakeSnapshot(lap_distance=20.0, lap_time_ms=0, speed=200.0, gear=5), frame_id=3, lap_number=1)
 
     export = recorder.export()
 
@@ -116,11 +137,19 @@ def test_recorder_normal_accumulation():
     }
 
 
+def test_recorder_first_update_seeds_lap_number():
+    recorder = _recorder()
+
+    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=1.0, gear=1), frame_id=1, lap_number=4)
+
+    assert recorder.export().in_progress_lap.metadata.lap_number == 4
+
+
 def test_recorder_stationary_update_in_place():
     recorder = _recorder()
 
-    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=0, speed=100.0, gear=3), frame_id=1)
-    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=0, speed=105.0, gear=3), frame_id=2)  # car stationary
+    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=0, speed=100.0, gear=3), frame_id=1, lap_number=1)
+    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=0, speed=105.0, gear=3), frame_id=2, lap_number=1)  # car stationary
 
     export = recorder.export()
 
@@ -132,8 +161,8 @@ def test_recorder_stationary_update_in_place():
 def test_recorder_lap_distance_decrease_dropped():
     recorder = _recorder()
 
-    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=0, speed=100.0, gear=3), frame_id=1)
-    recorder.update(_FakeSnapshot(lap_distance=5.0, lap_time_ms=0, speed=999.0, gear=9), frame_id=2)  # dropped
+    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=0, speed=100.0, gear=3), frame_id=1, lap_number=1)
+    recorder.update(_FakeSnapshot(lap_distance=5.0, lap_time_ms=0, speed=999.0, gear=9), frame_id=2, lap_number=1)  # dropped
 
     export = recorder.export()
 
@@ -147,7 +176,7 @@ def test_recorder_missing_sample_value_is_nan():
     # for continuous and discrete sensors alike.
     recorder = _recorder()
 
-    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=None, gear=None), frame_id=1)
+    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=None, gear=None), frame_id=1, lap_number=1)
 
     telemetry = recorder.export().in_progress_lap.telemetry
     assert telemetry["speed"][0] != telemetry["speed"][0]  # NaN
@@ -167,12 +196,12 @@ def test_recorder_on_lap_change_empty_buffer_guard():
 def test_recorder_multi_lap():
     recorder = _recorder()
 
-    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=100.0, gear=3), frame_id=1)
-    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=0, speed=150.0, gear=4), frame_id=2)
+    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=100.0, gear=3), frame_id=1, lap_number=1)
+    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=0, speed=150.0, gear=4), frame_id=2, lap_number=1)
     lap_1_metadata = sample_lap_metadata(lap_number=1)
     recorder.on_lap_change(lap_1_metadata)
 
-    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=200.0, gear=5), frame_id=3)
+    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=200.0, gear=5), frame_id=3, lap_number=2)
 
     export = recorder.export()
 
@@ -192,9 +221,9 @@ def test_recorder_multi_lap():
 
 def test_recorder_export_is_non_mutating():
     recorder = _recorder()
-    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=100.0, gear=3), frame_id=1)
+    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=100.0, gear=3), frame_id=1, lap_number=1)
     recorder.on_lap_change(sample_lap_metadata(lap_number=1))
-    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=200.0, gear=5), frame_id=2)
+    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=200.0, gear=5), frame_id=2, lap_number=2)
 
     first = recorder.export()
     second = recorder.export()
@@ -202,22 +231,30 @@ def test_recorder_export_is_non_mutating():
     assert first == second
 
 # ----------------------------------------------------------------------------------------------------------------------
-# DriverTelemetryRecorder -- flashback detection + rollback
+# DriverTelemetryRecorder -- flashback rollback
 # ----------------------------------------------------------------------------------------------------------------------
 
-def test_recorder_flashback_case_a_truncates_within_current_lap():
-    """Target frame_id (3) falls within the current lap's own buffer (frames 1-5) --
-    truncate to it, then process the flashback packet itself as a normal append against
-    the now-truncated last sample."""
+def test_recorder_flashback_before_any_update_is_ignored():
     recorder = _recorder()
-    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=100.0, gear=1), frame_id=1)
-    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=0, speed=110.0, gear=2), frame_id=2)
-    recorder.update(_FakeSnapshot(lap_distance=20.0, lap_time_ms=0, speed=120.0, gear=3), frame_id=3)
-    recorder.update(_FakeSnapshot(lap_distance=30.0, lap_time_ms=0, speed=130.0, gear=4), frame_id=4)
-    recorder.update(_FakeSnapshot(lap_distance=40.0, lap_time_ms=0, speed=140.0, gear=5), frame_id=5)
 
-    # Flashback to frame 3: buffers truncate to [1, 2, 3], then this packet appends as frame 3 again.
-    recorder.update(_FakeSnapshot(lap_distance=25.0, lap_time_ms=0, speed=999.0, gear=9), frame_id=3)
+    recorder.on_flashback(1, 100.0)
+
+    assert recorder.export().in_progress_lap is None
+
+
+def test_recorder_flashback_case_a_truncates_within_current_lap():
+    """Landed at 25 within the current lap -- truncate to the samples before it, then
+    process the landing packet itself as a normal append against the now-truncated last sample."""
+    recorder = _recorder()
+    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=100.0, gear=1), frame_id=1, lap_number=1)
+    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=0, speed=110.0, gear=2), frame_id=2, lap_number=1)
+    recorder.update(_FakeSnapshot(lap_distance=20.0, lap_time_ms=0, speed=120.0, gear=3), frame_id=3, lap_number=1)
+    recorder.update(_FakeSnapshot(lap_distance=30.0, lap_time_ms=0, speed=130.0, gear=4), frame_id=4, lap_number=1)
+    recorder.update(_FakeSnapshot(lap_distance=40.0, lap_time_ms=0, speed=140.0, gear=5), frame_id=5, lap_number=1)
+
+    # Flashback landing at 25: buffers truncate to [0, 10, 20], then this packet appends.
+    recorder.on_flashback(1, 25.0)
+    recorder.update(_FakeSnapshot(lap_distance=25.0, lap_time_ms=0, speed=999.0, gear=9), frame_id=3, lap_number=1)
 
     export = recorder.export()
 
@@ -230,24 +267,46 @@ def test_recorder_flashback_case_a_truncates_within_current_lap():
     assert export.completed_laps == []
 
 
+def test_recorder_flashback_keeps_everything_before_the_landing_point():
+    """The sim can resume a rewind well past its own target frame (seen: 154 m later).
+    Truncating at the landing distance leaves no hole."""
+    recorder = _recorder()
+    _drive(recorder, [3900.0, 4000.7, 4100.0, 4154.0, 4300.0, 4511.0], lap=1)
+
+    _land(recorder, 4154.3, lap=1, t=70494)
+
+    assert _distances(recorder.export().in_progress_lap) == [3900.0, 4000.7, 4100.0, 4154.0, 4154.3]
+
+
+def test_recorder_repeated_rewinds_to_just_after_the_line():
+    recorder = _recorder()
+    _drive(recorder, [1.1, 20.0, 39.0, 300.0, 545.0], lap=1)
+    for _ in range(3):
+        _land(recorder, 42.2, lap=1, t=609)
+        _drive(recorder, [200.0, 450.0], lap=1, t0=700)
+
+    assert _distances(recorder.export().in_progress_lap) == [1.1, 20.0, 39.0, 42.2, 200.0, 450.0]
+
+
 def test_recorder_flashback_case_b_restores_completed_lap_then_reallows_finalising_it():
-    """Target frame_id (1) predates the current (second) lap entirely -- pop the last
-    completed lap, truncate it to the target, restore it as the new current buffer, then
-    process the flashback packet itself as a normal append. Once re-finalised via a
+    """Landed in lap 1 from the current (second) lap -- pop the last completed lap,
+    truncate it to the landing distance, restore it as the new current buffer, then
+    process the landing packet itself as a normal append. Once re-finalised via a
     second on_lap_change(), it becomes a genuinely new completed lap -- the original
     LapMetadata object is gone, discarded by the rollback."""
     recorder = _recorder()
-    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=100.0, gear=1), frame_id=1)
-    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=0, speed=110.0, gear=2), frame_id=2)
+    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=100.0, gear=1), frame_id=1, lap_number=1)
+    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=0, speed=110.0, gear=2), frame_id=2, lap_number=1)
     original_lap_1 = sample_lap_metadata(lap_number=1)
     recorder.on_lap_change(original_lap_1)  # current_lap_number becomes 2
 
-    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=200.0, gear=3), frame_id=3)
-    recorder.update(_FakeSnapshot(lap_distance=5.0, lap_time_ms=0, speed=210.0, gear=4), frame_id=4)
+    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=200.0, gear=3), frame_id=3, lap_number=2)
+    recorder.update(_FakeSnapshot(lap_distance=5.0, lap_time_ms=0, speed=210.0, gear=4), frame_id=4, lap_number=2)
 
-    # Flashback to frame 1, before lap 2 ever started: lap 1 is popped and truncated to
-    # frame 1, restored as the current buffer, then this packet appends as frame 1 again.
-    recorder.update(_FakeSnapshot(lap_distance=5.0, lap_time_ms=0, speed=999.0, gear=9), frame_id=1)
+    # Flashback landing at 5 in lap 1: lap 1 is popped and truncated to [0], restored as
+    # the current buffer, then this packet appends.
+    recorder.on_flashback(1, 5.0)
+    recorder.update(_FakeSnapshot(lap_distance=5.0, lap_time_ms=0, speed=999.0, gear=9), frame_id=1, lap_number=1)
 
     export = recorder.export()
     assert export.completed_laps == []  # lap 1 was popped, not restored to completed_laps
@@ -271,14 +330,30 @@ def test_recorder_flashback_case_b_restores_completed_lap_then_reallows_finalisi
     assert final_export.in_progress_lap is None  # nothing buffered yet for lap 2
 
 
-def test_recorder_flashback_case_b_with_no_earlier_lap_clears_buffers():
-    """Target frame_id predates even the first sample ever recorded, with no completed
-    lap to restore from -- buffers are cleared, not crashed, and recording continues
-    normally from the flashback packet itself."""
+def test_recorder_flashback_case_b_into_unstored_lap_carries_on_from_landing():
     recorder = _recorder()
-    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=0, speed=1.0, gear=1), frame_id=5)
+    _drive(recorder, [3000.0, 5800.0], lap=1)
+    recorder.discard_in_progress_lap()
+    recorder.on_lap_change(sample_lap_metadata(lap_number=1))  # lap 1 not stored
+    _drive(recorder, [1.0, 80.0], lap=2)
 
-    recorder.update(_FakeSnapshot(lap_distance=3.0, lap_time_ms=0, speed=2.0, gear=2), frame_id=2)
+    _land(recorder, 5750.0, lap=1, t=94000)
+    _drive(recorder, [5800.0], lap=1, t0=95000)
+    recorder.on_lap_change(sample_lap_metadata(lap_number=1))
+
+    export = recorder.export()
+    assert [_distances(lap) for lap in export.completed_laps] == [[5750.0, 5800.0]]
+    assert export.in_progress_lap is None
+
+
+def test_recorder_flashback_before_first_sample_restarts_lap():
+    """Landed before even the first sample recorded -- buffers are cleared, not crashed,
+    and recording continues normally from the landing packet itself."""
+    recorder = _recorder()
+    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=0, speed=1.0, gear=1), frame_id=5, lap_number=1)
+
+    recorder.on_flashback(1, 3.0)
+    recorder.update(_FakeSnapshot(lap_distance=3.0, lap_time_ms=0, speed=2.0, gear=2), frame_id=2, lap_number=1)
 
     export = recorder.export()
 
@@ -287,48 +362,81 @@ def test_recorder_flashback_case_b_with_no_earlier_lap_clears_buffers():
     }
     assert export.in_progress_lap.metadata.lap_number == 1
 
+# ----------------------------------------------------------------------------------------------------------------------
+# DriverTelemetryRecorder -- laps that end without a lap change, and partial laps
+# ----------------------------------------------------------------------------------------------------------------------
+
+def test_recorder_discard_at_the_line_drops_out_lap_and_records_flying_lap():
+    """A later quali run: the out lap has positive distances and the flying lap keeps its
+    lap number, so without a discard at the line every flying-lap sample would be below the
+    out lap's last distance and get dropped."""
+    recorder = _recorder()
+    _drive(recorder, [222.0, 3000.0, 5809.7], lap=2)  # out lap, timer stopped
+    recorder.discard_in_progress_lap()
+    _drive(recorder, [1.0, 2900.0, 5809.8], lap=2)
+    recorder.on_lap_change(sample_lap_metadata(lap_number=2))
+
+    export = recorder.export()
+    assert len(export.completed_laps) == 1
+    assert export.completed_laps[0].metadata.lap_number == 2
+    assert _distances(export.completed_laps[0]) == [1.0, 2900.0, 5809.8]
+
+
+def test_recorder_lap_first_seen_mid_way_is_stored_as_recorded():
+    """Whether a trace covers the whole lap is for the consumer to judge, from its distances."""
+    recorder = _recorder()
+    _drive(recorder, [3000.0, 4000.0], lap=3, t0=40000)
+    assert _distances(recorder.export().in_progress_lap) == [3000.0, 4000.0]
+
+    recorder.on_lap_change(sample_lap_metadata(lap_number=3))
+    _drive(recorder, [1.0, 2000.0], lap=4, t0=16)
+    recorder.on_lap_change(sample_lap_metadata(lap_number=4))
+
+    export = recorder.export()
+    assert [lap.metadata.lap_number for lap in export.completed_laps] == [3, 4]
+    assert _distances(export.completed_laps[0]) == [3000.0, 4000.0]
+
+
 def test_recorder_discard_in_progress_lap_keeps_completed_laps_and_restarts_cleanly():
     """A pause in updates must not splice two recording periods into one lap."""
     recorder = _recorder()
-    recorder.update(_FakeSnapshot(lap_distance=1.0, lap_time_ms=10, speed=1.0, gear=1), frame_id=1)
+    recorder.update(_FakeSnapshot(lap_distance=1.0, lap_time_ms=10, speed=1.0, gear=1), frame_id=1, lap_number=1)
     recorder.on_lap_change(sample_lap_metadata(lap_number=1))
-    recorder.update(_FakeSnapshot(lap_distance=1.0, lap_time_ms=10, speed=2.0, gear=2), frame_id=2)
-    recorder.update(_FakeSnapshot(lap_distance=2.0, lap_time_ms=20, speed=3.0, gear=3), frame_id=3)
+    recorder.update(_FakeSnapshot(lap_distance=1.0, lap_time_ms=10, speed=2.0, gear=2), frame_id=2, lap_number=2)
+    recorder.update(_FakeSnapshot(lap_distance=2.0, lap_time_ms=20, speed=3.0, gear=3), frame_id=3, lap_number=2)
 
     recorder.discard_in_progress_lap()
     assert recorder.export().in_progress_lap is None
     assert len(recorder.export().completed_laps) == 1
 
-    recorder.update(_FakeSnapshot(lap_distance=50.0, lap_time_ms=500, speed=9.0, gear=4), frame_id=100)
+    recorder.update(_FakeSnapshot(lap_distance=50.0, lap_time_ms=500, speed=9.0, gear=4), frame_id=100, lap_number=2)
     export = recorder.export()
     assert export.in_progress_lap.telemetry == {
         "lap_distance": [50.0], "lap_time_ms": [500], "speed": [9.0], "gear": [4],
     }
     assert export.in_progress_lap.metadata.lap_number == 2
-def test_recorder_lap_resumed_after_discard_is_not_saved_as_completed():
-    """A lap that restarts mid-way after a discard must not be exported as a full lap."""
+
+def test_recorder_lap_resumed_after_discard_is_stored_from_the_resume_point():
+    """Only the samples after a discard are stored for that lap -- never both recording periods."""
     recorder = _recorder()
-    recorder.update(_FakeSnapshot(lap_distance=1.0, lap_time_ms=10, speed=1.0, gear=1), frame_id=1)
+    recorder.update(_FakeSnapshot(lap_distance=1.0, lap_time_ms=10, speed=1.0, gear=1), frame_id=1, lap_number=1)
     recorder.discard_in_progress_lap()
-    recorder.update(_FakeSnapshot(lap_distance=50.0, lap_time_ms=500, speed=9.0, gear=4), frame_id=100)
+    recorder.update(_FakeSnapshot(lap_distance=50.0, lap_time_ms=500, speed=9.0, gear=4), frame_id=100, lap_number=1)
 
     recorder.on_lap_change(sample_lap_metadata(lap_number=1))
-    assert recorder.export().completed_laps == []
-
-    recorder.update(_FakeSnapshot(lap_distance=1.0, lap_time_ms=10, speed=2.0, gear=2), frame_id=200)
+    recorder.update(_FakeSnapshot(lap_distance=1.0, lap_time_ms=10, speed=2.0, gear=2), frame_id=200, lap_number=2)
     recorder.on_lap_change(sample_lap_metadata(lap_number=2))
     export = recorder.export()
-    assert len(export.completed_laps) == 1
-    assert export.completed_laps[0].telemetry["lap_distance"] == [1.0]
+    assert [_distances(lap) for lap in export.completed_laps] == [[50.0], [1.0]]
 
 
 def test_recorder_lap_change_with_empty_buffers_still_advances_lap_number():
     """Recording paused across a lap boundary: the resumed lap must carry the sim's lap number."""
     recorder = _recorder()
-    recorder.update(_FakeSnapshot(lap_distance=1.0, lap_time_ms=10, speed=1.0, gear=1), frame_id=1)
+    recorder.update(_FakeSnapshot(lap_distance=1.0, lap_time_ms=10, speed=1.0, gear=1), frame_id=1, lap_number=1)
     recorder.on_lap_change(sample_lap_metadata(lap_number=1))
     recorder.on_lap_change(sample_lap_metadata(lap_number=2))  # no samples recorded during lap 2
-    recorder.update(_FakeSnapshot(lap_distance=5.0, lap_time_ms=50, speed=2.0, gear=2), frame_id=9)
+    recorder.update(_FakeSnapshot(lap_distance=5.0, lap_time_ms=50, speed=2.0, gear=2), frame_id=9, lap_number=3)
     export = recorder.export()
     assert len(export.completed_laps) == 1
     assert export.in_progress_lap.metadata.lap_number == 3

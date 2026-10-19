@@ -566,7 +566,6 @@ class DataPerDriver:
             old_lap_number (int): The old lap number.
         """
 
-        # Ignore practice sessions, since lap count is per practice programme, not overall
         outdated_laps = [key for key in self.m_per_lap_snapshots if key >= old_lap_number]
 
         # Remove outdated laps from snapshot history
@@ -585,30 +584,45 @@ class DataPerDriver:
 
         self.m_logger.debug("Driver %s - detected flashback. outdated_laps: %s", str(self), outdated_laps)
 
-    def onLapChange(self,
-        old_lap_number: int,
-        session_type: SessionType,
-        is_flashback: Optional[bool] = False) -> None:
+    def onFlashback(self, lap_number: int, lap_distance: float, session_type: Optional[SessionType]) -> None:
+        """The sim rewound, and this packet is where the car landed. Drops everything recorded past that point.
+
+        Args:
+            lap_number (int): Lap the car landed in
+            lap_distance (float): Raw lap distance the car landed at
+            session_type (Optional[SessionType]): The current session type
+        """
+        if lap_number < self.m_lap_info.m_current_lap:
+            # Rewound back across the line: the laps from here on are being redone
+            self._handleFlashBack(lap_number)
+        if session_type and not session_type.isTimeTrialTypeSession():
+            self.m_delta_mgr.handle_flashback(lap_number, lap_distance)
+        self.m_tel_rec.on_flashback(lap_number, lap_distance)
+
+    def onLapStart(self) -> None:
+        """The car crossed the line onto a new lap without the sim changing the lap number (out lap -> flying lap)"""
+        self.m_tel_rec.discard_in_progress_lap()
+
+    def onGarageEntry(self) -> None:
+        """The car is back in the garage, so the lap it was on won't be finished"""
+        self.m_tel_rec.discard_in_progress_lap()
+
+    def onLapChange(self, old_lap_number: int) -> None:
         """
         Perform snapshot and projection updates for the given lap change.
 
         This method is triggered when a lap change is detected. It handles
-        per-lap bookkeeping, flashback handling, and projection logic for tyre wear and fuel usage.
+        per-lap bookkeeping and projection logic for tyre wear and fuel usage.
+        Flashbacks are handled separately, by onFlashback().
 
         Args:
             old_lap_number (int): The completed lap number.
-            session_type (SessionType): The current session type.
-            is_flashback (Optional[bool], optional): Whether the lap change is due to a flashback. Defaults to False.
 
         Behavior:
             - Can be safely called multiple times for the same lap. If data for the lap
             has already been captured, the method will skip processing.
 
         Operations performed:
-            - **Flashback Handling**:
-                - If the current lap number is lower than the last recorded lap and it's not a practice session,
-                this indicates a flashback or restart. Stale laps are idenified and removed and a snapshot is taken.
-
             - **Per-Lap Bookkeeping**:
                 - Car damage and car status packet copies.
                 - Driver's track position at the end of the lap.
@@ -633,21 +647,15 @@ class DataPerDriver:
         # Regardless, always reset the power estimators
         self.m_car_info.resetPowerEstimators()
 
-        # Handle flashbacks/retry practice programmes
-        # If old_lap_number is less than max lap num in the dict, then scrap the now outdated data
-        if is_flashback and session_type and session_type.isRaceTypeSession():
-            self._handleFlashBack(old_lap_number)
-
         # Must run before m_tel_rec.on_lap_change() below -- finalClassificationEventUpdater()
         # re-calls onLapChange() for the last lap at session end, which would otherwise
         # double-record that lap in the telemetry recorder too.
         if old_lap_number in self.m_per_lap_snapshots:
-            self.m_logger.debug("Driver %s - lap %d already in per_lap_snapshots. Possible flashback",
-                             str(self), old_lap_number)
+            self.m_logger.debug("Driver %s - lap %d already in per_lap_snapshots", str(self), old_lap_number)
             return
 
         # skip zeroth lap
-        if old_lap_number > 0 and not is_flashback:
+        if old_lap_number > 0:
             self.m_tel_rec.on_lap_change(LapMetadata(
                 lap_number=old_lap_number,
                 # lap_time_ms/valid are not known yet here, will be filled at export time from Session History pkt
@@ -1503,6 +1511,10 @@ class DataPerDriver:
         Args:
             frame_id (int): Frame ID
         """
+        if self.m_lap_info.m_curr_status == LapData.DriverStatus.IN_GARAGE:
+            # No driving here, and the lap distance is the garage spot (positive on frame 0, negative after)
+            return
+
         car_status_pkt = self.m_packet_copies.m_packet_car_status
         car_telemetry_pkt = self.m_packet_copies.m_packet_car_telemetry
         tyre_wear = self.m_tyre_info.tyre_wear.latest
@@ -1533,7 +1545,7 @@ class DataPerDriver:
             tyre_wear_rl=tyre_wear.rl_tyre_wear if tyre_wear else None,
             tyre_wear_rr=tyre_wear.rr_tyre_wear if tyre_wear else None,
         )
-        self.m_tel_rec.update(snapshot, frame_id)
+        self.m_tel_rec.update(snapshot, frame_id, self.m_lap_info.m_current_lap)
 
     def exportTelemetry(self) -> DriverExportData:
         """Exports recorded telemetry, reconciling lap_time_ms/valid against Session

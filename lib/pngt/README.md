@@ -42,7 +42,7 @@ missing value.
 | `writer.py` | `write_session()` — validates, derives `laps_count`/`session_best`/`is_telemetry_public`/`num_points`/`is_good`, then writes the ZIP |
 | `reader.py` | `read_session()` / `read_driver_laps()` / `read_lap_telemetry()` |
 | `mutate.py` | `delete_laps()` / `mark_lap_good()` / `rename_session()` — in-place archive rebuilds |
-| `recorder.py` | `BaseTelemetrySnapshot` (mandatory `lap_distance`/`lap_time_ms`), `RecordedSensor` (a sensor's manifest entry + how to read its value off a snapshot), `DriverTelemetryRecorder` (accumulation, lap rollover, flashback detection/rollback, export) |
+| `recorder.py` | `BaseTelemetrySnapshot` (mandatory `lap_distance`/`lap_time_ms`), `RecordedSensor` (a sensor's manifest entry + how to read its value off a snapshot), `DriverTelemetryRecorder` (accumulation, lap rollover, flashback rollback, export; lap events are reported by the caller) |
 | `exceptions.py` | `PngtError` base and its subclasses — one per failure mode |
 
 ## Usage
@@ -102,7 +102,7 @@ SENSORS = (
 )
 
 recorder = DriverTelemetryRecorder(driver_index=0, sensors=SENSORS)
-recorder.update(TelemetrySnapshot(lap_distance=12.3, lap_time_ms=45000, speed=201.4, gear=6), frame_id=1)
+recorder.update(TelemetrySnapshot(lap_distance=12.3, lap_time_ms=450, speed=201.4, gear=6), frame_id=1, lap_number=1)
 recorder.on_lap_change(LapMetadata(lap_number=1, lap_time_ms=None, valid=False,
                                     tyre_compound="Soft", tyre_laps=1, pit_in_lap=False, pit_out_lap=False))
 export = recorder.export()  # -> DriverExportData

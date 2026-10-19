@@ -52,9 +52,8 @@ class RecordedSensor(Generic[S]):
 
 @dataclass
 class _InternalCompletedLap:
-    """A completed lap plus the frame_ids needed for Case B flashback rollback
-    (unwinding it back into the current buffers). Internal only -- export() copies
-    out just the CompletedLap, dropping frame_ids."""
+    """A completed lap plus each sample's frame_id, kept for debugging. Internal only --
+    export() copies out just the CompletedLap, dropping frame_ids."""
     lap: CompletedLap
     frame_ids: list[int]
 
@@ -64,10 +63,10 @@ class DriverTelemetryRecorder(Generic[S]):
     see plans/telemetry_recording/telemetry-ingest-spec.md for the full behavioural
     spec this implements.
 
-    `_current_lap_number`'s only real source of truth is on_lap_change() (lap_number
-    + 1). A snapshot carries no lap number at all, so the first update() call, if it
-    happens before any on_lap_change(), seeds it to 1 -- a label for export(), not a
-    claim about which lap it actually is.
+    `_current_lap_number` is seeded from the sim's lap number by the first update(), and
+    advanced by on_lap_change() (lap_number + 1). The recorder detects no lap events itself --
+    the caller reports lap changes, laps that end without one, and flashbacks. It only buckets
+    samples by lap: whether a lap's trace is complete is for the consumer to judge.
     """
 
     def __init__(self, driver_index: int, sensors: Sequence[RecordedSensor[S]]) -> None:
@@ -78,25 +77,19 @@ class DriverTelemetryRecorder(Generic[S]):
         if len(keys) != len(set(keys)):
             raise ValueError(f"sensors must have unique keys, got duplicates in {keys!r}")
 
-        self._last_frame_id: Optional[int] = None
-        self._lap_truncated = False
         self._current_lap_number: Optional[int] = None
         self._current_buffers: dict[str, list] = self._new_buffers()
         self._frame_id_buffer: list[int] = []
         self._completed_laps: list[_InternalCompletedLap] = []
 
-    def update(self, snapshot: S, frame_id: int) -> None:
-        """Called on every lap data packet. A frame_id lower than the last
-        one seen is unambiguously a flashback"""
-        if self._last_frame_id is not None and frame_id < self._last_frame_id:
-            self._rollback(frame_id)
-
+    def update(self, snapshot: S, frame_id: int, lap_number: int) -> None:
+        """Called on every lap data packet, with the sim's current lap number."""
         lap_distance_buffer = self._current_buffers["lap_distance"]
 
         if not lap_distance_buffer:
             self._append_sample(snapshot, frame_id)
             if self._current_lap_number is None:
-                self._current_lap_number = 1
+                self._current_lap_number = lap_number
         else:
             last_distance = lap_distance_buffer[-1]
             if snapshot.lap_distance > last_distance:
@@ -105,16 +98,10 @@ class DriverTelemetryRecorder(Generic[S]):
                 self._overwrite_last_sample(snapshot, frame_id)
             # else: lap_distance < last_distance -- drop, a sim reporting edge case.
 
-        self._last_frame_id = frame_id
-
     def on_lap_change(self, metadata: LapMetadata) -> None:
         """Called when the sim's lap number increments by 1."""
-        if self._lap_truncated or not self._current_buffers["lap_distance"]:
-            # Nothing to keep: no samples since the last lap change, or a lap that resumed mid-way
-            # after discard_in_progress_lap(). Either way, keep the lap number current.
-            self._current_buffers = self._new_buffers()
-            self._frame_id_buffer = []
-            self._lap_truncated = False
+        if not self._current_buffers["lap_distance"]:
+            # Nothing to keep: no samples since the last lap change. Keep the lap number current.
             self._current_lap_number = metadata.lap_number + 1
             return
 
@@ -127,13 +114,21 @@ class DriverTelemetryRecorder(Generic[S]):
         self._current_lap_number = metadata.lap_number + 1
 
     def discard_in_progress_lap(self) -> None:
-        """Drop the current lap's samples, so a pause in updates can't leave a hole mid-lap.
-        Completed laps are kept. Samples recorded after this are dropped too at the next
-        on_lap_change(), since that lap no longer starts at its beginning."""
+        """Drop the current lap's samples, for a lap that ends without the sim's lap number
+        changing (garage, out lap -> flying lap, a pause in updates). Completed laps are kept,
+        and recording carries on under the same lap number."""
         self._current_buffers = self._new_buffers()
         self._frame_id_buffer = []
-        self._last_frame_id = None
-        self._lap_truncated = True
+
+    def on_flashback(self, lap_number: int, landing_distance: float) -> None:
+        """Called when the sim rewinds, before the update() for the packet the car landed in.
+        Drops everything recorded past the landing point."""
+        if self._current_lap_number is None:
+            return
+        if lap_number < self._current_lap_number:
+            self._rollback_case_b(lap_number, landing_distance)
+        else:
+            self._rollback_case_a(landing_distance)
 
     def export(self) -> DriverExportData:
         """May be called multiple times safely -- never mutates internal state."""
@@ -192,35 +187,29 @@ class DriverTelemetryRecorder(Generic[S]):
         value = sensor.get(snapshot)
         return float("nan") if value is None else value
 
-    def _rollback(self, target_frame_id: int) -> None:
-        """The sim's flashback buffer is 20-30 seconds, so the rewind target is
-        always within the current lap or at most one completed lap back."""
-        if not self._frame_id_buffer or target_frame_id < self._frame_id_buffer[0]:
-            self._rollback_case_b(target_frame_id)
-        else:
-            self._rollback_case_a(target_frame_id)
-
-    def _rollback_case_a(self, target_frame_id: int) -> None:
-        """Target is within the current (in-progress) lap -- truncate every buffer to
-        just past the last sample at or before target_frame_id."""
-        keep = bisect.bisect_right(self._frame_id_buffer, target_frame_id)
+    def _rollback_case_a(self, landing_distance: float) -> None:
+        """Landed within the current (in-progress) lap -- truncate every buffer to the
+        samples before landing_distance. Frame IDs can't be used: the sim resumes later
+        than its own target frame."""
+        keep = bisect.bisect_left(self._current_buffers["lap_distance"], landing_distance)
         self._frame_id_buffer = self._frame_id_buffer[:keep]
         for key, values in self._current_buffers.items():
             self._current_buffers[key] = values[:keep]
 
-    def _rollback_case_b(self, target_frame_id: int) -> None:
-        """Target predates the current lap -- discard it, unwind the last completed
-        lap back into _current_buffers, truncated to target_frame_id within that
+    def _rollback_case_b(self, lap_number: int, landing_distance: float) -> None:
+        """Landed in an earlier lap -- discard the current one, unwind the last completed
+        lap back into _current_buffers, truncated to landing_distance within that
         lap. The restored lap's metadata is discarded; it's re-finalised as a new
         object when on_lap_change() fires again."""
-        if not self._completed_laps:
-            # No earlier lap to restore from -- target predates all recorded data.
+        if not self._completed_laps or self._completed_laps[-1].lap.metadata.lap_number != lap_number:
+            # The lap being returned to was never stored -- carry on from the landing point
             self._current_buffers = self._new_buffers()
             self._frame_id_buffer = []
+            self._current_lap_number = lap_number
             return
 
         restored = self._completed_laps.pop()
-        keep = bisect.bisect_right(restored.frame_ids, target_frame_id)
+        keep = bisect.bisect_left(restored.lap.telemetry["lap_distance"], landing_distance)
         self._frame_id_buffer = restored.frame_ids[:keep]
         self._current_buffers = {key: values[:keep] for key, values in restored.lap.telemetry.items()}
         self._current_lap_number = restored.lap.metadata.lap_number

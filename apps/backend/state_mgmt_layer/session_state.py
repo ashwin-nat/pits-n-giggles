@@ -300,12 +300,13 @@ class SessionState:
             # Update driver position and timing data
             self._updateDriverPositionData(driver_obj, lap_data)
 
-            # Handle lap changes and snapshots
+            # Handle lap changes, flashbacks and snapshots
             if driver_obj.m_lap_info.m_current_lap is not None:
                 self._handleLapChangeLogic(driver_obj, lap_data)
+            self._handleLapBoundaries(driver_obj, lap_data)
 
             # Update current lap and process driver status
-            self._updateDriverStatus(driver_obj, lap_data, index, self.m_flashback_occurred)
+            self._updateDriverStatus(driver_obj, lap_data, index)
 
             if self.m_session_info.m_track:
                 driver_obj.updateLastCornerStatsTracker(self.m_session_info.m_track, lap_data.m_lapDistance)
@@ -349,47 +350,58 @@ class SessionState:
         """
         # Capture zeroth lap snapshot if needed
         if self.m_session_info.curr_weather is not None and driver_obj.shouldCaptureZerothLapSnapshot(self.m_pkt_fmt):
-            driver_obj.onLapChange(
-                old_lap_number=0,
-                session_type=self.m_session_info.m_session_type
-            )
+            driver_obj.onLapChange(old_lap_number=0)
 
         current_lap = driver_obj.m_lap_info.m_current_lap
         new_lap = lap_data.m_currentLapNum
 
-        # Check for lap change
+        if self.m_flashback_occurred:
+            # This packet is where the rewind landed, possibly back across the line
+            driver_obj.onFlashback(new_lap, lap_data.m_lapDistance, self.m_session_info.m_session_type)
+        elif new_lap > current_lap:
+            driver_obj.onLapChange(old_lap_number=current_lap)
+        elif new_lap < current_lap:
+            # Without a flashback, the lap count going back is a new practice programme
+            self.m_logger.debug('Driver %s. Lap count went back without a flashback (lap %d -> %d)',
+                                driver_obj, current_lap, new_lap)
+
         if current_lap != new_lap:
-            flashback_detected = (not self.m_session_info.is_online_mode) and (current_lap > new_lap)
-
-            if flashback_detected:
-                self.m_logger.debug(
-                    'Driver %s. Lap change due to Flashback detected (lap %d -> %d)',
-                    driver_obj, current_lap, new_lap,
-                )
-
-            # Use the minimum lap number to handle flashback scenarios
-            old_lap_num = min(current_lap, new_lap)
-            driver_obj.onLapChange(
-                old_lap_number=old_lap_num,
-                session_type=self.m_session_info.m_session_type,
-                is_flashback=flashback_detected
-            )
-
             driver_obj.m_lap_info.m_current_lap = new_lap
             driver_obj.notifyLapChanged()
+
+    def _handleLapBoundaries(self, driver_obj: DataPerDriver, lap_data: LapData) -> None:
+        """Report the lap boundaries the sim's lap number doesn't show, from driver status changes:
+        going into the garage, and out lap -> flying lap. Races have neither, so they're skipped.
+
+        Args:
+            driver_obj: Driver object to check
+            lap_data: Lap data for this packet
+        """
+        session_type = self.m_session_info.m_session_type
+        if self.m_flashback_occurred or (session_type and session_type.isRaceTypeSession()):
+            return
+
+        prev = driver_obj.m_packet_copies.m_packet_lap_data  # not replaced with this packet yet
+        prev_status = prev.m_driverStatus if prev else None
+        status = lap_data.m_driverStatus
+        if status == prev_status:
+            return
+        if status == LapData.DriverStatus.IN_GARAGE:
+            driver_obj.onGarageEntry()
+        elif prev_status == LapData.DriverStatus.OUT_LAP and status == LapData.DriverStatus.FLYING_LAP:
+            # Flips on the packet that crosses the line
+            driver_obj.onLapStart()
 
     def _updateDriverStatus(self,
                             driver_obj: DataPerDriver,
                             lap_data: LapData,
-                            driver_index: int,
-                            flashback_occurred: bool) -> None:
+                            driver_index: int) -> None:
         """Update driver's current status including DNF status
 
         Args:
             driver_obj: Driver object to update
             lap_data: Lap data containing status information
             driver_index: Index of the driver in the race
-            flashback_occurred: Whether a flashback occurred
         """
         RESULT_STATUS_MAP = {
             ResultStatus.DID_NOT_FINISH: "DNF",
@@ -420,8 +432,6 @@ class SessionState:
         if self.m_session_info.m_session_type and \
             not self.m_session_info.m_session_type.isTimeTrialTypeSession():
             # DO NOT check for driver status. let the UI component handle that
-            if flashback_occurred:
-                driver_obj.m_delta_mgr.handle_flashback(lap_data.m_currentLapNum,lap_data.m_lapDistance)
             driver_obj.m_delta_mgr.record_data_point(
                 lap_num=lap_data.m_currentLapNum,
                 curr_distance=lap_data.m_lapDistance,
@@ -582,10 +592,7 @@ class SessionState:
         for index, data in enumerate(packet.m_classificationData):
             driver = self._getObjectByIndex(index, create=False)
 
-            driver.onLapChange(
-                old_lap_number=data.m_numLaps,
-                session_type=self.m_session_info.m_session_type
-            )
+            driver.onLapChange(old_lap_number=data.m_numLaps)
 
             if data.m_position and data.m_position != 255:
                 driver.m_driver_info.position = data.m_position
