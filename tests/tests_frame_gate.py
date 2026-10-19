@@ -25,6 +25,8 @@ import os
 from unittest.mock import patch
 import sys
 
+import pytest
+
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -188,3 +190,32 @@ class TestSessionFrameGate(F1TelemetryUnitTestsBase):
         pkt_next.m_header.m_overallFrameIdentifier = 1003
 
         self.assertTrue(self.gate.should_accept(pkt_next))
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("pkt_type", [F1PacketType.EVENT, F1PacketType.SESSION_HISTORY])
+def test_multi_per_frame_types_allow_several_in_one_frame(pkt_type):
+    """e.g. a burst of BUTN events then FLBK, or session history for every car, all in one frame."""
+    gate = SessionFrameGate()
+
+    assert all(gate.should_accept(DummyPacket(1, 600, pkt_type)) for _ in range(22))
+    assert gate.last_drop_reason is None
+
+
+@pytest.mark.parametrize("pkt_type", [F1PacketType.EVENT, F1PacketType.SESSION_HISTORY])
+def test_multi_per_frame_types_still_dropped_out_of_order(pkt_type):
+    gate = SessionFrameGate()
+
+    assert gate.should_accept(DummyPacket(1, 700, pkt_type))
+    assert not gate.should_accept(DummyPacket(1, 699, pkt_type))
+    assert gate.last_drop_reason == SessionFrameGate._OOO_REASON
+
+
+def test_other_types_still_unique_per_frame_alongside_events():
+    gate = SessionFrameGate()
+
+    assert gate.should_accept(DummyPacket(1, 800, F1PacketType.LAP_DATA))
+    assert gate.should_accept(DummyPacket(1, 800, F1PacketType.EVENT))
+    assert gate.should_accept(DummyPacket(1, 800, F1PacketType.EVENT))
+    assert not gate.should_accept(DummyPacket(1, 800, F1PacketType.LAP_DATA))
+    assert gate.last_drop_reason == SessionFrameGate._DUP_REASON

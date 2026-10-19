@@ -40,7 +40,7 @@ class SessionFrameGate:
         - New sessionUID resets internal ordering.
         - overallFrameIdentifier == 0 resets ordering.
         - Frame must be monotonic (no backward frames).
-        - Only one packet per packet type is allowed per frame.
+        - Only one packet per packet type is allowed per frame, except for EVENT and SESSION_HISTORY.
     """
 
     __slots__ = (
@@ -53,6 +53,10 @@ class SessionFrameGate:
 
     _OOO_REASON = "OUT_OF_ORDER_PKT"
     _DUP_REASON = "DUPLICATE_PACKET_TYPE"
+
+    # The game sends several of these in one frame: events in bursts (BUTN then FLBK), and
+    # session history for every car at once
+    _MULTI_PER_FRAME_TYPES = frozenset({F1PacketType.EVENT, F1PacketType.SESSION_HISTORY})
 
     def __init__(self, enabled: bool = True) -> None:
         """
@@ -73,7 +77,8 @@ class SessionFrameGate:
 
         Rules enforced:
             - Packets must arrive in non-decreasing overallFrameIdentifier order.
-            - Only one packet per packet type is allowed per overall frame.
+            - Only one packet per packet type is allowed per overall frame, except for EVENT and
+              SESSION_HISTORY packets.
             - Session changes reset internal state.
             - overallFrameIdentifier == 0 is treated as a reset and always accepted.
 
@@ -129,7 +134,7 @@ class SessionFrameGate:
             return True
 
         # Same frame -> enforce uniqueness
-        if packet_type in self._seen_packet_types:
+        if packet_type in self._seen_packet_types and packet_type not in self._MULTI_PER_FRAME_TYPES:
             self._last_drop_reason = self._DUP_REASON
             return False
 
