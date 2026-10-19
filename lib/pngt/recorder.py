@@ -23,7 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import bisect
-import sys  # TEMP
 from dataclasses import dataclass
 from typing import Callable, Generic, Optional, Sequence, TypeVar
 
@@ -92,7 +91,7 @@ class DriverTelemetryRecorder(Generic[S]):
             self._frame_id_violations += 1
             print(f"TEMP-FRAME-ID driver {self._driver_index}: frame_id {frame_id} < {self._last_frame_id} "
                   f"without a flashback (lap {self._current_lap_number}, #{self._frame_id_violations})",
-                  file=sys.stderr, flush=True)
+                  flush=True)
         self._last_frame_id = frame_id
 
         lap_distance_buffer = self._current_buffers["lap_distance"]
