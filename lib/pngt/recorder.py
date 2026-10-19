@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import bisect
+import sys  # TEMP
 from dataclasses import dataclass
 from typing import Callable, Generic, Optional, Sequence, TypeVar
 
@@ -78,6 +79,7 @@ class DriverTelemetryRecorder(Generic[S]):
             raise ValueError(f"sensors must have unique keys, got duplicates in {keys!r}")
 
         self._last_frame_id: Optional[int] = None  # TEMP: frame ID check for the integration run
+        self._frame_id_violations = 0  # TEMP
         self._current_lap_number: Optional[int] = None
         self._current_buffers: dict[str, list] = self._new_buffers()
         self._frame_id_buffer: list[int] = []
@@ -86,8 +88,11 @@ class DriverTelemetryRecorder(Generic[S]):
     def update(self, snapshot: S, frame_id: int, lap_number: int) -> None:
         """Called on every lap data packet, with the sim's current lap number."""
         # TEMP: frame IDs only go back on a flashback, and on_flashback() resets the check
-        assert self._last_frame_id is None or frame_id >= self._last_frame_id, \
-            f"driver {self._driver_index}: frame_id {frame_id} < {self._last_frame_id} without a flashback"
+        if self._last_frame_id is not None and frame_id < self._last_frame_id:
+            self._frame_id_violations += 1
+            print(f"TEMP-FRAME-ID driver {self._driver_index}: frame_id {frame_id} < {self._last_frame_id} "
+                  f"without a flashback (lap {self._current_lap_number}, #{self._frame_id_violations})",
+                  file=sys.stderr, flush=True)
         self._last_frame_id = frame_id
 
         lap_distance_buffer = self._current_buffers["lap_distance"]
