@@ -181,6 +181,8 @@ class F1TelemetryHandler:
         self.m_packet_forward_queue: asyncio.Queue = packet_forward_queue
 
         self.m_last_session_uid: Optional[int] = None
+        self.m_session_ended: bool = False                      # SEND seen for the current UID
+        self.m_last_lap_data_frame: Optional[int] = None        # overall frame of the last LAP_DATA
         self.m_final_classification_processed: bool = False
         self.m_capture_settings: CaptureSettings = settings.Capture
         self.m_button_debouncer: ButtonDebouncer = ButtonDebouncer(
@@ -365,7 +367,8 @@ class F1TelemetryHandler:
         @self.m_manager.on_any_packet()
         async def handleSessionUidGate(packet: F1PacketBase) -> None:
             """Detect a session UID change on any packet, ahead of that packet's own typed
-            callback, and clear before anything merges it into per-type state.
+            callback, and clear before anything merges it into per-type state. A restart that
+            keeps the UID is detected here too, by _checkSessionRestart().
 
             # TODO: this clears on the first packet carrying a new UID, with no debounce.
             # A single corrupt/stale header could in theory trigger a false clear - validate
@@ -378,13 +381,18 @@ class F1TelemetryHandler:
             """
             new_uid = packet.m_header.m_sessionUID
             old_uid = self.m_last_session_uid
-            if new_uid in (0, old_uid):
-                return  # menu packet, or no change
+            if new_uid == 0:
+                return  # menu packet
+            if new_uid == old_uid:
+                self._checkSessionRestart(packet)
+                return
 
             self.m_logger.warning("Session UID changed %s -> %s on a %s packet. Clearing data structures.",
                                   old_uid, new_uid, packet.m_header.m_packetId.name)
 
             if old_uid is not None:
+                # Known limitation: loading a mid-session save also gives a new UID, so the laps before
+                # the load end up in this Just-in-case save, separate from the rest of the session
                 self._saveJustInCaseIfNeeded(old_uid)
 
             self.m_last_session_uid = new_uid
@@ -830,6 +838,37 @@ class F1TelemetryHandler:
         self.m_session_state_ref.clear(reason)
         self.m_session_state_ref.setRaceOngoing()
         self.m_final_classification_processed = False
+        self.m_session_ended = False
+        self.m_last_lap_data_frame = None
+
+    def _checkSessionRestart(self, packet: F1PacketBase) -> None:
+        """Clear the session if it was restarted. Call for every packet carrying the current session UID.
+
+        Args:
+            packet (F1PacketBase): The parsed packet
+        """
+        header = packet.m_header
+        if header.m_packetId == F1PacketType.EVENT:
+            if packet.m_eventCode == PacketEventData.EventPacketType.SESSION_ENDED:
+                self.m_session_ended = True
+            return
+        if header.m_packetId != F1PacketType.LAP_DATA:
+            return
+
+        frame = header.m_overallFrameIdentifier
+        prev_frame = self.m_last_lap_data_frame
+        self.m_last_lap_data_frame = frame
+        # A restart keeps the UID, but its LAP_DATA starts the overall frame count over. Only after SEND,
+        # so a packet arriving a frame or two late isn't mistaken for one
+        if not self.m_session_ended or prev_frame is None or frame >= prev_frame:
+            return
+
+        uid = header.m_sessionUID
+        self.m_logger.warning("Session %d restarted: LAP_DATA overall frame %d -> %d after SEND. "
+                              "Clearing data structures.", uid, prev_frame, frame)
+        self._saveJustInCaseIfNeeded(uid)
+        self.clearAllDataStructures(f"Session {uid} restarted")
+        self.m_last_lap_data_frame = frame
 
     async def _autoSaveJsonTask(self, final_json: Dict[str, Any], session_uid: int) -> None:
         """Writes the auto-save JSON for one session. Run as m_json_save_task from the
@@ -1145,7 +1184,7 @@ class F1TelemetryHandler:
         guessed at from race-progress heuristics.
 
         Caller's responsibility: only call this for a genuine UID change (i.e. there was a
-        prior session - not on the very first UID the app ever sees). Must be called before
+        prior session - not on the very first UID the app ever sees) or a restart on the same UID. Must be called before
         m_last_session_uid is overwritten and before clearAllDataStructures runs, since both
         ManualSaveRsp and preparePngtWrite() snapshot session_state synchronously here, at
         construction/call time.
