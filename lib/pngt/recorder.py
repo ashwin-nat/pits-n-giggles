@@ -77,8 +77,6 @@ class DriverTelemetryRecorder(Generic[S]):
         if len(keys) != len(set(keys)):
             raise ValueError(f"sensors must have unique keys, got duplicates in {keys!r}")
 
-        self._last_frame_id: Optional[int] = None  # TEMP: frame ID check for the integration run
-        self._frame_id_violations = 0  # TEMP
         self._current_lap_number: Optional[int] = None
         self._current_buffers: dict[str, list] = self._new_buffers()
         self._frame_id_buffer: list[int] = []
@@ -86,14 +84,6 @@ class DriverTelemetryRecorder(Generic[S]):
 
     def update(self, snapshot: S, frame_id: int, lap_number: int) -> None:
         """Called on every lap data packet, with the sim's current lap number."""
-        # TEMP: frame IDs only go back on a flashback, and on_flashback() resets the check
-        if self._last_frame_id is not None and frame_id < self._last_frame_id:
-            self._frame_id_violations += 1
-            print(f"TEMP-FRAME-ID driver {self._driver_index}: frame_id {frame_id} < {self._last_frame_id} "
-                  f"without a flashback (lap {self._current_lap_number}, #{self._frame_id_violations})",
-                  flush=True)
-        self._last_frame_id = frame_id
-
         lap_distance_buffer = self._current_buffers["lap_distance"]
 
         if not lap_distance_buffer:
@@ -133,7 +123,6 @@ class DriverTelemetryRecorder(Generic[S]):
     def on_flashback(self, lap_number: int, landing_distance: float) -> None:
         """Called when the sim rewinds, before the update() for the packet the car landed in.
         Drops everything recorded past the landing point."""
-        self._last_frame_id = None  # TEMP
         if self._current_lap_number is None:
             return
         if lap_number < self._current_lap_number:
