@@ -45,8 +45,6 @@ class TestLapAnalyzerSettings(TestF1ConfigBase):
         """Test default values"""
         settings = LapAnalyzerSettings()
         self.assertTrue(settings.enable)
-        self.assertTrue(settings.record_other_cars)
-        self.assertFalse(settings.record_in_spectator_mode)
         self.assertTrue(settings.record_in_race)
         self.assertTrue(settings.record_in_quali)
         self.assertFalse(settings.record_in_fp)
@@ -59,20 +57,6 @@ class TestLapAnalyzerSettings(TestF1ConfigBase):
         # Also test coercion from strings
         self.assertTrue(LapAnalyzerSettings(enable="True").enable)
         self.assertFalse(LapAnalyzerSettings(enable="False").enable)
-
-    def test_boolean_validation_record_other_cars(self):
-        self.assertTrue(LapAnalyzerSettings(record_other_cars=True).record_other_cars)
-        self.assertFalse(LapAnalyzerSettings(record_other_cars=False).record_other_cars)
-
-        self.assertTrue(LapAnalyzerSettings(record_other_cars="True").record_other_cars)
-        self.assertFalse(LapAnalyzerSettings(record_other_cars="False").record_other_cars)
-
-    def test_boolean_validation_record_in_spectator_mode(self):
-        self.assertTrue(LapAnalyzerSettings(record_in_spectator_mode=True).record_in_spectator_mode)
-        self.assertFalse(LapAnalyzerSettings(record_in_spectator_mode=False).record_in_spectator_mode)
-
-        self.assertTrue(LapAnalyzerSettings(record_in_spectator_mode="True").record_in_spectator_mode)
-        self.assertFalse(LapAnalyzerSettings(record_in_spectator_mode="False").record_in_spectator_mode)
 
     def test_boolean_validation_record_in_race(self):
         self.assertTrue(LapAnalyzerSettings(record_in_race=True).record_in_race)
@@ -105,12 +89,6 @@ class TestLapAnalyzerSettings(TestF1ConfigBase):
     def test_invalid_type_raises(self):
         with self.assertRaises(ValidationError):
             LapAnalyzerSettings(enable="notaboolean")
-
-        with self.assertRaises(ValidationError):
-            LapAnalyzerSettings(record_other_cars="notaboolean")
-
-        with self.assertRaises(ValidationError):
-            LapAnalyzerSettings(record_in_spectator_mode="notaboolean")
 
         with self.assertRaises(ValidationError):
             LapAnalyzerSettings(record_in_race="notaboolean")

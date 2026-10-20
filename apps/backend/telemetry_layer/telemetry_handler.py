@@ -1024,10 +1024,6 @@ class F1TelemetryHandler:
             self.m_logger.info("Not saving pngt data - no sensors selected")
             return False
 
-        if self.m_session_state_ref.m_session_info.m_is_spectating and not settings.record_in_spectator_mode:
-            self.m_logger.debug("Not saving pngt data - spectating and record_in_spectator_mode is disabled")
-            return False
-
         curr_session_type = self.m_session_state_ref.m_session_info.m_session_type
         if not curr_session_type:
             self.m_logger.warning("Session type is None. Not saving pngt data. Ignore if first session.")

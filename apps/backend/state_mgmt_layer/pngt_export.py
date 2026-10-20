@@ -58,29 +58,6 @@ def _filter_export(data: DriverExportData, sensor_keys: set[str]) -> DriverExpor
         in_progress_lap=_filter_lap(data.in_progress_lap, keep_keys) if data.in_progress_lap else None,
     )
 
-def in_export_scope(
-    *,
-    is_public: bool,
-    is_player: bool,
-    is_spectating: bool,
-    spectator_mode: bool,
-    other_players: bool,
-) -> bool:
-    """Whether a driver's telemetry is included in the .pngt export.
-        - not public -> never
-        - spectating -> only if spectator_mode (no "own car" while spectating)
-        - driving, own car -> always (if public)
-        - driving, another car -> only if other_players
-    """
-    if not is_public:
-        return False
-    if is_spectating:
-        return spectator_mode
-    if is_player:
-        return True
-    return other_players
-
-
 def build_pngt_write_args(
     session_state: "SessionState",
     dest_path: Path,
@@ -102,20 +79,13 @@ def build_pngt_write_args(
     """
     sensors = selected_sensors(lap_analyzer_settings)
     sensor_keys = {sensor.key for sensor in sensors}
-    is_spectating = bool(session_state.m_session_info.m_is_spectating)
     driver_data: dict[int, DriverExportData] = {}
     for index, driver_obj in enumerate(session_state.m_driver_data):
         if driver_obj is None or not driver_obj.is_valid:
             continue
-        if in_export_scope(
-            # is_public=bool(driver_obj.m_driver_info.telemetry_setting),
-            is_public=True, # TODO: figure this out later
-            is_player=bool(driver_obj.m_driver_info.is_player),
-            is_spectating=is_spectating,
-            spectator_mode=lap_analyzer_settings.record_in_spectator_mode,
-            other_players=lap_analyzer_settings.record_other_cars,
-        ):
-            driver_data[index] = _filter_export(driver_obj.exportTelemetry(), sensor_keys)
+        # TODO: restricted telemetry. Another car set to Restricted sends zeros for ERS and tyre wear,
+        # but the player's own car is always real, so telemetry_setting alone can't decide it
+        driver_data[index] = _filter_export(driver_obj.exportTelemetry(), sensor_keys)
 
     session_info = session_state.m_session_info
     session = SessionMetadata(

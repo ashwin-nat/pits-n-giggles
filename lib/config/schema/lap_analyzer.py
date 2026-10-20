@@ -154,29 +154,6 @@ class LapAnalyzerSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
-    record_other_cars: bool = Field(
-        default=True,
-        description="Record other cars' laps",
-        json_schema_extra={
-            "ui": {
-                "type" : "check_box",
-                "visible": True
-            }
-        }
-    )
-    record_in_spectator_mode: bool = Field(
-        default=False,
-        description="Record laps while spectating",
-        json_schema_extra={
-            "ui": {
-                "type" : "check_box",
-                "visible": True,
-                "ext_info" : [
-                    "Records all cars in the session if enabled"
-                ],
-            }
-        }
-    )
     record_in_race: bool = check_box_row_field(
         "Record laps during race sessions", default=True,
         row="Record laps during", row_label="Race")

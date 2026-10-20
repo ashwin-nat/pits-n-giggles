@@ -393,13 +393,6 @@ class LapAnalyzerPage(QWidget):
         if not settings.enable or not enabled or not any_session_type:
             text = "Estimated size: nothing will be recorded"
         else:
-            per_car = estimate_bytes_per_car(enabled)
-            full_grid = _format_size(per_car * FULL_GRID_CARS)
-            if settings.record_other_cars:
-                text = f"Estimated size per 45-min session: {full_grid} ({FULL_GRID_CARS} cars)"
-            elif settings.record_in_spectator_mode:
-                text = (f"Estimated size per 45-min session: driving {_format_size(per_car)} (your car), "
-                        f"spectating {full_grid} ({FULL_GRID_CARS} cars)")
-            else:
-                text = f"Estimated size per 45-min session: {_format_size(per_car)} (your car)"
+            full_grid = _format_size(estimate_bytes_per_car(enabled) * FULL_GRID_CARS)
+            text = f"Estimated size per 45-min session: {full_grid} ({FULL_GRID_CARS} cars)"
         self._estimate_label.setText(text)

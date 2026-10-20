@@ -20,10 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-# Tests for apps.backend.state_mgmt_layer.pngt_export.in_export_scope() -- the
-# "which drivers get exported" policy. This is app/business logic (not lib/pngt,
-# which has no scope concept at all), so its tests live here rather than under
-# tests_pngt*.py.
+# Tests for the app side of the .pngt export: apps.backend.state_mgmt_layer.pngt_export
+# (sensor selection and filtering) and the lap events SessionState reports to DataPerDriver.
+# This is app/business logic, not lib/pngt, so its tests live here.
 
 import os
 import sys
@@ -37,41 +36,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from apps.backend.state_mgmt_layer.data_per_driver.data_per_driver import DataPerDriver
 from apps.backend.state_mgmt_layer.data_per_driver.telemetry_recorder.telemetry_recorder import F1_SENSORS
 from apps.backend.state_mgmt_layer.session_state import SessionState
-from apps.backend.state_mgmt_layer.pngt_export import (_filter_export, in_export_scope,
-                                                       selected_sensors)
+from apps.backend.state_mgmt_layer.pngt_export import _filter_export, selected_sensors
 from lib.config import LapAnalyzerSensorSettings, LapAnalyzerSettings
 from lib.f1_types import LapData
 from lib.pngt import CompletedLap, DriverExportData, LapMetadata
-
-# ----------------------------------------------------------------------------------------------------------------------
-# in_export_scope() decision table
-# ----------------------------------------------------------------------------------------------------------------------
-
-def test_restricted_telemetry_never_in_scope():
-    assert in_export_scope(
-        is_public=False, is_player=True, is_spectating=False, spectator_mode=True, other_players=True,
-    ) is False
-
-
-def test_own_car_always_in_scope_even_when_other_players_cars_disabled():
-    assert in_export_scope(
-        is_public=True, is_player=True, is_spectating=False, spectator_mode=False, other_players=False,
-    ) is True
-
-
-@pytest.mark.parametrize("other_players,expected", [(False, False), (True, True)])
-def test_other_human_car_respects_other_players(other_players, expected):
-    assert in_export_scope(
-        is_public=True, is_player=False, is_spectating=False, spectator_mode=False, other_players=other_players,
-    ) is expected
-
-
-@pytest.mark.parametrize("spectator_mode,expected", [(False, False), (True, True)])
-def test_spectator_mode_gate_applies_regardless_of_is_player(spectator_mode, expected):
-    # No "own car" while spectating, so is_player=True must not bypass the gate.
-    assert in_export_scope(
-        is_public=True, is_player=True, is_spectating=True, spectator_mode=spectator_mode, other_players=True,
-    ) is expected
 
 # ----------------------------------------------------------------------------------------------------------------------
 # F1_SENSORS <-> LapAnalyzerSensorSettings mapping
