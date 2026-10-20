@@ -208,6 +208,11 @@
                 "y": 17,
                 "scale_factor": 1.0
             },
+            "mfd": {
+                "x": -842,
+                "y": 27,
+                "scale_factor": 1.0
+            },
             "input_telemetry": {
                 "x": -863,
                 "y": 512,
@@ -231,11 +236,6 @@
             "pu": {
                 "x": -1831,
                 "y": 217,
-                "scale_factor": 1.0
-            },
-            "mfd": {
-                "x": -842,
-                "y": 27,
                 "scale_factor": 1.0
             },
             "fuel_info": {
@@ -370,8 +370,8 @@
             "throttle": true,
             "brake": true,
             "steering": true,
-            "speed": true,
             "gear": true,
+            "speed": true,
             "engine_rpm": true,
             "ers_deploy_mode": true,
             "ers_store_energy_j": true,
@@ -381,5 +381,8 @@
             "tyre_wear_rl": true,
             "tyre_wear_rr": true
         }
+    },
+    "SaveViewer": {
+        "enable_write_api": true
     }
 }
