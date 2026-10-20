@@ -51,6 +51,12 @@ function extractSamples(points: TelemetryPoint[], sensorKey: string): Sample[] {
   return samples;
 }
 
+// A gap outside what was sampled, never a clamped edge value: a partial lap used as
+// the reference would otherwise draw flat traces and a made-up delta there.
+function isOutsideSamples(samples: Sample[], d: number): boolean {
+  return d < samples[0].distance || d > samples[samples.length - 1].distance;
+}
+
 function interpolateLinear(samples: Sample[], grid: readonly number[]): InterpolatedPoint[] {
   if (samples.length === 0) {
     return grid.map((lapDistance) => ({ lapDistance, value: null }));
@@ -58,15 +64,13 @@ function interpolateLinear(samples: Sample[], grid: readonly number[]): Interpol
 
   const result: InterpolatedPoint[] = [];
   let cursor = 0;
+  const last = samples[samples.length - 1];
   for (const d of grid) {
-    // Clamp to the nearest known bound rather than extrapolating past the
-    // edge of the recorded data.
-    if (d <= samples[0].distance) {
-      result.push({ lapDistance: d, value: samples[0].value });
+    if (isOutsideSamples(samples, d)) {
+      result.push({ lapDistance: d, value: null });
       continue;
     }
-    const last = samples[samples.length - 1];
-    if (d >= last.distance) {
+    if (d === last.distance) {
       result.push({ lapDistance: d, value: last.value });
       continue;
     }
@@ -90,6 +94,10 @@ function interpolateNearestNeighbour(samples: Sample[], grid: readonly number[])
   const result: InterpolatedPoint[] = [];
   let cursor = 0;
   for (const d of grid) {
+    if (isOutsideSamples(samples, d)) {
+      result.push({ lapDistance: d, value: null });
+      continue;
+    }
     while (cursor < samples.length - 1 && samples[cursor + 1].distance <= d) {
       cursor++;
     }

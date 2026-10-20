@@ -62,7 +62,7 @@ test("interpolateToGrid: nearest-neighbour for discrete sensors", () => {
   );
 });
 
-test("interpolateToGrid: clamps to the nearest bound instead of extrapolating", () => {
+test("interpolateToGrid: gaps outside the sampled range instead of clamping or extrapolating", () => {
   const points: TelemetryPoint[] = [
     { lapDistance: 4, speed: 50 },
     { lapDistance: 8, speed: 60 },
@@ -73,7 +73,25 @@ test("interpolateToGrid: clamps to the nearest bound instead of extrapolating", 
 
   assert.deepEqual(
     result.map((p) => p.value),
-    [50, 50, 60, 60]
+    [null, 50, 60, null]
+  );
+});
+
+test("interpolateToGrid: a partial reference lap on a full lap's grid is a gap where it wasn't recorded", () => {
+  // The reference is interpolated onto the primary's grid; it only covers 3000-4000 m
+  const reference: TelemetryPoint[] = [
+    { lapDistance: 3000, speed: 200, gear: 5 },
+    { lapDistance: 4000, speed: 300, gear: 7 },
+  ];
+  const grid = [0, 2999, 3000, 3500, 4000, 4001, 5000];
+
+  assert.deepEqual(
+    interpolateToGrid(reference, continuousSensor, grid).map((p) => p.value),
+    [null, null, 200, 250, 300, null, null]
+  );
+  assert.deepEqual(
+    interpolateToGrid(reference, discreteSensor, grid).map((p) => p.value),
+    [null, null, 5, 5, 7, null, null]
   );
 });
 
