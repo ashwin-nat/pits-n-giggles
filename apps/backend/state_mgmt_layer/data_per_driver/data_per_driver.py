@@ -600,8 +600,44 @@ class DataPerDriver:
         self.m_tel_rec.on_flashback(lap_number, lap_distance)
 
     def onLapStart(self) -> None:
-        """The car crossed the line onto a new lap without the sim changing the lap number (out lap -> flying lap)"""
+        """The car crossed the line onto a new lap without the sim changing the lap number (out lap -> flying lap).
+        Re-baselines everything measured per lap to here. Safe to call again for the same lap."""
+        lap_number = self.m_lap_info.m_current_lap
         self.m_tel_rec.discard_in_progress_lap()
+        self.m_car_info.resetPowerEstimators()
+
+        # Lap 0 is only a baseline, so it can be taken again. A later run's lap N-1 is a real lap's end
+        if lap_number == 1 and 0 in self.m_per_lap_snapshots and 1 not in self.m_per_lap_snapshots:
+            self.m_per_lap_snapshots[0] = self._buildPerLapSnapshot()
+
+        self._rebaselineFreshTyreStint(lap_number)
+        self._resetPerLapStats()
+        self.m_logger.debug("Driver %s - lap %d started at the line. Re-baselined", str(self), lap_number)
+
+    def _rebaselineFreshTyreStint(self, lap_number: int) -> None:
+        """Move the current stint's starting wear to here, while no lap has been completed on it
+        (lap 1, or a run on a new set).
+
+        Args:
+            lap_number (int): The lap that just started
+        """
+        history_mgr = self.m_tyre_info.m_tyre_set_history_manager
+        car_dmg = self.m_packet_copies.m_packet_car_damage
+        if not history_mgr.length or not car_dmg or self.m_pending_tyre_change:
+            return
+        stint_wear = history_mgr.getLastEntry().m_tyre_wear_history
+        if len(stint_wear) != 1:
+            # A run on a used set keeps its in-lap and out-lap wear: the last point is a real lap's end
+            return
+
+        start_wear = TyreWearPerLap.from_car_damage(
+            car_dmg,
+            lap_number=stint_wear[0].lap_number,
+            is_racing_lap=True,
+            desc=f"lap {lap_number} start at the line. {self._getCurrentTyreSetKey()}",
+            weather_id=self.m_state_ref.m_session_info.curr_weather
+        )
+        history_mgr.overwriteTyreWear(start_wear)
 
     def onGarageEntry(self) -> None:
         """The car is back in the garage, so the lap it was on won't be finished"""
@@ -668,23 +704,7 @@ class DataPerDriver:
             ))
 
         # Store the snapshot data for the old lap
-        if self.m_car_info.m_2026_regs:
-            mguk_harv_limit = self.m_car_info.m_ers_harv_limit_per_lap_j
-        else:
-            mguk_harv_limit = CarStatusData.MAX_MGUK_HARV_PER_LAP
-
-        self.m_per_lap_snapshots[old_lap_number] = PerLapSnapshotEntry(
-            car_damage=self.m_packet_copies.m_packet_car_damage,
-            car_status=self.m_packet_copies.m_packet_car_status,
-            max_sc_status=self.m_driver_info.m_curr_lap_max_sc_status,
-            tyre_sets=self.m_packet_copies.m_packet_tyre_sets,
-            track_position=self.m_driver_info.position,
-            top_speed_kmph=self.m_lap_info.m_top_speed_kmph_this_lap,
-            ers_deployed_j=self.m_car_info.m_curr_lap_ers_deployed_j,
-            ers_harv_mguh_j=self.m_car_info.m_curr_lap_ers_harv_mguh_j,
-            ers_harv_mguk_j=self.m_car_info.m_curr_lap_ers_harv_mguk_j,
-            ers_harv_limit_mguk_j=mguk_harv_limit,
-        )
+        self.m_per_lap_snapshots[old_lap_number] = self._buildPerLapSnapshot()
 
         # Add the tyre wear data into the tyre stint history
         tyre_set_key = self._getCurrentTyreSetKey()
@@ -717,11 +737,34 @@ class DataPerDriver:
                 desc=f"end of lap {old_lap_number} snapshot {tyre_set_key}"
             )
 
-        # Now clear the per lap max stuff
+        self._resetPerLapStats()
+        self.m_logger.debug("Driver %s - lap %d added to per_lap_snapshots", str(self), old_lap_number)
+
+    def _buildPerLapSnapshot(self) -> PerLapSnapshotEntry:
+        """The per lap snapshot of the car's state right now"""
+        if self.m_car_info.m_2026_regs:
+            mguk_harv_limit = self.m_car_info.m_ers_harv_limit_per_lap_j
+        else:
+            mguk_harv_limit = CarStatusData.MAX_MGUK_HARV_PER_LAP
+
+        return PerLapSnapshotEntry(
+            car_damage=self.m_packet_copies.m_packet_car_damage,
+            car_status=self.m_packet_copies.m_packet_car_status,
+            max_sc_status=self.m_driver_info.m_curr_lap_max_sc_status,
+            tyre_sets=self.m_packet_copies.m_packet_tyre_sets,
+            track_position=self.m_driver_info.position,
+            top_speed_kmph=self.m_lap_info.m_top_speed_kmph_this_lap,
+            ers_deployed_j=self.m_car_info.m_curr_lap_ers_deployed_j,
+            ers_harv_mguh_j=self.m_car_info.m_curr_lap_ers_harv_mguh_j,
+            ers_harv_mguk_j=self.m_car_info.m_curr_lap_ers_harv_mguk_j,
+            ers_harv_limit_mguk_j=mguk_harv_limit,
+        )
+
+    def _resetPerLapStats(self) -> None:
+        """Clear the stats accumulated over the lap, for the lap that starts now"""
         self.m_lap_info.m_top_speed_kmph_this_lap = None
         self.m_driver_info.m_curr_lap_max_sc_status = None
         self.m_car_info.onLapChange()
-        self.m_logger.debug("Driver %s - lap %d added to per_lap_snapshots", str(self), old_lap_number)
 
     def shouldCaptureZerothLapSnapshot(self, pkt_fmt: int) -> bool:
         """
