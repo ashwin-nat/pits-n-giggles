@@ -1560,6 +1560,7 @@ class DataPerDriver:
 
         car_status_pkt = self.m_packet_copies.m_packet_car_status
         car_telemetry_pkt = self.m_packet_copies.m_packet_car_telemetry
+        motion_pkt = self.m_packet_copies.m_packet_motion
         tyre_wear = self.m_tyre_info.tyre_wear.latest
         ers_store_energy_j = car_status_pkt.m_ersStoreEnergy if car_status_pkt else None
 
@@ -1587,6 +1588,11 @@ class DataPerDriver:
             tyre_wear_fr=tyre_wear.fr_tyre_wear if tyre_wear else None,
             tyre_wear_rl=tyre_wear.rl_tyre_wear if tyre_wear else None,
             tyre_wear_rr=tyre_wear.rr_tyre_wear if tyre_wear else None,
+
+            motion_pos_x=(motion_pkt.m_worldPositionX if motion_pkt else None),
+            motion_pos_y=(motion_pkt.m_worldPositionY if motion_pkt else None),
+            motion_pos_z=(motion_pkt.m_worldPositionZ if motion_pkt else None),
+            motion_yaw=(motion_pkt.m_yaw if motion_pkt else None),
         )
         self.m_tel_rec.update(snapshot, frame_id, self.m_lap_info.m_current_lap)
 

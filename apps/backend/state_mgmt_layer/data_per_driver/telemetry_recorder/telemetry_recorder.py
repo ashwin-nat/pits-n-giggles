@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import math
 from dataclasses import dataclass
 from operator import attrgetter
 from typing import Optional
@@ -72,6 +73,12 @@ class TelemetrySnapshot(BaseTelemetrySnapshot):
     tyre_wear_fr: Optional[float] = None
     tyre_wear_rl: Optional[float] = None
     tyre_wear_rr: Optional[float] = None
+
+    # Motion
+    motion_pos_x: Optional[float] = None
+    motion_pos_y: Optional[float] = None
+    motion_pos_z: Optional[float] = None
+    motion_yaw: Optional[float] = None
 
 # -------------------------------------- CONSTANTS ----------------------------------------------------------------------
 
@@ -190,4 +197,35 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             type=SensorType.CONTINUOUS,
             range=(0, 100)),
         get=attrgetter("tyre_wear_rr")),
+
+    # ------ MOTION -------
+    "motion_pos_x": RecordedSensor(
+        config=SensorConfig(
+            key="motion.position.x",
+            label=_label("motion_pos_x"),
+            unit="m",
+            type=SensorType.CONTINUOUS),
+        get=attrgetter("motion_pos_x")),
+    "motion_pos_y": RecordedSensor(
+        config=SensorConfig(
+            key="motion.position.y",
+            label=_label("motion_pos_y"),
+            unit="m",
+            type=SensorType.CONTINUOUS),
+        get=attrgetter("motion_pos_y")),
+    "motion_pos_z": RecordedSensor(
+        config=SensorConfig(
+            key="motion.position.z",
+            label=_label("motion_pos_z"),
+            unit="m",
+            type=SensorType.CONTINUOUS),
+        get=attrgetter("motion_pos_z")),
+    "motion_yaw": RecordedSensor(
+        config=SensorConfig(
+            key="motion.yaw",
+            label=_label("motion_yaw"),
+            unit="rad",
+            type=SensorType.CONTINUOUS,
+            range=(-math.pi, math.pi)),
+        get=attrgetter("motion_yaw")),
 }

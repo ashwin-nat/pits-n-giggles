@@ -36,6 +36,7 @@ class SensorPreset(str, Enum):
     MINIMAL = "Minimal"
     DEFAULT = "Default"
     ADVANCED = "Advanced"
+    POSITION = "Position"
     ALL = "All"
 
 class SensorGroup(str, Enum):
@@ -43,12 +44,14 @@ class SensorGroup(str, Enum):
     CAR_STATE = "Car State"
     ERS = "ERS"
     TYRE_WEAR = "Tyre Wear"
+    MOTION = "Motion"
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 # Optional group tooltips. A group without an entry gets no tooltip.
 SENSOR_GROUP_INFO: Dict[SensorGroup, str] = {
     SensorGroup.ERS: "Energy recovery system state: deploy mode and battery charge",
+    SensorGroup.MOTION: "Car world position and heading (yaw)",
 }
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -136,6 +139,24 @@ class LapAnalyzerSensorSettings(ConfigDiffMixin, BaseModel):
         label="Tyre Wear RR", group=SensorGroup.TYRE_WEAR, restricted=True,
         presets={SensorPreset.ADVANCED, SensorPreset.ALL},
         info="Rear right tyre wear %")
+
+    # Motion
+    motion_pos_x: bool = sensor_field(
+        label="Position X", group=SensorGroup.MOTION, restricted=False,
+        presets={SensorPreset.POSITION, SensorPreset.ALL},
+        info="World space X position in metres")
+    motion_pos_y: bool = sensor_field(
+        label="Position Y", group=SensorGroup.MOTION, restricted=False,
+        presets={SensorPreset.POSITION, SensorPreset.ALL},
+        info="World space Y position in metres")
+    motion_pos_z: bool = sensor_field(
+        label="Position Z", group=SensorGroup.MOTION, restricted=False,
+        presets={SensorPreset.POSITION, SensorPreset.ALL},
+        info="World space Z position in metres")
+    motion_yaw: bool = sensor_field(
+        label="Yaw", group=SensorGroup.MOTION, restricted=False,
+        presets={SensorPreset.POSITION, SensorPreset.ALL},
+        info="Yaw angle in radians")
 
 class LapAnalyzerSettings(ConfigDiffMixin, BaseModel):
 
