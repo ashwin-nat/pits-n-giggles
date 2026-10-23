@@ -69,6 +69,12 @@ _PARTIAL_INDICATOR_STYLE = (
 # Read once here, because pylint can't see through pydantic's model_fields at every use
 _SENSOR_FIELDS: Dict[str, FieldInfo] = dict(LapAnalyzerSensorSettings.model_fields)
 
+# Sensors whose schema "ui.visible" is false are still recorded, just not shown
+_VISIBLE_SENSOR_FIELDS: List[str] = [
+    name for name, info in _SENSOR_FIELDS.items()
+    if (info.json_schema_extra or {}).get("ui", {}).get("visible", True)
+]
+
 def _sensor_meta(field: str) -> Dict[str, Any]:
     return _SENSOR_FIELDS[field].json_schema_extra["sensor"]
 
@@ -186,8 +192,8 @@ class LapAnalyzerPage(QWidget):
 
     @staticmethod
     def _sensor_groups() -> List[SensorGroup]:
-        """The groups in use, alphabetical"""
-        return sorted({SensorGroup(_sensor_meta(f)["group"]) for f in _SENSOR_FIELDS},
+        """The groups with at least one visible sensor, alphabetical"""
+        return sorted({SensorGroup(_sensor_meta(f)["group"]) for f in _VISIBLE_SENSOR_FIELDS},
                       key=lambda g: g.value)
 
     def _build_general_group(self, category_model: BaseModel) -> HeaderCollapsibleGroup:
@@ -208,6 +214,9 @@ class LapAnalyzerPage(QWidget):
         presets_label.setFont(QFont("Roboto", 10))
         row.addWidget(presets_label)
         for preset in SensorPreset:
+            # A preset made only of hidden sensors would be a button that does nothing
+            if not any(preset.value in _sensor_meta(f)["presets"] for f in _VISIBLE_SENSOR_FIELDS):
+                continue
             button = QPushButton(preset.value)
             button.clicked.connect(lambda _checked=False, p=preset: self._apply_preset(p))
             row.addWidget(button)
@@ -273,7 +282,7 @@ class LapAnalyzerPage(QWidget):
         return scroll
 
     def _build_sensor_group(self, group: SensorGroup) -> HeaderCollapsibleGroup:
-        fields = sorted((f for f in _SENSOR_FIELDS if _sensor_meta(f)["group"] == group.value),
+        fields = sorted((f for f in _VISIBLE_SENSOR_FIELDS if _sensor_meta(f)["group"] == group.value),
                         key=lambda f: _SENSOR_FIELDS[f].description)
         restricted = [bool(_sensor_meta(f)["restricted"]) for f in fields]
 
