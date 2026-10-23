@@ -81,6 +81,19 @@ class CaptureSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    unified_save_format: bool = Field(
+        default=True,
+        description="Save session data inside the .pngt container",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True,
+                "ext_info": [
+                    "Write the session JSON into the lap recording (.pngt) file instead of as a separate file."
+                ]
+            }
+        }
+    )
     session_dir: str = Field(
         default="data",
         description="Directory where saved session JSON files are stored",
