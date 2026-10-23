@@ -57,7 +57,7 @@ SENSOR_GROUP_INFO: Dict[SensorGroup, str] = {
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def sensor_field(*, label: str, group: SensorGroup, restricted: bool,
-                 presets: Set[SensorPreset], info: Optional[str] = None):
+                 presets: Set[SensorPreset], info: Optional[str] = None, visible: bool = True) -> Any:
     """
     Create a recordable sensor toggle. Defaults on iff it is in the Default preset.
     """
@@ -68,7 +68,7 @@ def sensor_field(*, label: str, group: SensorGroup, restricted: bool,
         json_schema_extra={
             "ui": {
                 "type": "check_box",
-                "visible": True,
+                "visible": visible,
             },
             "sensor": {
                 "info": info,
@@ -144,19 +144,19 @@ class LapAnalyzerSensorSettings(ConfigDiffMixin, BaseModel):
     motion_pos_x: bool = sensor_field(
         label="Position X", group=SensorGroup.MOTION, restricted=False,
         presets={SensorPreset.POSITION, SensorPreset.ALL},
-        info="World space X position in metres")
+        info="World space X position in metres", visible=False)
     motion_pos_y: bool = sensor_field(
         label="Position Y", group=SensorGroup.MOTION, restricted=False,
         presets={SensorPreset.POSITION, SensorPreset.ALL},
-        info="World space Y position in metres")
+        info="World space Y position in metres", visible=False)
     motion_pos_z: bool = sensor_field(
         label="Position Z", group=SensorGroup.MOTION, restricted=False,
         presets={SensorPreset.POSITION, SensorPreset.ALL},
-        info="World space Z position in metres")
+        info="World space Z position in metres", visible=False)
     motion_yaw: bool = sensor_field(
         label="Yaw", group=SensorGroup.MOTION, restricted=False,
         presets={SensorPreset.POSITION, SensorPreset.ALL},
-        info="Yaw angle in radians")
+        info="Yaw angle in radians", visible=False)
 
 class LapAnalyzerSettings(ConfigDiffMixin, BaseModel):
 
