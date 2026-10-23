@@ -114,6 +114,7 @@ def _read_sensor_manifest(zf: zipfile.ZipFile, path) -> list[SensorConfig]:
                 unit=meta["unit"],
                 type=SensorType(meta["type"]),
                 range=tuple(meta["range"]) if "range" in meta else None,
+                should_display=meta.get("should_display", True),
             )
             for key, meta in raw.get("sensors", {}).items()
         ]

@@ -116,7 +116,8 @@ def _default_good_flags(laps: list[CompletedLap]) -> list[bool]:
 
 
 def _sensor_manifest_entry(sensor: SensorConfig) -> dict:
-    entry = {"label": sensor.label, "unit": sensor.unit, "type": sensor.type.value}
+    entry = {"label": sensor.label, "unit": sensor.unit, "type": sensor.type.value,
+             "should_display": sensor.should_display}
     if sensor.range is not None:
         entry["range"] = list(sensor.range)
     return entry

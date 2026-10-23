@@ -17,7 +17,7 @@ A `.pngt` file is a ZIP archive:
 
 ```
 header.json                      # {"format": "pngt", "version": 1} -- pure format identity
-manifest.json                    # sensor registry: {"sensors": {key: {label, unit, type}, ...}}
+manifest.json                    # sensor registry: {"sensors": {key: {label, unit, type, should_display, range?}, ...}}
 session.json                     # session facts: track, timestamp, laps count/best, etc.
 drivers.json                     # all drivers, including Restricted ones
 drivers/{driver_index:02d}/
@@ -118,6 +118,9 @@ export = recorder.export()  # -> DriverExportData
   to its own `manifest.json` entry, distinct from `session.json`: `write_session(dest,
   session, sensors, drivers, driver_data)`, and `read_session()` returns them as
   `ParsedSession.sensors`.
+- **`should_display=False` hides a sensor from viewers, not from the file.** It is always
+  written to the manifest, defaults to true when absent on read, and the data is still
+  recorded; the lap analyzer UI and web API just leave it out of the sensor list.
 - **Input types carry only what the caller fills; `write_session()` derives and
   persists the rest.** `SessionMetadata` has no `laps_count`/`session_best`,
   `DriverRecord` has no `is_telemetry_public`, `LapMetadata` has no `num_points`/

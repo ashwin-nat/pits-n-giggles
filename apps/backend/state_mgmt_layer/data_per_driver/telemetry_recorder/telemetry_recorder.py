@@ -204,21 +204,24 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             key="motion.position.x",
             label=_label("motion_pos_x"),
             unit="m",
-            type=SensorType.CONTINUOUS),
+            type=SensorType.CONTINUOUS,
+            should_display=False),
         get=attrgetter("motion_pos_x")),
     "motion_pos_y": RecordedSensor(
         config=SensorConfig(
             key="motion.position.y",
             label=_label("motion_pos_y"),
             unit="m",
-            type=SensorType.CONTINUOUS),
+            type=SensorType.CONTINUOUS,
+            should_display=False),
         get=attrgetter("motion_pos_y")),
     "motion_pos_z": RecordedSensor(
         config=SensorConfig(
             key="motion.position.z",
             label=_label("motion_pos_z"),
             unit="m",
-            type=SensorType.CONTINUOUS),
+            type=SensorType.CONTINUOUS,
+            should_display=False),
         get=attrgetter("motion_pos_z")),
     "motion_yaw": RecordedSensor(
         config=SensorConfig(
@@ -226,6 +229,7 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             label=_label("motion_yaw"),
             unit="rad",
             type=SensorType.CONTINUOUS,
+            should_display=False,
             range=(-math.pi, math.pi)),
         get=attrgetter("motion_yaw")),
 }

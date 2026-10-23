@@ -33,6 +33,7 @@ Ask the user (use `AskUserQuestion` for the enumerable ones, plain questions for
 | Info | Notes |
 |---|---|
 | Range | `(min, max)` with min < max; a viewer axis hint, not enforced |
+| Hidden | `SensorConfig(should_display=False)`: recorded and stored, but left out of the lap analyzer UI (for data used by other features, e.g. world position). Default is shown, so omit it unless asked |
 | Tooltip | `sensor_field(info=...)` |
 | Source | packet + field to read it from, plus any transform (e.g. `m_throttle * 100`). Ask whether to hook it up now. If not, the snapshot field stays `None` and the sensor records NaN until wired |
 
@@ -88,7 +89,7 @@ Use `Optional[int]` for discrete/ordered values (store `.value` of an enum, neve
         get=attrgetter("oil_temp")),
 ```
 
-Always use `_label(field)`; never hardcode the label.
+Always use `_label(field)`; never hardcode the label. Pass `should_display=False` only for a sensor the user wants hidden from the UI.
 
 ### 3d. (Optional) Wire the source — `CarData.addTelemetrySnapshot` in `apps/backend/state_mgmt_layer/data_per_driver/data_per_driver.py`
 

@@ -48,6 +48,7 @@ class SensorConfig:
     unit: str
     type: SensorType
     range: Optional[tuple[float, float]] = None
+    should_display: Optional[bool] = True
 
     def __post_init__(self) -> None:
         if not isinstance(self.type, SensorType):

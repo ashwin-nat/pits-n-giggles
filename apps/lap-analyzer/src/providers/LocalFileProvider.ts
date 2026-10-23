@@ -20,7 +20,7 @@ interface HeaderJson {
 }
 
 interface ManifestJson {
-  sensors?: Record<string, { label?: string; unit?: string; type?: string; range?: [number, number] }>;
+  sensors?: Record<string, { label?: string; unit?: string; type?: string; range?: [number, number]; should_display?: boolean }>;
 }
 
 interface SessionJson {
@@ -128,12 +128,14 @@ export class LocalFileProvider implements LapAnalyzerProvider {
     if (manifest === undefined || manifest.sensors === undefined) {
       throw new InvalidManifestError(this.label, "manifest.json is missing or has no 'sensors' key");
     }
-    const sensorManifest: SensorDefinition[] = Object.entries(manifest.sensors).map(([key, def]) => {
-      if (def.label === undefined || def.unit === undefined || (def.type !== "continuous" && def.type !== "discrete")) {
-        throw new InvalidManifestError(this.label, `sensor '${key}' is missing required fields or has an invalid type`);
-      }
-      return { key, label: def.label, unit: def.unit, type: def.type, range: def.range };
-    });
+    const sensorManifest: SensorDefinition[] = Object.entries(manifest.sensors)
+      .filter(([, def]) => def.should_display !== false)
+      .map(([key, def]) => {
+        if (def.label === undefined || def.unit === undefined || (def.type !== "continuous" && def.type !== "discrete")) {
+          throw new InvalidManifestError(this.label, `sensor '${key}' is missing required fields or has an invalid type`);
+        }
+        return { key, label: def.label, unit: def.unit, type: def.type, range: def.range };
+      });
 
     const sessionJson = readJsonEntry<SessionJson>(entries, "session.json");
     if (sessionJson === undefined) {

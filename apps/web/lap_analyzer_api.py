@@ -112,7 +112,7 @@ def session_to_api(entry: PngtSessionEntry) -> Dict[str, Any]:
         'formula': session.formula,
         'gameVersion': session.game_version,
         'sessionBest': session_best,
-        'sensorManifest': [_sensor_to_api(s) for s in entry.sensors],
+        'sensorManifest': [_sensor_to_api(s) for s in entry.sensors if s.should_display],
     }
 
 
