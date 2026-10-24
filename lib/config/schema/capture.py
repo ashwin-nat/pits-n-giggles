@@ -82,14 +82,16 @@ class CaptureSettings(ConfigDiffMixin, BaseModel):
         }
     )
     unified_save_format: bool = Field(
-        default=True,
+        default=False,
         description="Save session data inside the .pngt container",
         json_schema_extra={
             "ui": {
                 "type" : "check_box",
                 "visible": True,
                 "ext_info": [
-                    "Write the session JSON into the lap recording (.pngt) file instead of as a separate file."
+                    "Write the session JSON into the lap recording (.pngt) file instead of as a separate file.",
+                    "Since all data is stored in a single file, it is easier to share and to process and correlate data.\n"
+                        "Also, will occupy less space since pngt files are compressed."
                 ]
             }
         }

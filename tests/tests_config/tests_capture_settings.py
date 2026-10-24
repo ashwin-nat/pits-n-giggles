@@ -146,7 +146,7 @@ class TestCaptureSettings(TestF1ConfigBase):
             CaptureSettings(just_in_case_autosave="notaboolean")
 
     def test_default_unified_save_format(self):
-        self.assertTrue(CaptureSettings().unified_save_format)
+        self.assertFalse(CaptureSettings().unified_save_format)
 
     def test_boolean_validation_unified_save_format(self):
         self.assertTrue(CaptureSettings(unified_save_format=True).unified_save_format)
