@@ -19,6 +19,7 @@
         "post_tt_data_autosave": true,
         "save_race_ctrl_msg": true,
         "just_in_case_autosave": true,
+        "unified_save_format": true,
         "session_dir": "data"
     },
     "Display": {
@@ -360,8 +361,6 @@
     },
     "LapAnalyzer": {
         "enable": true,
-        "record_other_cars": true,
-        "record_in_spectator_mode": true,
         "record_in_race": true,
         "record_in_quali": true,
         "record_in_fp": true,
@@ -379,7 +378,11 @@
             "tyre_wear_fl": true,
             "tyre_wear_fr": true,
             "tyre_wear_rl": true,
-            "tyre_wear_rr": true
+            "tyre_wear_rr": true,
+            "motion_pos_x": true,
+            "motion_pos_y": true,
+            "motion_pos_z": true,
+            "motion_yaw": true
         }
     },
     "SaveViewer": {
