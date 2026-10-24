@@ -533,10 +533,12 @@ class F1TelemetryHandler:
             # log, and no file. JSON and pngt are independent decisions and independent
             # tasks -- one being off/slow/failing must not affect the other.
             if self._shouldSaveJsonData():
-                self.m_json_save_task = asyncio.create_task(
-                    self._autoSaveJsonTask(final_json, packet.m_header.m_sessionUID),
-                    name="Auto-save Session Data (JSON)",
-                )
+                # Named now: the next session's UID change can clear the state before the task runs
+                if json_file_name := self.prepareJsonWrite(final_json):
+                    self.m_json_save_task = asyncio.create_task(
+                        self._autoSaveJsonTask(final_json, json_file_name, packet.m_header.m_sessionUID),
+                        name="Auto-save Session Data (JSON)",
+                    )
             if self.shouldSavePngtData():
                 pngt_write = self.preparePngtWrite()
                 if pngt_write is not None:
@@ -870,15 +872,16 @@ class F1TelemetryHandler:
         self.clearAllDataStructures(f"Session {uid} restarted")
         self.m_last_lap_data_frame = frame
 
-    async def _autoSaveJsonTask(self, final_json: Dict[str, Any], session_uid: int) -> None:
+    async def _autoSaveJsonTask(self, final_json: Dict[str, Any], file_name: str, session_uid: int) -> None:
         """Writes the auto-save JSON for one session. Run as m_json_save_task from the
         ingress task -- see handleFinalClassification().
 
         Args:
             final_json (Dict): Dictionary containing JSON data after final classification
+            file_name (str): File name from prepareJsonWrite()
             session_uid (int): Session UID for which the final classification was received.
         """
-        await self.postGameDumpToFile(final_json, session_uid=session_uid)
+        await self.postGameDumpToFile(final_json, file_name, session_uid=session_uid)
         self.m_json_save_task = None
 
     async def _autoSavePngtTask(self, dest_path: Path, args: tuple, session_uid: int) -> None:
@@ -894,18 +897,20 @@ class F1TelemetryHandler:
         await self.postGameDumpToPngtFile(dest_path, args, session_uid=session_uid)
         self.m_pngt_save_task = None
 
-    async def postGameDumpToFile(self, final_json: Dict[str, Any], session_uid: int) -> None:
-        """
-        Write the contents of final_json and player recorded events to a file.
+    def prepareJsonWrite(self, final_json: Dict[str, Any]) -> Optional[str]:
+        """Fills final_json's debug block and picks its file name, from the session as it is now.
+        Synchronous, and must run before any await in the caller, the same as preparePngtWrite().
 
         Arguments:
             final_json (Dict): Dictionary containing JSON data after final classification
-            session_uid (int): Session UID for which the final classification was received.
+
+        Returns:
+            Optional[str]: The file name, or None if the session has no event info to name it by
         """
 
         event_str = self.m_session_state_ref.getEventInfoStr()
         if not event_str:
-            return
+            return None
 
         now = datetime.now().astimezone()
         # Save the JSON data
@@ -924,13 +929,24 @@ class F1TelemetryHandler:
             "packet-count": self.m_session_state_ref.m_pkt_count,
             "file-name": final_json_file_name,
         })
+        return final_json_file_name
+
+    async def postGameDumpToFile(self, final_json: Dict[str, Any], file_name: str, session_uid: int) -> None:
+        """
+        Write the contents of final_json and player recorded events to a file.
+
+        Arguments:
+            final_json (Dict): JSON data after final classification, already filled by prepareJsonWrite()
+            file_name (str): File name from prepareJsonWrite()
+            session_uid (int): Session UID for which the final classification was received.
+        """
         try:
-            await save_json_to_file(final_json, final_json_file_name)
-            self.m_logger.info("Wrote race info to %s. Num pkts %d. Session UID %d", final_json_file_name,
-                               self.m_session_state_ref.m_pkt_count, session_uid)
+            await save_json_to_file(final_json, file_name)
+            self.m_logger.info("Wrote race info to %s. Num pkts %d. Session UID %d", file_name,
+                               final_json["debug"]["packet-count"], session_uid)
         except Exception: # pylint: disable=broad-exception-caught
             # No need to crash the app just because write failed
-            self.m_logger.exception("Failed to write race info to %s", final_json_file_name)
+            self.m_logger.exception("Failed to write race info to %s [UID: %d]", file_name, session_uid)
 
     def preparePngtWrite(self) -> Optional[Tuple[Path, tuple]]:
         """Captures everything postGameDumpToPngtFile() needs from session_state.
