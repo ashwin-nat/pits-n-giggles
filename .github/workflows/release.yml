@@ -258,9 +258,7 @@ jobs:
         with:
           path: release-assets
           merge-multiple: true   # flattens subdirs → single directory
-          pattern: |
-            *
-            !smoke-report-*
+          pattern: pits_n_giggles_*
 
       - name: List downloaded files
         run: ls -lh release-assets/
