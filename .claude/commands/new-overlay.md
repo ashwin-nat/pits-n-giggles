@@ -3,421 +3,53 @@ description: Scaffold a new HUD overlay widget in apps/hud/ui/overlays/ with ful
 allowed-tools: Read, Glob, Grep, Edit, Write
 ---
 
-Scaffold a new HUD overlay and wire it end-to-end: config knobs, UDP action codes, backend dispatch, HUD socketio handlers, and the overlay class itself.
+Scaffold a new HUD overlay and wire it end-to-end. Read each target file before editing it, and mirror the nearest existing overlay rather than the snippets here, which only name the touch points.
 
 ## Overlay types
 
-There are two overlay types. Ask the user which they want before proceeding.
+Ask the user which type they want unless it is obvious (e.g. "same as the pit rejoin overlay" means A).
 
-**A. MFD page overlay** — an `MfdPageBase` subclass that lives inside `apps/hud/ui/overlays/mfd/pages/`. It appears in the MFD carousel *and* can optionally run as a standalone always-on-top window (via `StandalonePageHost`). Always event-driven (no `render_frame`). Use this for data pages (lap times, fuel, tyre wear, etc.).
+- **A. MFD page** - `MfdPageBase` subclass in `apps/hud/ui/overlays/mfd/pages/<name>/`. Event-driven only (no `render_frame`). Appears in the MFD carousel and can also run as a standalone window via `StandalonePageHost`. Use for data pages and tables.
+- **B. Generic standalone overlay** - `BaseOverlay` subclass in `apps/hud/ui/overlays/<name>/`. Use for everything else (track radar, input telemetry, high-frequency `render_frame` overlays).
 
-**B. Generic standalone overlay** — a `BaseOverlay` subclass in `apps/hud/ui/overlays/<name>/`. Use for everything else (track radar, input telemetry, etc.).
+Inputs: snake_case name, PascalCase class name, display title, and the events it listens to (B also: event-driven vs high-frequency, extra UDP interactions). Ask if name or class are missing.
 
----
+## Config fields
 
-## Type A — MFD page overlay
+**Use the `/add-config-field` skill** for every config field (plan as one group, one approval; it covers schema, `on_settings_change` wiring and tests). Do not restate its steps here. The fields this skill needs:
 
-### Inputs required
+- **A:** `show_<name>` via `overlay_enable_field(..., mfd_friendly=True, preview_image="assets/overlay-previews/<name-kebab>.png")` and `<name>_show_title` (check_box, same `group`) - both restart-required (hud_mgr). Optional `<name>_interact_udp_action_code` via `udp_action_field` (live, backend settings_change).
+- **B:** `show_<name>` via `overlay_enable_field` (restart-required) and `<name>_toggle_udp_action_code` via `udp_action_field` (live), plus one `udp_action_field` per extra interaction.
 
-- **Page name** in snake_case (e.g. `gap_to_leader`)
-- **Class name** in PascalCase (e.g. `GapToLeaderPage`)
-- **Display title** — string shown in the MFD title bar (e.g. `"GAP TO LEADER"`)
-- **Event types** it listens to (e.g. `"race_table_update"`, `"stream_overlay_update"`) — MFD pages are always event-driven; do not use `render_frame`
-- **Config kwargs** if the page has config-driven behaviour (e.g. a display mode enum) — optional
-- **Extra MFD interactions** beyond the standard toggle (e.g. cycle through views) — optional
+Put them under the matching `# ====` section of `lib/config/schema/hud/hud.py`. Pair every `show_*` / `*_show_title` with an entry in the `settings_requiring_restart` HUD list in `apps/launcher/subsystems/hud_mgr/hud_mgr.py`; UDP codes go in the `udp_action_codes_diff` block in `apps/launcher/subsystems/backend_mgr/settings_change.py`.
 
-If page name or class name are missing, ask before proceeding.
+## Steps common to both types
 
----
+1. **`OverlayId`** - `lib/config/schema/hud/layout.py`: add the enum member (value is the id string, e.g. `"<name>_standalone"` for pages), its `display_name` mapping entry, and a non-overlapping `DEFAULT_OVERLAY_LAYOUT` position. Standalone MFD pages are 400x220 at scale 1; existing pages fill the rows at y=10, y=840 and y=1070, so pick a free slot.
+2. **`enabled_overlays_by_id()`** - `lib/config/schema/hud/hud.py`: add `OverlayId.X: self.show_x` (explicit field, no `getattr`).
+3. **Preview image** - always create `assets/overlay-previews/<name-kebab>.png` by copying an existing preview and renaming it (e.g. `cp pit-rejoin.png rivals-status.png`). It is a placeholder so the settings UI resolves the path; **tell the user explicitly** that it is a copy they must overwrite with a real screenshot.
+4. **`scripts/png.spec`** - add the `qml_file(...)` entry next to the sibling overlays (pages: `qml_file("apps/hud/ui/overlays/mfd/pages/<name>", "<name>_page.qml")`; generic: `qml_file("apps/hud/ui/overlays/<name>", "<name>.qml")`). Do this yourself; the smoke test fails if the QML is missing from the spec.
+5. **qmllint** - `poetry run python scripts/qmllint.py <new .qml>` must report 0 warnings (CI uses `--max-warnings 0`). Typical fixes: `pragma ComponentBehavior: Bound`, delegates with their own `id` and `required property`, qualify accesses with the root `id`.
+6. **Verify** - `poetry run pylint --rcfile scripts/.pylintrc apps lib` (whole tree, not a sub-path, or relative-import errors appear that CI does not see).
 
-### Steps (Type A)
+## Type A specifics
 
-Work through these in order. Read each target file before editing it.
+- `MfdPageId` member in `lib/config/schema/hud/mfd.py` plus a `DEFAULT_PAGES` entry (use `enabled=False`, next free `position`).
+- Page class `apps/hud/ui/overlays/mfd/pages/<name>/<name>_page.py` (MIT header) extending `MfdPageBase` with `OVERLAY_ID`, `KEY`, `PAGE_QML_FILE`, and a `standalone_show_title(cls, settings)` classmethod returning `settings.HUD.<name>_show_title`. Register handlers in `@final setup_page()` via `@self.on_event(...)` and push data with `set_qml_property`. Optional `on_page_activated()`. If `__init__` takes settings-derived kwargs, set them before `super().__init__` and override `from_settings`.
+- QML `<name>_page.qml`: root must declare `property string title: "<TITLE>"` (both title bars read it), sized `parent ? parent.width : 400` / `220`. For tables, copy `pit_rejoin_page.qml` (icon maps, row delegate) and `pit_rejoin_page.py` (`get_ref_row`, `get_relevant_race_table_rows`).
+- Export from `pages/__init__.py` (import + `__all__`), add to `MfdOverlay.PAGES` in `mfd/mfd.py`, and add to `OverlaysMgr.STANDALONE_PAGE_CLASSES` in `apps/hud/ui/infra/overlays_mgr.py` (the manager builds the host from `from_settings` and `standalone_show_title`; there is no per-page register call).
+- Interact UDP code (only if requested): follow the "Extra interactions" section below, wired to the existing `mfd_interaction`-style path.
 
-#### A1. Add `MfdPageId` value — `lib/config/schema/hud/mfd.py`
+## Type B specifics
 
-Add an entry to the `MfdPageId` enum:
-```python
-GAP_TO_LEADER = "gap_to_leader"
-```
+- Overlay `apps/hud/ui/overlays/<name>/<name>.py` extending `BaseOverlay` with `QML_FILE`, `OVERLAY_ID = OverlayId.X`; high-frequency: `self.subscribe_hf(<Type>)` + `render_frame()`; event-driven: `@self.on_event("<topic>")` in `__init__`. QML `<name>.qml` copied from `overlays/template_overlay/template_overlay.qml`. Export it from `apps/hud/ui/overlays/__init__.py`.
+- Add the class to `OverlaysMgr.OVERLAY_CLASSES` in `overlays_mgr.py`; the manager instantiates it when its `OverlayId` is enabled.
+- Toggle UDP code: in `apps/backend/telemetry_layer/telemetry_handler.py` add a `UdpActionCodes` field, its `_MAP` entry (config name -> field), pass it where `UdpActionCodes(...)` is built, and add a `_handle_udp_action(..., lambda: self._processToggleHud(OverlayId.X))` call in `handleButtonStatus`. The HUD side (`hud-toggle-notification`) is already generic.
 
-#### A2. Add `OverlayId` value — `lib/config/schema/hud/layout.py`
+## Extra interactions (beyond toggle)
 
-Add an entry to the `OverlayId` enum (value is the id string, not the display string):
-```python
-GAP_TO_LEADER = "gap_to_leader_standalone"
-```
+Add a `_process<Action>` method to `F1TelemetryHandler` calling `self._notifyHud("hud-<action>-notification", {...})` (the literal string is both the dealer topic and message type; no backend mapping table exists), and a matching `@dealer.route("hud-<action>-notification")` handler in `apps/hud/ipc/dealer.py` with the `(data, sender)` signature that calls into `overlays_mgr`.
 
-Add a matching entry to the `OverlayId.display_name` property's mapping (this is the human-readable label shown in UI menus like the per-overlay reset menu):
-```python
-OverlayId.GAP_TO_LEADER: "Gap To Leader",
-```
-
-Then add a default position to `DEFAULT_OVERLAY_LAYOUT`. All standalone MFD pages are 400×220 at scale=1. Spread it so it does not overlap existing entries (existing pages occupy the top row y=10 and bottom row y=840 across x=10/420/830/1240 — pick a free slot or the next row).
+## Report
 
-```python
-OverlayId.GAP_TO_LEADER: OverlayPosition(x=<x>, y=<y>),
-```
-
-#### A3. Add config fields — `lib/config/schema/hud/hud.py`
-
-> **Use the `/add-config-field` skill for this step.**
-
-Under the `# ============== MFD PAGES (STANDALONE) ==============` section, add a group of fields together:
-
-**a) Enable knob** (catastrophic — requires HUD restart):
-```python
-show_gap_to_leader: bool = overlay_enable_field(
-    description="Enable gap to leader standalone overlay",
-    group="Gap To Leader",
-    default=False,
-    mfd_friendly=True,
-    preview_image="assets/overlay-previews/gap-to-leader.png",
-)
-```
-
-**b) Title bar toggle** (catastrophic):
-```python
-gap_to_leader_show_title: bool = Field(
-    default=True,
-    description="Show title bar in gap to leader overlay",
-    json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Gap To Leader"}},
-)
-```
-
-**c) Any page-specific config fields** (e.g. display mode enum) — same group.
-
-**d) MFD interact UDP action code** if the page needs an interact button (non-catastrophic):
-```python
-gap_to_leader_interact_udp_action_code: Optional[int] = udp_action_field(
-    description="Interact with gap to leader overlay UDP action code", group="Gap To Leader"
-)
-```
-
-**e) Wire the enable flag into `enabled_overlays_by_id()`** (same file). Add one line to the explicit mapping in `HudSettings.enabled_overlays_by_id()` so the overlay appears in the per-overlay reset menu when enabled. Map the `OverlayId` member to its `show_*` field directly — do **not** use `getattr`/dynamic attribute lookup:
-```python
-OverlayId.GAP_TO_LEADER: self.show_gap_to_leader,
-```
-
-#### A4. Mark enable knob as catastrophic — `apps/launcher/subsystems/hud_mgr/hud_mgr.py`
-
-In `on_settings_change`, inside the `settings_requiring_restart` diff block under `"HUD"`, add:
-```python
-"show_gap_to_leader",
-"gap_to_leader_show_title",
-```
-
-#### A5. Wire UDP interact code (if applicable) — `apps/launcher/subsystems/backend_mgr.py`
-
-In `on_settings_change`, inside the `udp_action_codes_diff` block under `"HUD"`, add:
-```python
-"gap_to_leader_interact_udp_action_code",
-```
-
-#### A6. Register UDP interact in backend (if applicable)
-
-Follow the same two-file pattern as the generic overlay steps 5–8 below for:
-- `apps/backend/telemetry_layer/telemetry_handler.py` — `UdpActionCodes` dataclass + `_MAP` + `handleButtonStatus` + a new `_process<Action>`/`_notifyHud(...)` call
-- `apps/hud/ipc/dealer.py` — add `@dealer.route(...)` handler
-
-The backend needs no separate forwarding task: `F1TelemetryHandler._notifyHud` fires the dealer
-call directly (via the subsystem's `fire_and_forget`), using the literal topic string as both the
-dealer topic and the "message-type" field.
-
-#### A7. Create the page class — `apps/hud/ui/overlays/mfd/pages/gap_to_leader/`
-
-Create two files:
-
-**`gap_to_leader_page.py`**:
-- MIT licence header
-- Extends `MfdPageBase`
-- Class attributes:
-  ```python
-  OVERLAY_ID = OverlayId.GAP_TO_LEADER
-  KEY = MfdPageId.GAP_TO_LEADER
-  PAGE_QML_FILE: Path = Path(__file__).parent / "gap_to_leader_page.qml"
-  ```
-- If config kwargs: set them as instance attributes **before** calling `super().__init__`,
-  because `super().__init__` calls `setup_page()` which uses them.
-- `@final def setup_page(self)` — initialise per-instance state (caches, counters) and
-  register all event handlers via `@self.on_event("<event_type>")`. Handlers call
-  `self.set_qml_property(name, value)` to push data to QML. Do **not** implement
-  `render_frame` — MFD pages are event-driven only.
-- `@final def on_page_activated(self)` — optional; called after `setup_page()` when the page
-  item is live. Use to invalidate caches or push initial QML property values.
-
-Pattern:
-```python
-class GapToLeaderPage(MfdPageBase):
-    OVERLAY_ID = OverlayId.GAP_TO_LEADER
-    KEY = MfdPageId.GAP_TO_LEADER
-    PAGE_QML_FILE: Path = Path(__file__).parent / "gap_to_leader_page.qml"
-
-    def __init__(self, logger, some_kwarg: SomeType):
-        self._some_kwarg = some_kwarg   # set BEFORE super().__init__
-        super().__init__(logger)
-
-    @final
-    def setup_page(self):
-        self._last_data = None
-
-        @self.on_event("race_table_update")
-        def _handle(data: Dict[str, Any]) -> None:
-            ...
-            self.set_qml_property("someProperty", value)
-
-    @final
-    def on_page_activated(self):
-        self._last_data = None  # invalidate cache so first real event re-renders
-```
-
-**`gap_to_leader_page.qml`**:
-- Root item **must** declare `property string title: "GAP TO LEADER"`. The standalone wrapper reads this property to populate its title bar, and `mfd.qml` reads it for the MFD title bar. Without it both title bars are blank.
-- `width: parent ? parent.width : 400` and `height: parent ? parent.height : 220`
-- Declare all QML properties that Python will set via `set_qml_property`
-- Copy structure from the nearest existing page QML
-
-Run `poetry run python scripts/qmllint.py apps/hud/ui/overlays/mfd/pages/gap_to_leader/gap_to_leader_page.qml` and fix every warning before moving on — the CI qmllint job runs with `--max-warnings 0`, so any warning fails the build. Common fixes: add `pragma ComponentBehavior: Bound` and qualify property accesses with the root `id` when the file has Repeater/Loader delegates; give delegates their own `id` with `required property int index` / `required property var modelData` instead of relying on the bare `index`/`modelData` context properties.
-
-#### A8. Export from pages `__init__.py` — `apps/hud/ui/overlays/mfd/pages/__init__.py`
-
-Add the import and `__all__` entry:
-```python
-from .gap_to_leader import GapToLeaderPage
-```
-```python
-"GapToLeaderPage",
-```
-
-#### A9. Register in MFD overlay — `apps/hud/ui/overlays/mfd/mfd.py`
-
-**a)** Import the class and add it to the `PAGES` list:
-```python
-PAGES = [
-    ...
-    GapToLeaderPage,
-]
-```
-`PAGE_CLS_BY_KEY` is built automatically from `PAGES`.
-
-**b)** If the page's `__init__` takes settings-derived kwargs, override `from_settings`
-on the page class itself (`apps/hud/ui/overlays/mfd/pages/gap_to_leader/gap_to_leader_page.py`)
-— this is the single source of truth for "which settings does this page need",
-used by both `MfdOverlay` and `StandalonePageHost`:
-```python
-@classmethod
-def from_settings(cls, settings: PngSettings, logger: logging.Logger) -> "GapToLeaderPage":
-    return cls(logger, some_kwarg=settings.HUD.some_config_field)
-```
-If the page's `__init__` takes only `logger`, skip this — the base class default
-(`cls(logger)`) already covers it.
-
-#### A10. Register as standalone in `OverlaysMgr` — `apps/hud/ui/infra/overlays_mgr.py`
-
-Import the class and add a `_register_page_host_if_enabled` call in the `# ---- MFD pages (standalone) ----` block:
-```python
-self._register_page_host_if_enabled(
-    enabled=settings.HUD.show_gap_to_leader,
-    page_cls=GapToLeaderPage,
-    overlay_cfg=settings.HUD.layout[OverlayId.GAP_TO_LEADER],
-    opacity=settings.HUD.overlays_opacity,
-    windowed_overlay=settings.HUD.use_windowed_overlays,
-    scale_factor=settings.HUD.layout[OverlayId.GAP_TO_LEADER].scale_factor,
-    show_title_bar=settings.HUD.gap_to_leader_show_title,
-    settings=settings,
-)
-```
-
-#### A11. PyInstaller spec — `scripts/png.spec`
-
-Do not edit this file. Tell the user to add the following entry to the `datas` list manually:
-```
-('apps/hud/ui/overlays/mfd/pages/gap_to_leader/gap_to_leader_page.qml',
- 'apps/hud/ui/overlays/mfd/pages/gap_to_leader')
-```
-
----
-
-## Type B — Generic standalone overlay
-
-### Inputs required
-
-- **Overlay name** in snake_case (e.g. `fuel_monitor`)
-- **Class name** in PascalCase (e.g. `FuelMonitorOverlay`)
-- **Data style**: "high-frequency" (polled via `render_frame`) or "event-driven" (push via `@on_event`)
-- **Event/topic name** if event-driven (e.g. `"fuel-update"`)
-- **Extra UDP interactions** beyond the mandatory toggle (e.g. "cycle page", "reset") — optional
-
-If overlay name or class name are missing, ask before proceeding.
-
----
-
-### Steps (Type B)
-
-Work through these in order. Read each target file before editing it.
-
-#### B1. Config knobs — `lib/config/schema/hud/hud.py`
-
-> **Use the `/add-config-field` skill for this step.** Present the full set of config knobs below as a single group plan for user approval, then implement and test them all together. Do not do them one by one.
-
-Read the file first to understand field ordering and helper functions (`udp_action_field`, `overlay_enable_field`, `ui_scale_field` from `lib/config/schema/utils.py`).
-
-The group of fields to plan and add together, under a comment `# ============== <OVERLAY NAME> OVERLAY ==============`:
-
-**a) Enable/disable knob** (catastrophic — requires HUD restart):
-```python
-show_<overlay_name>: bool = overlay_enable_field(description="Enable <Overlay Name> overlay", group="<Overlay Name>")
-```
-
-**b) Toggle UDP action code** (non-catastrophic — runtime update):
-```python
-<overlay_name>_toggle_udp_action_code: Optional[int] = udp_action_field(
-    description="Toggle <Overlay Name> overlay UDP action code", group="<Overlay Name>"
-)
-```
-
-**c) Any additional interaction UDP action codes** the user requested — one `udp_action_field` per interaction, same group. Include these in the same group plan.
-
-The overlay identity itself is an `OverlayId` enum member added in step B2 (not a standalone `*_OVERLAY_ID` constant).
-
-#### B2. Register overlay ID — `lib/config/schema/hud/layout.py`
-
-Read the file. Three edits:
-
-**a)** Add an entry to the `OverlayId` enum (value is the id string, not the display string). The overlay class's `OVERLAY_ID` class attribute should reference this member:
-```python
-FUEL_MONITOR = "fuel_monitor"
-```
-
-**b)** Add a matching entry to the `OverlayId.display_name` property's mapping (human-readable label for UI menus like the per-overlay reset menu):
-```python
-OverlayId.FUEL_MONITOR: "Fuel Monitor",
-```
-
-**c)** Add a default position to `DEFAULT_OVERLAY_LAYOUT` that does not overlap existing entries:
-```python
-OverlayId.FUEL_MONITOR: OverlayPosition(x=<x>, y=<y>),
-```
-
-Then, in `lib/config/schema/hud/hud.py`, add one line to the explicit mapping in `HudSettings.enabled_overlays_by_id()` so the overlay shows up in the per-overlay reset menu when enabled. Map the `OverlayId` member to its `show_*` field directly — do **not** use `getattr`/dynamic attribute lookup:
-```python
-OverlayId.FUEL_MONITOR: self.show_fuel_monitor,
-```
-
-#### B3. Wire enable knob as catastrophic — `apps/launcher/subsystems/hud_mgr/hud_mgr.py`
-
-Read `on_settings_change`. In the `settings_requiring_restart` diff block under `"HUD"`, add:
-```python
-"show_<overlay_name>",
-```
-
-#### B4. Wire UDP action codes as non-catastrophic — `apps/launcher/subsystems/backend_mgr.py`
-
-Read `on_settings_change`. In the `udp_action_codes_diff` block under `"HUD"`, add:
-```python
-"<overlay_name>_toggle_udp_action_code",
-```
-Plus any additional interaction action codes defined in step B1c.
-
-#### B5. Register UDP action codes in the backend — `apps/backend/telemetry_layer/telemetry_handler.py`
-
-Read the file. Three edits:
-
-**a)** In `UdpActionCodes` dataclass, add fields:
-```python
-toggle_<overlay_name>: Optional[int] = None
-# one per extra interaction
-```
-
-**b)** In `UdpActionCodes._MAP`, add entries mapping the config field name → dataclass field name:
-```python
-"<overlay_name>_toggle_udp_action_code": "toggle_<overlay_name>",
-```
-
-**c)** In `F1TelemetryHandler.__init__`, pass the new action codes when constructing `UdpActionCodes(...)`:
-```python
-toggle_<overlay_name>=settings.HUD.<overlay_name>_toggle_udp_action_code,
-```
-
-**d)** In `handleButtonStatus` (inside `registerCallbacks`), add `_handle_udp_action` calls:
-```python
-await self._handle_udp_action(
-    buttons,
-    self.m_udp_action_codes.toggle_<overlay_name>,
-    'Toggle <overlay_name> overlay',
-    lambda: self._processToggleHud('<overlay_name>')
-)
-```
-For extra interactions, add a new `_process<Action>` private method following the pattern of `_processCycleMFD` (step B6 below).
-
-#### B6. New notification (only if extra interactions beyond toggle)
-
-Add a new `_process<Action>` method to `F1TelemetryHandler` (in `telemetry_handler.py`)
-following the pattern of `_processCycleMFD`:
-```python
-async def _process<Action>(self) -> None:
-    """Send the <action> notification to the HUD manager."""
-    self._notifyHud("hud-<action>-notification", {...})
-```
-The dict passed to `_notifyHud` is the JSON payload - build it inline from a couple of
-primitive fields (see `_processToggleHud`'s `{"oid": oid}`). Only reach for a dedicated payload
-type (following the pattern of `TyreDeltaMessage` in `apps/backend/state_mgmt_layer/tyre_delta.py`)
-if the notification carries real structure worth naming and reusing elsewhere.
-
-#### B7. Backend dispatch — nothing extra to do
-
-`F1TelemetryHandler._notifyHud` fires **any** notification straight at the HUD via the
-subsystem's `fire_and_forget`, generically. The literal string you chose in B6
-(`"hud-<action>-notification"`) is both the router/dealer topic and the "message-type" field, so
-no per-event mapping is needed. (This step used to edit a `client_event_mappings` table in
-`telemetry_web_server.py`, back when the HUD was a socketio client. That file and that mechanism
-are gone.)
-
-#### B8. HUD dealer handlers — `apps/hud/ipc/dealer.py`
-
-Read the file. For each extra interaction (not toggle — that's already handled generically by `toggle_overlays_visibility`), register a route inside `register_dealer_routes`, following the pattern of `_cycle_mfd_notification`:
-```python
-@dealer.route("hud-<action>-notification")
-def _<action>_notification(_data: dict, _sender: str) -> None:
-    overlays_mgr.<action>()
-```
-Note the two-argument signature — router/dealer handlers receive `(data, sender)`. Take `data` (rather than `_data`) only if the payload carries something you need, as `_toggle_notification` does for `oid`.
-
-#### B9. Overlay class — `apps/hud/ui/overlays/<overlay_name>/`
-
-Create two files:
-
-**`<overlay_name>.py`**:
-- MIT licence header (copy from template)
-- Class extends `BaseOverlay`
-- `QML_FILE = Path(__file__).parent / "<overlay_name>.qml"`
-- `OVERLAY_ID = OverlayId.<OVERLAY_NAME>` (reference the enum member added in B2, e.g. `OverlayId.FUEL_MONITOR` — not a raw string)
-- For high-frequency: `self.subscribe_hf(<HFType>)` in `__init__`, implement `render_frame()`
-- For event-driven: register handlers in `__init__` via `@self.on_event("<topic>")`,
-  call `self.set_qml_property(name, value)` in handlers
-
-**`<overlay_name>.qml`**:
-- Minimal Rectangle root (`id: root`), transparent background, placeholder Text. Copy as much as possible from apps/hud/ui/overlays/template_overlay/template_overlay.qml
-
-Run `poetry run python scripts/qmllint.py apps/hud/ui/overlays/<overlay_name>/<overlay_name>.qml` and fix every warning before moving on — the CI qmllint job runs with `--max-warnings 0`, so any warning fails the build. Common fixes: add `pragma ComponentBehavior: Bound` and qualify property accesses with the root `id` when the file has Repeater/Loader delegates; give delegates their own `id` with `required property int index` / `required property var modelData` instead of relying on the bare `index`/`modelData` context properties.
-
-#### B10. Register overlay in OverlaysMgr — `apps/hud/ui/infra/overlays_mgr.py`
-
-Read the file. Import the new class and add it to the overlay instantiation block following the pattern of existing overlays. Gate on `config.HUD.show_<overlay_name>`.
-
-#### B11. PyInstaller spec — `scripts/png.spec`
-
-Do not edit this file. Tell the user to add the following entry to the `datas` list manually:
-```
-('apps/hud/ui/overlays/<overlay_name>/<overlay_name>.qml', 'apps/hud/ui/overlays/<overlay_name>')
-```
-
----
-
-## Summary
-
-After completing all steps, report:
-- Files created
-- Files modified, with a one-line description of what changed in each
-- Confirmation that `poetry run python scripts/qmllint.py <path to new .qml file>` passes with 0 warnings
-- Remind user to: add the overlay position to `png_config.json` under the HUD layout section, and update `scripts/png.spec`
+List files created and modified (one line each), confirm the qmllint and pylint results, and **state explicitly that the preview PNG is a renamed copy to be overwritten with a real screenshot**. Remind the user that a custom position in `png_config.json` is optional (defaults come from `DEFAULT_OVERLAY_LAYOUT`).

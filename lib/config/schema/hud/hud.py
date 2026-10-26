@@ -548,6 +548,18 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         default=False,
         preview_image="assets/overlay-previews/last-corner-stats.png",
     )
+    show_rivals_status: bool = overlay_enable_field(
+        description="Enable rivals status overlay",
+        group="Rivals Status",
+        default=False,
+        mfd_friendly=True,
+        preview_image="assets/overlay-previews/rivals-status.png",
+    )
+    rivals_status_show_title: bool = Field(
+        default=True,
+        description="Show title bar in rivals status overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Rivals Status"}},
+    )
 
     # ============== AUTO-HIDE IN MENU ==============
     auto_hide_in_menu: bool = Field(
@@ -690,6 +702,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             OverlayId.PACE_COMP:       self.show_pace_comp,
             OverlayId.TRAFFIC_MONITOR: self.show_traffic_monitor,
             OverlayId.LAST_CORNER_STATS: self.show_last_corner_stats,
+            OverlayId.RIVALS_STATUS:   self.show_rivals_status,
         }
         return [oid for oid, is_on in enabled.items() if is_on]
 

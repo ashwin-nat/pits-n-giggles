@@ -26,16 +26,16 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, final
 
-from apps.hud.common import (get_ers_mode_color, get_ref_row,
-                             get_relevant_race_table_rows,
+from apps.hud.common import (format_tyre_wear, get_ers_cell_fields,
+                             get_ref_row, get_relevant_race_table_rows,
+                             get_wing_dmg_cell_fields,
                              insert_relative_deltas_race, is_race_type_session,
                              is_tt_session)
 from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
 from lib.assets_loader import (load_team_logos_uri_dict,
                                load_tyre_icons_uri_dict)
 from lib.config import (OverlayId, OverlaysFuelEstimationMode,
-                        OverlaysSpeedUnit, PngSettings,
-                        TimingTowerTyreInfoMode)
+                        OverlaysSpeedUnit, PngSettings)
 from lib.f1_types import F1Utils
 from lib.logger import PngLogger
 from lib.table_differ import TableDiffer
@@ -268,7 +268,6 @@ class TimingTowerOverlay(BaseOverlay):
         driver_info: dict = row_data.get("driver-info", {})
         delta_info: dict = row_data.get("delta-info", {})
         tyre_info: dict = row_data.get("tyre-info", {})
-        ers_info: dict = row_data.get("ers-info", {})
         warns_pens_info: dict = row_data.get("warns-pens-info", {})
         dmg_info: dict = row_data.get("damage-info", {})
         fuel_info: dict = row_data.get("fuel-info", {})
@@ -289,8 +288,6 @@ class TimingTowerOverlay(BaseOverlay):
         # that requires it.
         is_pb = bool(last_lap_ms and best_lap_ms and last_lap_ms == best_lap_ms)
 
-        ers_mode = self._get_ers_mode(row_data)
-        wing_dmg = self._format_wing_dmg(dmg_info, telemetry_public)
         fuel = self._format_fuel(fuel_info, telemetry_public, session_type)
         driver_status = self._format_driver_status(curr_lap_info.get("driver-status"))
 
@@ -304,10 +301,7 @@ class TimingTowerOverlay(BaseOverlay):
             # so an unmapped compound (e.g. "Unknown") would otherwise render a blank cell.
             "tyreIcon": self.tyre_icon_uris[tyre_info.get("visual-tyre-compound", "UNKNOWN")],
             "tyreWear": self._format_tyre_wear(tyre_info, telemetry_public),
-            "ers": self._format_ers(ers_info, telemetry_public),
-            "ersMode": ers_mode,
-            "ersColor": get_ers_mode_color(ers_mode, row_data.get('2026-regs-info', {}).get('2026-regs-enabled', False), row_data.get('2026-regs-info', {}).get('overtake-active', False)),
-            "overtakeBarColor": self._get_overtake_bar_color(row_data),
+            **get_ers_cell_fields(row_data, telemetry_public),
             "penalties": self._format_penalties(warns_pens_info),
             "tlWarns": warns_pens_info.get("corner-cutting-warnings", 0),
             "isReference": driver_idx == ref_index,
@@ -318,8 +312,7 @@ class TimingTowerOverlay(BaseOverlay):
             "lastLap": self._format_relative_lap_time(last_lap_ms, ref_last_lap_ms, driver_idx == ref_index)
                        if self.relative_best_last_lap else self._format_lap_time(last_lap_ms),
             "lastLapColor": ("#c084fc" if is_sb else "#44dd88") if is_pb else "#dddddd",
-            "wingDmg": wing_dmg,
-            "wingDmgColor": "#666666" if wing_dmg == "N/A" else "#ff9944",
+            **get_wing_dmg_cell_fields(dmg_info, telemetry_public),
             "speedTrap": self._format_speed_trap(lap_info),
             "fuel": fuel,
             "fuelColor": self._format_fuel_colour(fuel),
@@ -391,44 +384,7 @@ class TimingTowerOverlay(BaseOverlay):
         return self._format_delta(driver_info, delta_info, driver_idx, ref_index, session_type)
 
     def _format_tyre_wear(self, tyre_info: Dict[str, Any], telemetry_public: bool) -> str:
-        """Format the tyre column contents, per the configured tyre info mode.
-
-        Args:
-            tyre_info: Tyre information dictionary
-            telemetry_public: Whether telemetry is public
-
-        Returns:
-            Formatted tyre wear/age string
-        """
-        if self.tyre_info_mode is TimingTowerTyreInfoMode.TYRE_AGE:
-            return f"{tyre_info['tyre-age']}L"
-
-        wear = tyre_info["current-wear"]
-        if telemetry_public and wear:
-            max_wear = F1Utils.getMaxTyreWear(wear)
-            return f"{F1Utils.formatFloat(max_wear['max-wear'], 0)}%"
-
-        # Wear is unavailable. Hybrid falls back to age, wear-only mode shows a dash.
-        if self.tyre_info_mode is TimingTowerTyreInfoMode.TYRE_WEAR:
-            return "--"
-
-        return f"{tyre_info['tyre-age']}L"
-
-    def _format_ers(self, ers_info: Dict[str, Any], telemetry_public: bool) -> str:
-        """Format ERS display.
-
-        Args:
-            ers_info: ERS information dictionary
-            telemetry_public: Whether telemetry is public
-
-        Returns:
-            Formatted ERS string
-        """
-        if not telemetry_public:
-            return "N/A"
-
-        ers_perc = ers_info.get("ers-percent-float", 0.0)
-        return f"{F1Utils.formatFloat(ers_perc, precision=0, signed=False)}%"
+        return format_tyre_wear(tyre_info, telemetry_public, self.tyre_info_mode)
 
     def _format_penalties(self, warns_pens_info: Dict[str, Any]) -> str:
         """Format penalties display.
@@ -492,23 +448,6 @@ class TimingTowerOverlay(BaseOverlay):
             return "---"
 
         return F1Utils.getLapTimeStr(lap_time)
-
-    def _format_wing_dmg(self, dmg_info: Dict[str, Any], telemetry_public: bool) -> str:
-        """Format wing damage display.
-
-        Args:
-            dmg_info: Damage information dictionary
-            telemetry_public: Whether telemetry is public
-
-        Returns:
-            Formatted wing damage string
-        """
-        if not telemetry_public:
-            return "N/A"
-
-        fl = dmg_info.get('fl-wing-damage', '---')
-        fr = dmg_info.get('fr-wing-damage', '---')
-        return f"{fl}-{fr}"
 
     def _format_driver_status(self, status: Optional[str]) -> str:
         if not status:
@@ -638,50 +577,6 @@ class TimingTowerOverlay(BaseOverlay):
         if not p1_row:
             return None
         return p1_row.get("lap-info", {}).get("best-lap", {}).get("lap-time-ms")
-
-    def _get_overtake_bar_color(self, data: Dict[str, Any]) -> str:
-        """Return the overtake bar colour for the driver.
-
-        Pre-2026: DRS active → green. Post-2026: overtake available → blue. Inactive → grey.
-
-        Args:
-            data (Dict[str, Any]): Driver row data containing "2026-regs-info"
-
-        Returns:
-            str: Hex colour string
-        """
-        regs_2026_info = data['2026-regs-info']
-        is_active = self._get_overtake_bar_active(data)
-        if not is_active:
-            return "#333333"
-        return "#00b0ff" if regs_2026_info['2026-regs-enabled'] else "#00e676"
-
-    def _get_overtake_bar_active(self, data: Dict[str, Any]) -> bool:
-        """Determine overtake bar active state: DRS (pre-2026) or overtake available (2026+).
-
-        Args:
-            data (Dict[str, Any]): Driver row data containing "2026-regs-info" and "driver-info"
-
-        Returns:
-            bool: True if the overtake aid is active/available, False otherwise
-        """
-        regs_2026_info = data['2026-regs-info']
-        if not regs_2026_info['2026-regs-enabled']:
-            return data["driver-info"]["drs"]
-
-        return regs_2026_info["overtake-avlb"]
-
-    def _get_ers_mode(self, data: Dict[str, Any]) -> str:
-        """Get the ERS mode for the driver.
-
-        Args:
-            data (Dict[str, Any]): Driver row data containing "ers-info"
-
-        Returns:
-            str: ERS mode string
-        """
-        ers_info = data.get("ers-info", {})
-        return ers_info.get("ers-mode", "Unknown")
 
     def _process_time_trial(self, data: Dict[str, Any]) -> None:
         """Process incoming time trial telemetry data and update the QML overlay.
