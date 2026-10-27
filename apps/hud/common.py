@@ -25,6 +25,9 @@
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from lib.config import TimingTowerTyreInfoMode
+from lib.f1_types import F1Utils
+
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -225,3 +228,67 @@ def insert_relative_deltas_race(relevant_rows, ref_index) -> None:
                 for j in range(ref_pos, i)
             )
             row["delta-info"]["relative-delta"] = total_delta
+
+# ------------------------------------------------
+# Race table cell formatters (shared by timing tower and rivals status)
+# ------------------------------------------------
+
+def get_overtake_bar_active(row: Dict[str, Any]) -> bool:
+    """DRS (pre-2026) or overtake available (2026+) for a race table row."""
+    regs_2026_info = row["2026-regs-info"]
+    if not regs_2026_info["2026-regs-enabled"]:
+        return row["driver-info"]["drs"]
+    return regs_2026_info["overtake-avlb"]
+
+def get_overtake_bar_color(row: Dict[str, Any]) -> str:
+    """Overtake bar colour: grey when inactive, blue in 2026+, green for DRS before that."""
+    if not get_overtake_bar_active(row):
+        return "#333333"
+    return "#00b0ff" if row["2026-regs-info"]["2026-regs-enabled"] else "#00e676"
+
+def format_ers(ers_info: Dict[str, Any], telemetry_public: bool) -> str:
+    """ERS store percentage, or N/A when the driver's telemetry is private."""
+    if not telemetry_public:
+        return "N/A"
+    ers_perc = ers_info.get("ers-percent-float", 0.0)
+    return f"{F1Utils.formatFloat(ers_perc, precision=0, signed=False)}%"
+
+def get_ers_cell_fields(row: Dict[str, Any], telemetry_public: bool) -> Dict[str, str]:
+    """QML role values for the ERS/DRS column: ers, ersMode, ersColor, overtakeBarColor."""
+    ers_info: Dict[str, Any] = row["ers-info"]
+    regs_info: Dict[str, Any] = row["2026-regs-info"]
+    ers_mode = ers_info["ers-mode"]
+    return {
+        "ers": format_ers(ers_info, telemetry_public),
+        "ersMode": ers_mode,
+        "ersColor": get_ers_mode_color(
+            ers_mode, regs_info["2026-regs-enabled"], regs_info["overtake-active"]),
+        "overtakeBarColor": get_overtake_bar_color(row),
+    }
+
+def format_wing_dmg(dmg_info: Dict[str, Any], telemetry_public: bool) -> str:
+    """Front wing damage as 'left-right', or N/A when the driver's telemetry is private."""
+    if not telemetry_public:
+        return "N/A"
+    return f"{dmg_info.get('fl-wing-damage', '---')}-{dmg_info.get('fr-wing-damage', '---')}"
+
+def get_wing_dmg_cell_fields(dmg_info: Dict[str, Any], telemetry_public: bool) -> Dict[str, str]:
+    """QML role values for the wing damage column: wingDmg, wingDmgColor."""
+    wing_dmg = format_wing_dmg(dmg_info, telemetry_public)
+    return {"wingDmg": wing_dmg, "wingDmgColor": "#666666" if wing_dmg == "N/A" else "#ff9944"}
+
+def format_tyre_wear(tyre_info: Dict[str, Any], telemetry_public: bool, mode: TimingTowerTyreInfoMode) -> str:
+    """Tyre column text per the tyre info mode. tyre-info keys are subscripted on purpose: the producer guarantees them."""
+    if mode is TimingTowerTyreInfoMode.TYRE_AGE:
+        return f"{tyre_info['tyre-age']}L"
+
+    wear = tyre_info["current-wear"]
+    if telemetry_public and wear:
+        max_wear = F1Utils.getMaxTyreWear(wear)
+        return f"{F1Utils.formatFloat(max_wear['max-wear'], 0)}%"
+
+    # Wear is unavailable. Hybrid falls back to age, wear-only mode shows a dash.
+    if mode is TimingTowerTyreInfoMode.TYRE_WEAR:
+        return "--"
+
+    return f"{tyre_info['tyre-age']}L"

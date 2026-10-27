@@ -29,6 +29,7 @@ from .lap_times.lap_times import LapTimesPage
 from .last_corner_stats.last_corner_stats_page import LastCornerStatsPage
 from .pace_comp.pace_comp import PaceCompPage
 from .pit_rejoin.pit_rejoin_page import PitRejoinPredictionPage
+from .rivals_status.rivals_status_page import RivalsStatusPage
 from .standalone_host import StandalonePageHost
 from .traffic_monitor.traffic_monitor_page import TrafficMonitorPage
 from .tyre_sets.tyre_sets_page import TyreSetsPage
@@ -50,4 +51,5 @@ __all__ = [
     "PaceCompPage",
     "TrafficMonitorPage",
     "LastCornerStatsPage",
+    "RivalsStatusPage",
 ]
