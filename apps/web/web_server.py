@@ -22,11 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
 import webbrowser
 from http import HTTPStatus
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Awaitable, Callable, Dict, Optional, Tuple
 
 from lib.config import AutoOpenDashboardMode, PngSettings
 from lib.ipc import IpcDealerAsync
@@ -81,6 +80,7 @@ class WebServer(BaseWebServer):
                  viewer_dir: Path,
                  analyzer_dir: Path,
                  on_ready: Callable[[], None],
+                 fire_and_forget: Callable[[Awaitable[Any], str], None],
                  debug_mode: bool = False,
                  headless: bool = False):
         """
@@ -96,6 +96,8 @@ class WebServer(BaseWebServer):
             on_ready (Callable[[], None]): Called once the server is actually listening. This
                 subsystem is only genuinely up at that point, not when it finishes constructing, so
                 it owns the timing of the init-complete token.
+            fire_and_forget (Callable[[Awaitable[Any], str], None]): The subsystem's
+                fire_and_forget(), for the session scans and watch loops started once serving.
             debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
             headless (bool, optional): Serve only the save-viewer routes (no live routes, no
                 browser auto-open). Defaults to False.
@@ -113,6 +115,7 @@ class WebServer(BaseWebServer):
             key_path=settings.HTTPS.key_path,
             debug_mode=debug_mode)
         self.m_on_ready: Callable[[], None] = on_ready
+        self.m_fire_and_forget: Callable[[Awaitable[Any], str], None] = fire_and_forget
         self.m_headless: bool = headless
         self.m_dealer: Optional[IpcDealerAsync] = None
         self.m_race_table_cache: Optional[Dict[str, Any]] = None
@@ -122,11 +125,6 @@ class WebServer(BaseWebServer):
         self.m_enable_write_api: bool = settings.SaveViewer.enable_write_api
 
         self.m_session_dir: Path = session_dir
-        # Holds every background task spawned via _spawn_background_task() below, for
-        # exactly as long as it takes to keep asyncio from garbage-collecting a Task
-        # nothing else references (the event loop itself only holds a weak one) --
-        # see that method's docstring for why this can't go through add_task() yet.
-        self._m_background_tasks: set = set()
 
         # save_viewer_routes.py / lap_analyzer_routes.py each own their route
         # family's cache/watch state at module level (see each module's docstring
@@ -138,25 +136,6 @@ class WebServer(BaseWebServer):
         init_state(logger)
         self.define_routes()
         self.register_post_start_callback(self._post_start)
-
-    def _spawn_background_task(self, coro: Any, name: str) -> None:
-        """asyncio.create_task() wrapper that actually keeps the Task alive -- see
-        the asyncio docs' own warning that a Task with no held reference can be
-        garbage-collected mid-execution. No cleanup on completion: this is called
-        exactly 4 times total for the lifetime of the process (twice from
-        _post_start, which only ever runs once), not a per-request/repeated-spawn
-        pattern, so the set never grows past 4 -- discarding finished entries would
-        just be extra code for a leak that can't happen here.
-
-        TODO: migrate to the subsystem's add_task() once it supports registering
-        work mid-event-loop-run (planned). It doesn't today: AsyncSubsystem._async_main()
-        snapshots its task list into a local `started` and gathers *that* once, before
-        this class's _post_start() ever runs (which fires from deep inside one of
-        those already-gathered tasks, once Quart actually begins serving) -- a
-        SubsystemTask registered that late would never be started.
-        """
-        task = asyncio.create_task(coro, name=name)
-        self._m_background_tasks.add(task)
 
     def set_dealer(self, dealer: IpcDealerAsync) -> None:
         """Attach the router/dealer client used to bridge `/driver-info` and `/race-info`."""
@@ -293,10 +272,10 @@ class WebServer(BaseWebServer):
             stop_lap_analyzer_watch_loop()
             self.m_logger.info("Session watch loop stop signal sent")
 
-        self._spawn_background_task(rebuild_session_cache(self), name="Session Initial Scan")
-        self._spawn_background_task(sessions_watch_loop(self), name="Session Watch Loop")
-        self._spawn_background_task(rebuild_lap_analyzer_cache(self), name="Lap Analyzer Initial Scan")
-        self._spawn_background_task(lap_analyzer_watch_loop(self), name="Lap Analyzer Watch Loop")
+        self.m_fire_and_forget(rebuild_session_cache(self), name="Session Initial Scan")
+        self.m_fire_and_forget(sessions_watch_loop(self), name="Session Watch Loop")
+        self.m_fire_and_forget(rebuild_lap_analyzer_cache(self), name="Lap Analyzer Initial Scan")
+        self.m_fire_and_forget(lap_analyzer_watch_loop(self), name="Lap Analyzer Watch Loop")
 
         if not self.m_headless and self.m_auto_open_dashboard != AutoOpenDashboardMode.DISABLED:
             proto = 'https' if self.m_cert_path else 'http'

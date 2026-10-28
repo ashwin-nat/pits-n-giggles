@@ -136,6 +136,7 @@ class WebSubsystem(AsyncSubsystem[WebArgs]):
             viewer_dir=viewer_dir,
             analyzer_dir=analyzer_dir,
             on_ready=self._announce_headless if self.args.headless else self.notify_ready,
+            fire_and_forget=self.fire_and_forget,
             debug_mode=self.args.debug,
             headless=self.args.headless)
         self.add_task(self._serve_headless() if self.args.headless else self.web_server.run(),
