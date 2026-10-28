@@ -38,11 +38,12 @@ from lib.pngt import (CompletedLap, CorruptedTelemetryError,
                       DriverExportData, DriverNotFoundError, DriverRecord,
                       InvalidHeaderError, InvalidManifestError, LapMetadata,
                       MalformedSessionError, NotAZipFileError, SensorConfig,
-                      SensorType, SessionBest, SessionMetadata, TrackInfo,
+                      SensorType, SessionBest, SessionDataEntry,
+                      SessionMetadata, TrackInfo,
                       UnsupportedFormatError, UnsupportedVersionError,
                       delete_laps, mark_lap_good, read_driver_laps,
                       read_lap_telemetry, read_session, rename_session,
-                      write_session)
+                      write_session, write_session_data_only)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Fixtures
@@ -916,3 +917,58 @@ def test_rename_session_malformed_session_json_raises_malformed(tmp_path):
 
     with pytest.raises(MalformedSessionError):
         rename_session(patched, "New Name")
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Session data section (unified save)
+# ----------------------------------------------------------------------------------------------------------------------
+
+SESSION_DATA = SessionDataEntry("race-info/Test_Race_2026_10_28_12_00_00.json", b'{"a":1}')
+
+
+def _header(path):
+    with zipfile.ZipFile(path) as zf:
+        return json.loads(zf.read("header.json"))
+
+
+def test_lap_only_header_is_legacy_shape(tmp_path):
+    dest = tmp_path / "session.pngt"
+    write_session(dest, sample_session(), sample_sensors(), sample_drivers(), sample_driver_data())
+    assert _header(dest) == {"format": "pngt", "version": 1}
+
+
+def test_write_session_with_session_data_lists_both_sections(tmp_path):
+    dest = tmp_path / "session.pngt"
+    write_session(dest, sample_session(), sample_sensors(), sample_drivers(), sample_driver_data(),
+                  session_data=SESSION_DATA)
+
+    assert _header(dest) == {
+        "format": "pngt", "version": 1,
+        "contents": {
+            "lap_telemetry": {"version": 1},
+            "session_data": {"version": 1, "path": SESSION_DATA.entry_name},
+        },
+    }
+    with zipfile.ZipFile(dest) as zf:
+        assert zf.read(SESSION_DATA.entry_name) == SESSION_DATA.payload
+    # Existing readers open it exactly as before
+    assert read_session(dest).session.session_uid == sample_session().session_uid
+
+
+def test_session_data_only_container_has_two_entries(tmp_path):
+    dest = tmp_path / "session.pngt"
+    write_session_data_only(dest, SESSION_DATA)
+
+    with zipfile.ZipFile(dest) as zf:
+        assert sorted(zf.namelist()) == ["header.json", SESSION_DATA.entry_name]
+        assert zf.read(SESSION_DATA.entry_name) == SESSION_DATA.payload
+    assert _header(dest)["contents"] == {"session_data": {"version": 1, "path": SESSION_DATA.entry_name}}
+
+
+@pytest.mark.parametrize("name", [
+    "", "/abs.json", "../up.json", "a/../b.json", "a//b.json", "a\\b.json",
+    "header.json", "manifest.json", "session.json", "drivers.json", "drivers/00/laps.json",
+])
+def test_session_data_entry_rejects_bad_names(name):
+    with pytest.raises(ValueError):
+        SessionDataEntry(name, b"{}")

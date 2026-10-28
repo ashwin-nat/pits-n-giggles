@@ -36,6 +36,7 @@ from .dto import (
     SensorConfig,
     SensorType,
     SessionBest,
+    SessionDataEntry,
     SessionMetadata,
     TrackInfo,
 )
@@ -53,7 +54,7 @@ from .exceptions import (
 from .mutate import delete_laps, mark_lap_good, rename_session
 from .reader import ParsedSession, read_driver_laps, read_lap_telemetry, read_session
 from .recorder import BaseTelemetrySnapshot, DriverTelemetryRecorder, RecordedSensor
-from .writer import write_session
+from .writer import write_session, write_session_data_only
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -82,6 +83,7 @@ __all__ = [
     'SensorConfig',
     'SensorType',
     'SessionBest',
+    'SessionDataEntry',
     'SessionMetadata',
     'TrackInfo',
     'UnsupportedFormatError',
@@ -93,4 +95,5 @@ __all__ = [
     'read_session',
     'rename_session',
     'write_session',
+    'write_session_data_only',
 ]
