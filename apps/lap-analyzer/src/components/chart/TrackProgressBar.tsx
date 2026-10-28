@@ -57,7 +57,7 @@ function gapToActiveSection(gap: { distanceStart: number; distanceEnd: number })
   return { label: UNCLASSIFIED_LABEL, distanceStart: gap.distanceStart, distanceEnd: gap.distanceEnd };
 }
 
-function segmentTooltip(section: TrackSection): string {
+export function segmentTooltip(section: TrackSection): string {
   if (section.cornerNumbers.length === 0) {
     return section.label;
   }

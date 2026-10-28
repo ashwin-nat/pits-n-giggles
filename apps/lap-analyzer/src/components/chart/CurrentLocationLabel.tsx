@@ -2,6 +2,7 @@ import { useSessions } from "../../hooks/useSessions";
 import { useTrackMeta } from "../../hooks/useTrackMeta";
 import { useTelemetryStore } from "../../store/telemetryStore";
 import type { TrackSection } from "../../types/api";
+import { segmentTooltip } from "./TrackProgressBar";
 
 interface CurrentLocationLabelProps {
   // The shared chart crosshair -- see ChartArea.
@@ -42,7 +43,7 @@ export function CurrentLocationLabel({ crosshairPosition }: CurrentLocationLabel
   let label: string | null = null;
   if (crosshairPosition !== null && meta !== null) {
     const segment = segmentAt(meta.sections, crosshairPosition);
-    label = segment !== null ? segment.label : sectorNameAt(crosshairPosition, meta.sectorBoundaries);
+    label = segment !== null ? segmentTooltip(segment) : sectorNameAt(crosshairPosition, meta.sectorBoundaries);
   }
 
   return (
