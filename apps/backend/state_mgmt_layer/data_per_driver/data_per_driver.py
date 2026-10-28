@@ -1563,6 +1563,8 @@ class DataPerDriver:
         motion_pkt = self.m_packet_copies.m_packet_motion
         tyre_wear = self.m_tyre_info.tyre_wear.latest
         ers_store_energy_j = car_status_pkt.m_ersStoreEnergy if car_status_pkt else None
+        surface_temps = self.m_tyre_info.getSurfaceTempsJSON()
+        inner_temps = self.m_tyre_info.getInnerTempsJSON()
 
         raw_lap_distance = self.m_lap_info.m_lap_dist_raw
 
@@ -1588,6 +1590,23 @@ class DataPerDriver:
             tyre_wear_fr=tyre_wear.fr_tyre_wear if tyre_wear else None,
             tyre_wear_rl=tyre_wear.rl_tyre_wear if tyre_wear else None,
             tyre_wear_rr=tyre_wear.rr_tyre_wear if tyre_wear else None,
+
+            tyre_surface_temp_fl=surface_temps["fl"] if surface_temps else None,
+            tyre_surface_temp_fr=surface_temps["fr"] if surface_temps else None,
+            tyre_surface_temp_rl=surface_temps["rl"] if surface_temps else None,
+            tyre_surface_temp_rr=surface_temps["rr"] if surface_temps else None,
+            tyre_inner_temp_fl=inner_temps["fl"] if inner_temps else None,
+            tyre_inner_temp_fr=inner_temps["fr"] if inner_temps else None,
+            tyre_inner_temp_rl=inner_temps["rl"] if inner_temps else None,
+            tyre_inner_temp_rr=inner_temps["rr"] if inner_temps else None,
+            tyre_pressure_fl=(car_telemetry_pkt.m_tyresPressure[F1Utils.INDEX_FRONT_LEFT] if car_telemetry_pkt else None),
+            tyre_pressure_fr=(car_telemetry_pkt.m_tyresPressure[F1Utils.INDEX_FRONT_RIGHT] if car_telemetry_pkt else None),
+            tyre_pressure_rl=(car_telemetry_pkt.m_tyresPressure[F1Utils.INDEX_REAR_LEFT] if car_telemetry_pkt else None),
+            tyre_pressure_rr=(car_telemetry_pkt.m_tyresPressure[F1Utils.INDEX_REAR_RIGHT] if car_telemetry_pkt else None),
+            surface_type_fl=(car_telemetry_pkt.m_surfaceType[F1Utils.INDEX_FRONT_LEFT].raw_value if car_telemetry_pkt else None),
+            surface_type_fr=(car_telemetry_pkt.m_surfaceType[F1Utils.INDEX_FRONT_RIGHT].raw_value if car_telemetry_pkt else None),
+            surface_type_rl=(car_telemetry_pkt.m_surfaceType[F1Utils.INDEX_REAR_LEFT].raw_value if car_telemetry_pkt else None),
+            surface_type_rr=(car_telemetry_pkt.m_surfaceType[F1Utils.INDEX_REAR_RIGHT].raw_value if car_telemetry_pkt else None),
 
             motion_pos_x=(motion_pkt.m_worldPositionX if motion_pkt else None),
             motion_pos_y=(motion_pkt.m_worldPositionY if motion_pkt else None),

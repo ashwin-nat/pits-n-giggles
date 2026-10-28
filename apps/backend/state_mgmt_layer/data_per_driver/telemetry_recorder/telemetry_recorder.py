@@ -74,6 +74,24 @@ class TelemetrySnapshot(BaseTelemetrySnapshot):
     tyre_wear_rl: Optional[float] = None
     tyre_wear_rr: Optional[float] = None
 
+    # Tyre status
+    tyre_surface_temp_fl: Optional[float] = None
+    tyre_surface_temp_fr: Optional[float] = None
+    tyre_surface_temp_rl: Optional[float] = None
+    tyre_surface_temp_rr: Optional[float] = None
+    tyre_inner_temp_fl: Optional[float] = None
+    tyre_inner_temp_fr: Optional[float] = None
+    tyre_inner_temp_rl: Optional[float] = None
+    tyre_inner_temp_rr: Optional[float] = None
+    tyre_pressure_fl: Optional[float] = None
+    tyre_pressure_fr: Optional[float] = None
+    tyre_pressure_rl: Optional[float] = None
+    tyre_pressure_rr: Optional[float] = None
+    surface_type_fl: Optional[int] = None
+    surface_type_fr: Optional[int] = None
+    surface_type_rl: Optional[int] = None
+    surface_type_rr: Optional[int] = None
+
     # Motion
     motion_pos_x: Optional[float] = None
     motion_pos_y: Optional[float] = None
@@ -197,6 +215,124 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             type=SensorType.CONTINUOUS,
             range=(0, 100)),
         get=attrgetter("tyre_wear_rr")),
+
+    # ------ TYRE STATUS -------
+    "tyre_surface_temp_fl": RecordedSensor(
+        config=SensorConfig(
+            key="tyre_temp.surface.fl",
+            label=_label("tyre_surface_temp_fl"),
+            unit="°C",
+            type=SensorType.CONTINUOUS),
+        get=attrgetter("tyre_surface_temp_fl")),
+    "tyre_surface_temp_fr": RecordedSensor(
+        config=SensorConfig(
+            key="tyre_temp.surface.fr",
+            label=_label("tyre_surface_temp_fr"),
+            unit="°C",
+            type=SensorType.CONTINUOUS),
+        get=attrgetter("tyre_surface_temp_fr")),
+    "tyre_surface_temp_rl": RecordedSensor(
+        config=SensorConfig(
+            key="tyre_temp.surface.rl",
+            label=_label("tyre_surface_temp_rl"),
+            unit="°C",
+            type=SensorType.CONTINUOUS),
+        get=attrgetter("tyre_surface_temp_rl")),
+    "tyre_surface_temp_rr": RecordedSensor(
+        config=SensorConfig(
+            key="tyre_temp.surface.rr",
+            label=_label("tyre_surface_temp_rr"),
+            unit="°C",
+            type=SensorType.CONTINUOUS),
+        get=attrgetter("tyre_surface_temp_rr")),
+    "tyre_inner_temp_fl": RecordedSensor(
+        config=SensorConfig(
+            key="tyre_temp.inner.fl",
+            label=_label("tyre_inner_temp_fl"),
+            unit="°C",
+            type=SensorType.CONTINUOUS),
+        get=attrgetter("tyre_inner_temp_fl")),
+    "tyre_inner_temp_fr": RecordedSensor(
+        config=SensorConfig(
+            key="tyre_temp.inner.fr",
+            label=_label("tyre_inner_temp_fr"),
+            unit="°C",
+            type=SensorType.CONTINUOUS),
+        get=attrgetter("tyre_inner_temp_fr")),
+    "tyre_inner_temp_rl": RecordedSensor(
+        config=SensorConfig(
+            key="tyre_temp.inner.rl",
+            label=_label("tyre_inner_temp_rl"),
+            unit="°C",
+            type=SensorType.CONTINUOUS),
+        get=attrgetter("tyre_inner_temp_rl")),
+    "tyre_inner_temp_rr": RecordedSensor(
+        config=SensorConfig(
+            key="tyre_temp.inner.rr",
+            label=_label("tyre_inner_temp_rr"),
+            unit="°C",
+            type=SensorType.CONTINUOUS),
+        get=attrgetter("tyre_inner_temp_rr")),
+    "tyre_pressure_fl": RecordedSensor(
+        config=SensorConfig(
+            key="tyre_pressure.fl",
+            label=_label("tyre_pressure_fl"),
+            unit="psi",
+            type=SensorType.CONTINUOUS),
+        get=attrgetter("tyre_pressure_fl")),
+    "tyre_pressure_fr": RecordedSensor(
+        config=SensorConfig(
+            key="tyre_pressure.fr",
+            label=_label("tyre_pressure_fr"),
+            unit="psi",
+            type=SensorType.CONTINUOUS),
+        get=attrgetter("tyre_pressure_fr")),
+    "tyre_pressure_rl": RecordedSensor(
+        config=SensorConfig(
+            key="tyre_pressure.rl",
+            label=_label("tyre_pressure_rl"),
+            unit="psi",
+            type=SensorType.CONTINUOUS),
+        get=attrgetter("tyre_pressure_rl")),
+    "tyre_pressure_rr": RecordedSensor(
+        config=SensorConfig(
+            key="tyre_pressure.rr",
+            label=_label("tyre_pressure_rr"),
+            unit="psi",
+            type=SensorType.CONTINUOUS),
+        get=attrgetter("tyre_pressure_rr")),
+    "surface_type_fl": RecordedSensor(
+        config=SensorConfig(
+            key="surface_type.fl",
+            label=_label("surface_type_fl"),
+            unit="",
+            type=SensorType.DISCRETE,
+            range=(0, 11)),
+        get=attrgetter("surface_type_fl")),
+    "surface_type_fr": RecordedSensor(
+        config=SensorConfig(
+            key="surface_type.fr",
+            label=_label("surface_type_fr"),
+            unit="",
+            type=SensorType.DISCRETE,
+            range=(0, 11)),
+        get=attrgetter("surface_type_fr")),
+    "surface_type_rl": RecordedSensor(
+        config=SensorConfig(
+            key="surface_type.rl",
+            label=_label("surface_type_rl"),
+            unit="",
+            type=SensorType.DISCRETE,
+            range=(0, 11)),
+        get=attrgetter("surface_type_rl")),
+    "surface_type_rr": RecordedSensor(
+        config=SensorConfig(
+            key="surface_type.rr",
+            label=_label("surface_type_rr"),
+            unit="",
+            type=SensorType.DISCRETE,
+            range=(0, 11)),
+        get=attrgetter("surface_type_rr")),
 
     # ------ MOTION -------
     "motion_pos_x": RecordedSensor(
