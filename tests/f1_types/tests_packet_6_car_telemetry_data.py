@@ -128,10 +128,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         22.700000762939453
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -170,10 +170,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         22.700000762939453
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -212,10 +212,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         22.700000762939453
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -254,94 +254,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         22.700000762939453
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
-                    ]
-                },
-                {
-                    "speed": 0,
-                    "throttle": 0.0,
-                    "steer": -0.0,
-                    "brake": 0.0,
-                    "clutch": 0,
-                    "gear": 0,
-                    "engine-rpm": 3429,
-                    "drs": False,
-                    "rev-lights-percent": 0,
-                    "brakes-temperature": [
-                        30,
-                        30,
-                        30,
-                        30
-                    ],
-                    "tyres-surface-temperature": [
-                        96,
-                        96,
-                        96,
-                        96
-                    ],
-                    "tyres-inner-temperature": [
-                        99,
-                        99,
-                        99,
-                        99
-                    ],
-                    "engine-temperature": 109,
-                    "tyres-pressure": [
-                        20.299999237060547,
-                        20.299999237060547,
-                        22.700000762939453,
-                        22.700000762939453
-                    ],
-                    "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
-                    ]
-                },
-                {
-                    "speed": 0,
-                    "throttle": 0.0,
-                    "steer": -0.0,
-                    "brake": 0.0,
-                    "clutch": 0,
-                    "gear": 0,
-                    "engine-rpm": 3429,
-                    "drs": False,
-                    "rev-lights-percent": 0,
-                    "brakes-temperature": [
-                        30,
-                        30,
-                        30,
-                        30
-                    ],
-                    "tyres-surface-temperature": [
-                        94,
-                        94,
-                        94,
-                        94
-                    ],
-                    "tyres-inner-temperature": [
-                        94,
-                        94,
-                        94,
-                        94
-                    ],
-                    "engine-temperature": 109,
-                    "tyres-pressure": [
-                        20.299999237060547,
-                        20.299999237060547,
-                        22.700000762939453,
-                        22.700000762939453
-                    ],
-                    "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -380,10 +296,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         22.700000762939453
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -422,52 +338,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         22.700000762939453
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
-                    ]
-                },
-                {
-                    "speed": 0,
-                    "throttle": 0.0,
-                    "steer": -0.0,
-                    "brake": 0.0,
-                    "clutch": 0,
-                    "gear": 0,
-                    "engine-rpm": 3429,
-                    "drs": False,
-                    "rev-lights-percent": 0,
-                    "brakes-temperature": [
-                        30,
-                        30,
-                        30,
-                        30
-                    ],
-                    "tyres-surface-temperature": [
-                        94,
-                        94,
-                        94,
-                        94
-                    ],
-                    "tyres-inner-temperature": [
-                        94,
-                        94,
-                        94,
-                        94
-                    ],
-                    "engine-temperature": 109,
-                    "tyres-pressure": [
-                        20.299999237060547,
-                        20.299999237060547,
-                        22.700000762939453,
-                        22.700000762939453
-                    ],
-                    "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -506,10 +380,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         22.700000762939453
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -548,10 +422,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         22.700000762939453
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -590,10 +464,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         22.700000762939453
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -632,10 +506,136 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         22.700000762939453
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
+                    ]
+                },
+                {
+                    "speed": 0,
+                    "throttle": 0.0,
+                    "steer": -0.0,
+                    "brake": 0.0,
+                    "clutch": 0,
+                    "gear": 0,
+                    "engine-rpm": 3429,
+                    "drs": False,
+                    "rev-lights-percent": 0,
+                    "brakes-temperature": [
+                        30,
+                        30,
+                        30,
+                        30
+                    ],
+                    "tyres-surface-temperature": [
+                        94,
+                        94,
+                        94,
+                        94
+                    ],
+                    "tyres-inner-temperature": [
+                        94,
+                        94,
+                        94,
+                        94
+                    ],
+                    "engine-temperature": 109,
+                    "tyres-pressure": [
+                        20.299999237060547,
+                        20.299999237060547,
+                        22.700000762939453,
+                        22.700000762939453
+                    ],
+                    "surface-type": [
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
+                    ]
+                },
+                {
+                    "speed": 0,
+                    "throttle": 0.0,
+                    "steer": -0.0,
+                    "brake": 0.0,
+                    "clutch": 0,
+                    "gear": 0,
+                    "engine-rpm": 3429,
+                    "drs": False,
+                    "rev-lights-percent": 0,
+                    "brakes-temperature": [
+                        30,
+                        30,
+                        30,
+                        30
+                    ],
+                    "tyres-surface-temperature": [
+                        94,
+                        94,
+                        94,
+                        94
+                    ],
+                    "tyres-inner-temperature": [
+                        94,
+                        94,
+                        94,
+                        94
+                    ],
+                    "engine-temperature": 109,
+                    "tyres-pressure": [
+                        20.299999237060547,
+                        20.299999237060547,
+                        22.700000762939453,
+                        22.700000762939453
+                    ],
+                    "surface-type": [
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
+                    ]
+                },
+                {
+                    "speed": 0,
+                    "throttle": 0.0,
+                    "steer": -0.0,
+                    "brake": 0.0,
+                    "clutch": 0,
+                    "gear": 0,
+                    "engine-rpm": 3429,
+                    "drs": False,
+                    "rev-lights-percent": 0,
+                    "brakes-temperature": [
+                        30,
+                        30,
+                        30,
+                        30
+                    ],
+                    "tyres-surface-temperature": [
+                        96,
+                        96,
+                        96,
+                        96
+                    ],
+                    "tyres-inner-temperature": [
+                        99,
+                        99,
+                        99,
+                        99
+                    ],
+                    "engine-temperature": 109,
+                    "tyres-pressure": [
+                        20.299999237060547,
+                        20.299999237060547,
+                        22.700000762939453,
+                        22.700000762939453
+                    ],
+                    "surface-type": [
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -674,10 +674,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         22.700000762939453
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -716,10 +716,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         22.700000762939453
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -758,10 +758,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         22.700000762939453
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -800,10 +800,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         22.700000762939453
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -842,10 +842,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         22.700000762939453
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -884,10 +884,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         22.700000762939453
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -926,10 +926,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         22.700000762939453
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -968,10 +968,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1010,10 +1010,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 }
             ],
@@ -1071,10 +1071,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         24.899999618530273
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1113,10 +1113,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1155,10 +1155,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1197,10 +1197,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1239,10 +1239,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1281,10 +1281,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1323,10 +1323,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1365,10 +1365,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1407,10 +1407,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1449,10 +1449,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1491,10 +1491,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1533,10 +1533,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1575,10 +1575,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1617,10 +1617,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1659,10 +1659,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1701,10 +1701,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1743,10 +1743,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1785,10 +1785,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1827,10 +1827,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1869,10 +1869,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         24.899999618530273
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1911,10 +1911,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 },
                 {
@@ -1953,10 +1953,10 @@ class TestPacketCarTelemetryData(F1TypesTest):
                         0.0
                     ],
                     "surface-type": [
-                        0,
-                        0,
-                        0,
-                        0
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac",
+                        "Tarmac"
                     ]
                 }
             ],
@@ -1976,7 +1976,7 @@ class TestPacketCarTelemetryData(F1TypesTest):
         """
 
         raw_packet = b'G\x01\x00\x00\x80?\x1a\xaa\x14\xbc\x00\x00\x00\x00\x00\x08\xcc-\x01O\xff\x7f\xd1\x01\xd1\x01\x0c\x02\x0e\x02PPPPPPPPn\x00\x00\x00\xacA\x00\x00\xacAff\xc2Aff\xc2A\x00\x00\x00\x00D\x01\x00\x00\x80?\xdfTL\xbd\x00\x00\x00\x00\x00\x08g-\x01K\xe0\x7f\xe7\x01\xe7\x01!\x02$\x02PPPPPPPPn\x00\x00\x00\xacA\x00\x00\xacAff\xc2Aff\xc2A\x00\x00\x00\x00P\x01\x00\x00\x80?\x19\xe0\x02\xbc\x00\x00\x00\x00\x00\x08\xcb.\x01Z\xe3\x7f\xa4\x01\xa4\x01\xe1\x01\xe3\x01PPPPPPPPn\x00\x00\x00\xacA\x00\x00\xacAff\xc2Aff\xc2A\x00\x00\x00\x00%\x01\xcd\xcc\xcc>\x18\x0c\xbc:\x00\x00\x00\x00\x00\x08_(\x00\x18\x00\x00\xd9\x01\xd9\x01\x0f\x02\x11\x02PPPPPPPPn\x00\x00\x00\xacA\x00\x00\xacAff\xc2Aff\xc2A\x00\x00\x00\x00P\x01\x00\x00\x80?\x17\xaa\x14\xbb\x00\x00\x00\x00\x00\x08\xa6.\x01Y\xe3\x7f\x9b\x01\x9b\x01\xd7\x01\xd9\x01PPPPPPPPn\x00\x00\x00\xacA\x00\x00\xacAff\xc2Aff\xc2A\x00\x00\x00\x00\xcd\x00\x00\x00\x00\x00\xf0\xe6/\xbb\t{\x1c?\x00\x05\x87&\x00\x02\x00\x001\x032\x03*\x03+\x03PPPPPPPPn\x00\x00\x00\xacA\x00\x00\xacAff\xc2Aff\xc2A\x00\x01\x00\x01\x99\x00\x00\x00\x80?\xfb\x8dV\xbd\x00\x00\x00\x00\x00\x042\'\x00\n\x00\x00R\x03S\x03R\x03V\x03PPPPPPPPn\x00\x00\x00\xacA\x00\x00\xacAff\xc2Aff\xc2A\x00\x01\x00\x01\x1c\x01\xcd\xcc\xcc>\xaa\xeb\x9b\xbb\x00\x00\x00\x00\x00\x08[\'\x00\x0c\x00\x00\xc2\x01\xc2\x01\xf4\x01\xf6\x01PPPPPPPPn\x00\x00\x00\xacA\x00\x00\xacAff\xc2Aff\xc2A\x00\x00\x00\x00\xd1\x00\x00\x00\x00\x00\x8d\xda";Y% ?\x00\x05\xa9)\x00&0\x00N\x03N\x03L\x03M\x03PPPPPPPPn\x00\x00\x00\xacA\x00\x00\xacAff\xc2Aff\xc2A\x00\x00\x00\x01N\x01\x00\x00\x80?\x13\t\x8d\xbb\x00\x00\x00\x00\x00\x08\xa0.\x01X\xe0?\x83\x01\x83\x01\xbd\x01\xbe\x01PPPPPPPPn\x00\x00\x00\xacA\x00\x00\xacAff\xc2Aff\xc2A\x00\x00\x00\x002\x01\x00\x00\x80?\xe0\x0c\x08<\x00\x00\x00\x00\x00\x08\x06+\x013\xff\x00\x16\x02\x17\x02M\x02O\x02PPPPPPPPn\x00\x00\x00\xacA\x00\x00\xacAff\xc2Aff\xc2A\x00\x00\x00\x00\xd5\x00\x00\x00\x80?UOf\xbb\x00\x00\x00\x00\x00\x06+(\x00\x16\x00\x00\x06\x03\x07\x03\x10\x03\x14\x03PPPPPPPPn\x00\x00\x00\xacA\x00\x00\xacAff\xc2Aff\xc2A\x00\x01\x00\x01:\x01\x00\x00\x80?\x00\x00\x00\x80\x00\x00\x00\x00\x00\x08\x13,\x01<\xe0\x01\x05\x02\x05\x02>\x02@\x02PPPPPPPPn\x00\x00\x00\xacA\x00\x00\xacAff\xc2Aff\xc2A\x00\x00\x00\x00\x0f\x01\x00\x00\x00\x00\x18\x0c\xbc\xba\xfa\x98\x1e?\x00\x07A*\x00,g\x00\xb2\x02\xb2\x02\xbb\x02\xbd\x02PPPPPPPPn\x00\x00\x00\xacA\x00\x00\xacAff\xc2Aff\xc2A\x00\x00\x00\x001\x01\xcd\xcc\xcc>\x00\x00\x00\x80\x00\x00\x00\x00\x00\x08\x0f*\x00* \x00\x02\x02\x03\x02.\x020\x02PPPPPPPPn\x00\x00\x00\xacA\x00\x00\xacAff\xc2Aff\xc2A\x00\x00\x00\x00N\x01\x00\x00\x80?\xe4\x10\n\xbc\x00\x00\x00\x00\x00\x08\xa2.\x01X\xe1?\xb6\x01\xb7\x01\xf4\x01\xf6\x01PPPPPPPPn\x00\x00\x00\xacA\x00\x00\xacAff\xc2Aff\xc2A\x00\x00\x00\x00\xf7\x00\x00\x00\x80?\xf0\xe6/;\x00\x00\x00\x00\x00\x06\x1f,\x00=\xe0\x03\xbb\x02\xbc\x02\xd0\x02\xd3\x02PPPPPPPPn\x00\x00\x00\xacA\x00\x00\xacAff\xc2Aff\xc2A\x00\x00\x00\x00L\x01\x00\x00\x80?\xa3\xd49\xbc\x00\x00\x00\x00\x00\x08y.\x01W\xff\x7f\xc5\x01\xc5\x01\x02\x02\x04\x02PPPPPPPPn\x00\x00\x00\xacA\x00\x00\xacAff\xc2Aff\xc2A\x00\x00\x00\x00\x85\x00\xbb\x1fe?\xa6\x1f9\xbe\x00\x00\x00\x00\x00\x03\x1e)\x00!\x00\x00v\x03w\x03v\x03y\x03PPPPPPPPn\x00\x00\x00\xacA\x00\x00\xacAff\xc2Aff\xc2A\x00\x00\x00\x00\x0f\x00\x93\x14\x93>\xd9\xbeg>\x00\x00\x00\x00\x00\x01\xa6\x0f\x00\x00\x00\x00\x9d\x03\x9f\x037\x03g\x03c\x7f@C\\`QS{\x00V\x10\xb2A2\x16\xb4A\x9f1\xc3A\xe4y\xc4A\x04\x04\x04\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\x00'
-        expected_json = {"car-telemetry-data": [{"speed": 327, "throttle": 1.0, "steer": -0.009073758497834206, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 11724, "drs": True, "rev-lights-percent": 79, "brakes-temperature": [465, 465, 524, 526], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": [0, 0, 0, 0]}, {"speed": 324, "throttle": 1.0, "steer": -0.04988562688231468, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 11623, "drs": True, "rev-lights-percent": 75, "brakes-temperature": [487, 487, 545, 548], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": [0, 0, 0, 0]}, {"speed": 336, "throttle": 1.0, "steer": -0.007987999357283115, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 11979, "drs": True, "rev-lights-percent": 90, "brakes-temperature": [420, 420, 481, 483], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": [0, 0, 0, 0]}, {"speed": 293, "throttle": 0.4000000059604645, "steer": 0.0014346865937113762, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 10335, "drs": False, "rev-lights-percent": 24, "brakes-temperature": [473, 473, 527, 529], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": [0, 0, 0, 0]}, {"speed": 336, "throttle": 1.0, "steer": -0.0022684389259666204, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 11942, "drs": True, "rev-lights-percent": 89, "brakes-temperature": [411, 411, 471, 473], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": [0, 0, 0, 0]}, {"speed": 205, "throttle": 0.0, "steer": -0.0026840530335903168, "brake": 0.6112523674964905, "clutch": 0, "gear": 5, "engine-rpm": 9863, "drs": False, "rev-lights-percent": 2, "brakes-temperature": [817, 818, 810, 811], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": [0, 1, 0, 1]}, {"speed": 153, "throttle": 1.0, "steer": -0.052381496876478195, "brake": 0.0, "clutch": 0, "gear": 4, "engine-rpm": 10034, "drs": False, "rev-lights-percent": 10, "brakes-temperature": [850, 851, 850, 854], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": [0, 1, 0, 1]}, {"speed": 284, "throttle": 0.4000000059604645, "steer": -0.004758317954838276, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 10075, "drs": False, "rev-lights-percent": 12, "brakes-temperature": [450, 450, 500, 502], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": [0, 0, 0, 0]}, {"speed": 209, "throttle": 0.0, "steer": 0.0024849504698067904, "brake": 0.6255698800086975, "clutch": 0, "gear": 5, "engine-rpm": 10665, "drs": False, "rev-lights-percent": 38, "brakes-temperature": [846, 846, 844, 845], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": [0, 0, 0, 1]}, {"speed": 334, "throttle": 1.0, "steer": -0.004304060246795416, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 11936, "drs": True, "rev-lights-percent": 88, "brakes-temperature": [387, 387, 445, 446], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": [0, 0, 0, 0]}, {"speed": 306, "throttle": 1.0, "steer": 0.008303850889205933, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 11014, "drs": True, "rev-lights-percent": 51, "brakes-temperature": [534, 535, 589, 591], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": [0, 0, 0, 0]}, {"speed": 213, "throttle": 1.0, "steer": -0.0035142500419169664, "brake": 0.0, "clutch": 0, "gear": 6, "engine-rpm": 10283, "drs": False, "rev-lights-percent": 22, "brakes-temperature": [774, 775, 784, 788], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": [0, 1, 0, 1]}, {"speed": 314, "throttle": 1.0, "steer": -0.0, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 11283, "drs": True, "rev-lights-percent": 60, "brakes-temperature": [517, 517, 574, 576], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": [0, 0, 0, 0]}, {"speed": 271, "throttle": 0.0, "steer": -0.0014346865937113762, "brake": 0.6195217370986938, "clutch": 0, "gear": 7, "engine-rpm": 10817, "drs": False, "rev-lights-percent": 44, "brakes-temperature": [690, 690, 699, 701], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": [0, 0, 0, 0]}, {"speed": 305, "throttle": 0.4000000059604645, "steer": -0.0, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 10767, "drs": False, "rev-lights-percent": 42, "brakes-temperature": [514, 515, 558, 560], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": [0, 0, 0, 0]}, {"speed": 334, "throttle": 1.0, "steer": -0.008426878601312637, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 11938, "drs": True, "rev-lights-percent": 88, "brakes-temperature": [438, 439, 500, 502], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": [0, 0, 0, 0]}, {"speed": 247, "throttle": 1.0, "steer": 0.0026840530335903168, "brake": 0.0, "clutch": 0, "gear": 6, "engine-rpm": 11295, "drs": False, "rev-lights-percent": 61, "brakes-temperature": [699, 700, 720, 723], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": [0, 0, 0, 0]}, {"speed": 332, "throttle": 1.0, "steer": -0.011342200450599194, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 11897, "drs": True, "rev-lights-percent": 87, "brakes-temperature": [453, 453, 514, 516], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": [0, 0, 0, 0]}, {"speed": 133, "throttle": 0.8950154185295105, "steer": -0.18078479170799255, "brake": 0.0, "clutch": 0, "gear": 3, "engine-rpm": 10526, "drs": False, "rev-lights-percent": 33, "brakes-temperature": [886, 887, 886, 889], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": [0, 0, 0, 0]}, {"speed": 15, "throttle": 0.287266343832016, "steer": 0.22631396353244781, "brake": 0.0, "clutch": 0, "gear": 1, "engine-rpm": 4006, "drs": False, "rev-lights-percent": 0, "brakes-temperature": [925, 927, 823, 871], "tyres-surface-temperature": [99, 127, 64, 67], "tyres-inner-temperature": [92, 96, 81, 83], "engine-temperature": 123, "tyres-pressure": [22.257976531982422, 22.51083755493164, 24.399229049682617, 24.55951690673828], "surface-type": [4, 4, 4, 4]}, {"speed": 0, "throttle": 0.0, "steer": 0.0, "brake": 0.0, "clutch": 0, "gear": 0, "engine-rpm": 0, "drs": False, "rev-lights-percent": 0, "brakes-temperature": [0, 0, 0, 0], "tyres-surface-temperature": [0, 0, 0, 0], "tyres-inner-temperature": [0, 0, 0, 0], "engine-temperature": 0, "tyres-pressure": [0.0, 0.0, 0.0, 0.0], "surface-type": [0, 0, 0, 0]}, {"speed": 0, "throttle": 0.0, "steer": 0.0, "brake": 0.0, "clutch": 0, "gear": 0, "engine-rpm": 0, "drs": False, "rev-lights-percent": 0, "brakes-temperature": [0, 0, 0, 0], "tyres-surface-temperature": [0, 0, 0, 0], "tyres-inner-temperature": [0, 0, 0, 0], "engine-temperature": 0, "tyres-pressure": [0.0, 0.0, 0.0, 0.0], "surface-type": [0, 0, 0, 0]}], "mfd-panel-index": 255, "mfd-panel-index-secondary": 255, "suggested-gear": 0}
+        expected_json = {"car-telemetry-data": [{"speed": 327, "throttle": 1.0, "steer": -0.009073758497834206, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 11724, "drs": True, "rev-lights-percent": 79, "brakes-temperature": [465, 465, 524, 526], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": ["Tarmac", "Tarmac", "Tarmac", "Tarmac"]}, {"speed": 324, "throttle": 1.0, "steer": -0.04988562688231468, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 11623, "drs": True, "rev-lights-percent": 75, "brakes-temperature": [487, 487, 545, 548], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": ["Tarmac", "Tarmac", "Tarmac", "Tarmac"]}, {"speed": 336, "throttle": 1.0, "steer": -0.007987999357283115, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 11979, "drs": True, "rev-lights-percent": 90, "brakes-temperature": [420, 420, 481, 483], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": ["Tarmac", "Tarmac", "Tarmac", "Tarmac"]}, {"speed": 293, "throttle": 0.4000000059604645, "steer": 0.0014346865937113762, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 10335, "drs": False, "rev-lights-percent": 24, "brakes-temperature": [473, 473, 527, 529], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": ["Tarmac", "Tarmac", "Tarmac", "Tarmac"]}, {"speed": 336, "throttle": 1.0, "steer": -0.0022684389259666204, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 11942, "drs": True, "rev-lights-percent": 89, "brakes-temperature": [411, 411, 471, 473], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": ["Tarmac", "Tarmac", "Tarmac", "Tarmac"]}, {"speed": 205, "throttle": 0.0, "steer": -0.0026840530335903168, "brake": 0.6112523674964905, "clutch": 0, "gear": 5, "engine-rpm": 9863, "drs": False, "rev-lights-percent": 2, "brakes-temperature": [817, 818, 810, 811], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": ["Tarmac", "Rumble Strip", "Tarmac", "Rumble Strip"]}, {"speed": 153, "throttle": 1.0, "steer": -0.052381496876478195, "brake": 0.0, "clutch": 0, "gear": 4, "engine-rpm": 10034, "drs": False, "rev-lights-percent": 10, "brakes-temperature": [850, 851, 850, 854], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": ["Tarmac", "Rumble Strip", "Tarmac", "Rumble Strip"]}, {"speed": 284, "throttle": 0.4000000059604645, "steer": -0.004758317954838276, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 10075, "drs": False, "rev-lights-percent": 12, "brakes-temperature": [450, 450, 500, 502], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": ["Tarmac", "Tarmac", "Tarmac", "Tarmac"]}, {"speed": 209, "throttle": 0.0, "steer": 0.0024849504698067904, "brake": 0.6255698800086975, "clutch": 0, "gear": 5, "engine-rpm": 10665, "drs": False, "rev-lights-percent": 38, "brakes-temperature": [846, 846, 844, 845], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": ["Tarmac", "Tarmac", "Tarmac", "Rumble Strip"]}, {"speed": 334, "throttle": 1.0, "steer": -0.004304060246795416, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 11936, "drs": True, "rev-lights-percent": 88, "brakes-temperature": [387, 387, 445, 446], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": ["Tarmac", "Tarmac", "Tarmac", "Tarmac"]}, {"speed": 306, "throttle": 1.0, "steer": 0.008303850889205933, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 11014, "drs": True, "rev-lights-percent": 51, "brakes-temperature": [534, 535, 589, 591], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": ["Tarmac", "Tarmac", "Tarmac", "Tarmac"]}, {"speed": 213, "throttle": 1.0, "steer": -0.0035142500419169664, "brake": 0.0, "clutch": 0, "gear": 6, "engine-rpm": 10283, "drs": False, "rev-lights-percent": 22, "brakes-temperature": [774, 775, 784, 788], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": ["Tarmac", "Rumble Strip", "Tarmac", "Rumble Strip"]}, {"speed": 314, "throttle": 1.0, "steer": -0.0, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 11283, "drs": True, "rev-lights-percent": 60, "brakes-temperature": [517, 517, 574, 576], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": ["Tarmac", "Tarmac", "Tarmac", "Tarmac"]}, {"speed": 271, "throttle": 0.0, "steer": -0.0014346865937113762, "brake": 0.6195217370986938, "clutch": 0, "gear": 7, "engine-rpm": 10817, "drs": False, "rev-lights-percent": 44, "brakes-temperature": [690, 690, 699, 701], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": ["Tarmac", "Tarmac", "Tarmac", "Tarmac"]}, {"speed": 305, "throttle": 0.4000000059604645, "steer": -0.0, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 10767, "drs": False, "rev-lights-percent": 42, "brakes-temperature": [514, 515, 558, 560], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": ["Tarmac", "Tarmac", "Tarmac", "Tarmac"]}, {"speed": 334, "throttle": 1.0, "steer": -0.008426878601312637, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 11938, "drs": True, "rev-lights-percent": 88, "brakes-temperature": [438, 439, 500, 502], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": ["Tarmac", "Tarmac", "Tarmac", "Tarmac"]}, {"speed": 247, "throttle": 1.0, "steer": 0.0026840530335903168, "brake": 0.0, "clutch": 0, "gear": 6, "engine-rpm": 11295, "drs": False, "rev-lights-percent": 61, "brakes-temperature": [699, 700, 720, 723], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": ["Tarmac", "Tarmac", "Tarmac", "Tarmac"]}, {"speed": 332, "throttle": 1.0, "steer": -0.011342200450599194, "brake": 0.0, "clutch": 0, "gear": 8, "engine-rpm": 11897, "drs": True, "rev-lights-percent": 87, "brakes-temperature": [453, 453, 514, 516], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": ["Tarmac", "Tarmac", "Tarmac", "Tarmac"]}, {"speed": 133, "throttle": 0.8950154185295105, "steer": -0.18078479170799255, "brake": 0.0, "clutch": 0, "gear": 3, "engine-rpm": 10526, "drs": False, "rev-lights-percent": 33, "brakes-temperature": [886, 887, 886, 889], "tyres-surface-temperature": [80, 80, 80, 80], "tyres-inner-temperature": [80, 80, 80, 80], "engine-temperature": 110, "tyres-pressure": [21.5, 21.5, 24.299999237060547, 24.299999237060547], "surface-type": ["Tarmac", "Tarmac", "Tarmac", "Tarmac"]}, {"speed": 15, "throttle": 0.287266343832016, "steer": 0.22631396353244781, "brake": 0.0, "clutch": 0, "gear": 1, "engine-rpm": 4006, "drs": False, "rev-lights-percent": 0, "brakes-temperature": [925, 927, 823, 871], "tyres-surface-temperature": [99, 127, 64, 67], "tyres-inner-temperature": [92, 96, 81, 83], "engine-temperature": 123, "tyres-pressure": [22.257976531982422, 22.51083755493164, 24.399229049682617, 24.55951690673828], "surface-type": ["Gravel", "Gravel", "Gravel", "Gravel"]}, {"speed": 0, "throttle": 0.0, "steer": 0.0, "brake": 0.0, "clutch": 0, "gear": 0, "engine-rpm": 0, "drs": False, "rev-lights-percent": 0, "brakes-temperature": [0, 0, 0, 0], "tyres-surface-temperature": [0, 0, 0, 0], "tyres-inner-temperature": [0, 0, 0, 0], "engine-temperature": 0, "tyres-pressure": [0.0, 0.0, 0.0, 0.0], "surface-type": ["Tarmac", "Tarmac", "Tarmac", "Tarmac"]}, {"speed": 0, "throttle": 0.0, "steer": 0.0, "brake": 0.0, "clutch": 0, "gear": 0, "engine-rpm": 0, "drs": False, "rev-lights-percent": 0, "brakes-temperature": [0, 0, 0, 0], "tyres-surface-temperature": [0, 0, 0, 0], "tyres-inner-temperature": [0, 0, 0, 0], "engine-temperature": 0, "tyres-pressure": [0.0, 0.0, 0.0, 0.0], "surface-type": ["Tarmac", "Tarmac", "Tarmac", "Tarmac"]}], "mfd-panel-index": 255, "mfd-panel-index-secondary": 255, "suggested-gear": 0}
 
         parsed_packet = PacketCarTelemetryData(self.m_header_25, raw_packet)
         parsed_json = parsed_packet.toJSON()
@@ -2013,7 +2013,7 @@ class TestPacketCarTelemetryData(F1TypesTest):
         """
 
         raw_packet = b'\xea\x07\x19\x01\x14\x01\x06\xa3\x03;\x05W\x82\xdaE\x06\xa3\x14Dx\x92\x00\x00x\x92\x00\x00\x15\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00P\x0f\x00\x00\x00\x00\x15\x00\x15\x00\x15\x00\x15\x00  FF##FFn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00P\x0f\x00\x00\x00\x00\x15\x00\x15\x00\x15\x00\x15\x00FFFFFFFFn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00P\x0f\x00\x00\x00\x00\x15\x00\x15\x00\x15\x00\x15\x00FFFFFFFFn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00P\x0f\x00\x00\x00\x00\x15\x00\x15\x00\x15\x00\x15\x00FFFFFFFFn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00P\x0f\x00\x00\x00\x00\x15\x00\x15\x00\x15\x00\x15\x00BBFFEEFFn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00P\x0f\x00\x00\x00\x00\x15\x00\x15\x00\x15\x00\x15\x00  FF##FFn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00P\x0f\x00\x00\x00\x00\x15\x00\x15\x00\x15\x00\x15\x00FFFFFFFFn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00+\x01\x00\x00\x80?\x00\x00\x00\x80\x00\x00\x00\x00\x00\x084*\x00+p\x04\x17\x01\x17\x01X\x01V\x01dddd____n33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00P\x0f\x00\x00\x00\x00\x15\x00\x15\x00\x15\x00\x15\x00FFFFFFFFn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00P\x0f\x00\x00\x00\x00\x15\x00\x15\x00\x15\x00\x15\x00FFFFFFFFn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00P\x0f\x00\x00\x00\x00\x15\x00\x15\x00\x15\x00\x15\x00  FF##FFn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00P\x0f\x00\x00\x00\x00\x15\x00\x15\x00\x15\x00\x15\x00  FF##FFn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00\xc8\x00\xf7\x8bq?\x1bQ\xaa\xbc\x00\x00\x00\x00\x00\x057*\x00+\xe0\x03\xf2\x00\xe8\x00\xe3\x00\xe6\x0066--DDDDn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00P\x0f\x00\x00\x00\x00\x15\x00\x15\x00\x15\x00\x15\x00FFFFFFFFn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00P\x0f\x00\x00\x00\x00,\x00,\x00*\x00*\x00\\SdbQORPn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00P\x0f\x00\x00\x00\x00\x15\x00\x15\x00\x15\x00\x15\x00FFFFFFFFn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00\xe4\x00\xc0pv?c\xca\x8c<\x00\x00\x00\x00\x00\x06q)\x00$\x00\x00\xe9\x00\xe9\x00\xec\x00\xec\x00ZXZZQPQQn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00\x97\x00\x00\x00\x80?\x17\xaa\x14;\x00\x00\x00\x00\x00\x04\x18&\x00\x00\x00\x00\x02\x01\xf2\x00\xe8\x00\xec\x0056..DDDDn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00P\x0f\x00\x00\x00\x00\x15\x00\x15\x00\x15\x00\x15\x00BBFFEEFFn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00P\x0f\x00\x00\x00\x00\x15\x00\x15\x00\x15\x00\x15\x00FFFFFFFFn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x00\x8a\x00=e\x06?\x04[V\xbe\x00\x00\x00\x00\x00\x04="\x00\x00\x00\x00\xe4\x02\xea\x02\x08\x03\x15\x03ZZZZZZZZn33\xafA33\xafAff\xbaAff\xbaA\x00\x00\x00\x008\x00\x00\x00\x00\x00\x94-5\xbd\x00\x00\x00\x00\x00\x05\xa5\x0f\x00\x00\x00\x00m\x01k\x01~\x01w\x01F>M>hbh\\j\xf8\xa0\xaeA\x87\xe6\xabA\xf4\x97\xc6Aog\xc0A\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\x00'
-        expected_json = {'car-telemetry-data': [{'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [32, 32, 70, 70], 'tyres-inner-temperature': [35, 35, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [70, 70, 70, 70], 'tyres-inner-temperature': [70, 70, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [70, 70, 70, 70], 'tyres-inner-temperature': [70, 70, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [70, 70, 70, 70], 'tyres-inner-temperature': [70, 70, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [66, 66, 70, 70], 'tyres-inner-temperature': [69, 69, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [32, 32, 70, 70], 'tyres-inner-temperature': [35, 35, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [70, 70, 70, 70], 'tyres-inner-temperature': [70, 70, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 299, 'throttle': 1.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 8, 'engine-rpm': 10804, 'drs': False, 'rev-lights-percent': 43, 'brakes-temperature': [279, 279, 344, 342], 'tyres-surface-temperature': [100, 100, 100, 100], 'tyres-inner-temperature': [95, 95, 95, 95], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [70, 70, 70, 70], 'tyres-inner-temperature': [70, 70, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [70, 70, 70, 70], 'tyres-inner-temperature': [70, 70, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [32, 32, 70, 70], 'tyres-inner-temperature': [35, 35, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [32, 32, 70, 70], 'tyres-inner-temperature': [35, 35, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 200, 'throttle': 0.943541944026947, 'steer': -0.020790627226233482, 'brake': 0.0, 'clutch': 0, 'gear': 5, 'engine-rpm': 10807, 'drs': False, 'rev-lights-percent': 43, 'brakes-temperature': [242, 232, 227, 230], 'tyres-surface-temperature': [54, 54, 45, 45], 'tyres-inner-temperature': [68, 68, 68, 68], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [70, 70, 70, 70], 'tyres-inner-temperature': [70, 70, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [44, 44, 42, 42], 'tyres-surface-temperature': [92, 83, 100, 98], 'tyres-inner-temperature': [81, 79, 82, 80], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [70, 70, 70, 70], 'tyres-inner-temperature': [70, 70, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 228, 'throttle': 0.9626579284667969, 'steer': 0.017186349257826805, 'brake': 0.0, 'clutch': 0, 'gear': 6, 'engine-rpm': 10609, 'drs': False, 'rev-lights-percent': 36, 'brakes-temperature': [233, 233, 236, 236], 'tyres-surface-temperature': [90, 88, 90, 90], 'tyres-inner-temperature': [81, 80, 81, 81], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 151, 'throttle': 1.0, 'steer': 0.0022684389259666204, 'brake': 0.0, 'clutch': 0, 'gear': 4, 'engine-rpm': 9752, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [258, 242, 232, 236], 'tyres-surface-temperature': [53, 54, 46, 46], 'tyres-inner-temperature': [68, 68, 68, 68], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [66, 66, 70, 70], 'tyres-inner-temperature': [69, 69, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [70, 70, 70, 70], 'tyres-inner-temperature': [70, 70, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 138, 'throttle': 0.5249822735786438, 'steer': -0.20933157205581665, 'brake': 0.0, 'clutch': 0, 'gear': 4, 'engine-rpm': 8765, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [740, 746, 776, 789], 'tyres-surface-temperature': [90, 90, 90, 90], 'tyres-inner-temperature': [90, 90, 90, 90], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': [0, 0, 0, 0]}, {'speed': 56, 'throttle': 0.0, 'steer': -0.044232919812202454, 'brake': 0.0, 'clutch': 0, 'gear': 5, 'engine-rpm': 4005, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [365, 363, 382, 375], 'tyres-surface-temperature': [70, 62, 77, 62], 'tyres-inner-temperature': [104, 98, 104, 92], 'engine-temperature': 106, 'tyres-pressure': [21.828598022460938, 21.48756217956543, 24.824195861816406, 24.050504684448242], 'surface-type': [0, 0, 0, 0]}, {'speed': 0, 'throttle': 0.0, 'steer': 0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 0, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [0, 0, 0, 0], 'tyres-surface-temperature': [0, 0, 0, 0], 'tyres-inner-temperature': [0, 0, 0, 0], 'engine-temperature': 0, 'tyres-pressure': [0.0, 0.0, 0.0, 0.0], 'surface-type': [0, 0, 0, 0]}, {'speed': 0, 'throttle': 0.0, 'steer': 0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 0, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [0, 0, 0, 0], 'tyres-surface-temperature': [0, 0, 0, 0], 'tyres-inner-temperature': [0, 0, 0, 0], 'engine-temperature': 0, 'tyres-pressure': [0.0, 0.0, 0.0, 0.0], 'surface-type': [0, 0, 0, 0]}], 'mfd-panel-index': 0, 'mfd-panel-index-secondary': 255, 'suggested-gear': 0}
+        expected_json = {'car-telemetry-data': [{'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [32, 32, 70, 70], 'tyres-inner-temperature': [35, 35, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [70, 70, 70, 70], 'tyres-inner-temperature': [70, 70, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [70, 70, 70, 70], 'tyres-inner-temperature': [70, 70, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [70, 70, 70, 70], 'tyres-inner-temperature': [70, 70, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [66, 66, 70, 70], 'tyres-inner-temperature': [69, 69, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [32, 32, 70, 70], 'tyres-inner-temperature': [35, 35, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [70, 70, 70, 70], 'tyres-inner-temperature': [70, 70, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 299, 'throttle': 1.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 8, 'engine-rpm': 10804, 'drs': False, 'rev-lights-percent': 43, 'brakes-temperature': [279, 279, 344, 342], 'tyres-surface-temperature': [100, 100, 100, 100], 'tyres-inner-temperature': [95, 95, 95, 95], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [70, 70, 70, 70], 'tyres-inner-temperature': [70, 70, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [70, 70, 70, 70], 'tyres-inner-temperature': [70, 70, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [32, 32, 70, 70], 'tyres-inner-temperature': [35, 35, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [32, 32, 70, 70], 'tyres-inner-temperature': [35, 35, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 200, 'throttle': 0.943541944026947, 'steer': -0.020790627226233482, 'brake': 0.0, 'clutch': 0, 'gear': 5, 'engine-rpm': 10807, 'drs': False, 'rev-lights-percent': 43, 'brakes-temperature': [242, 232, 227, 230], 'tyres-surface-temperature': [54, 54, 45, 45], 'tyres-inner-temperature': [68, 68, 68, 68], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [70, 70, 70, 70], 'tyres-inner-temperature': [70, 70, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [44, 44, 42, 42], 'tyres-surface-temperature': [92, 83, 100, 98], 'tyres-inner-temperature': [81, 79, 82, 80], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [70, 70, 70, 70], 'tyres-inner-temperature': [70, 70, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 228, 'throttle': 0.9626579284667969, 'steer': 0.017186349257826805, 'brake': 0.0, 'clutch': 0, 'gear': 6, 'engine-rpm': 10609, 'drs': False, 'rev-lights-percent': 36, 'brakes-temperature': [233, 233, 236, 236], 'tyres-surface-temperature': [90, 88, 90, 90], 'tyres-inner-temperature': [81, 80, 81, 81], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 151, 'throttle': 1.0, 'steer': 0.0022684389259666204, 'brake': 0.0, 'clutch': 0, 'gear': 4, 'engine-rpm': 9752, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [258, 242, 232, 236], 'tyres-surface-temperature': [53, 54, 46, 46], 'tyres-inner-temperature': [68, 68, 68, 68], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [66, 66, 70, 70], 'tyres-inner-temperature': [69, 69, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 0, 'throttle': 0.0, 'steer': -0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 3920, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [21, 21, 21, 21], 'tyres-surface-temperature': [70, 70, 70, 70], 'tyres-inner-temperature': [70, 70, 70, 70], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 138, 'throttle': 0.5249822735786438, 'steer': -0.20933157205581665, 'brake': 0.0, 'clutch': 0, 'gear': 4, 'engine-rpm': 8765, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [740, 746, 776, 789], 'tyres-surface-temperature': [90, 90, 90, 90], 'tyres-inner-temperature': [90, 90, 90, 90], 'engine-temperature': 110, 'tyres-pressure': [21.899999618530273, 21.899999618530273, 23.299999237060547, 23.299999237060547], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 56, 'throttle': 0.0, 'steer': -0.044232919812202454, 'brake': 0.0, 'clutch': 0, 'gear': 5, 'engine-rpm': 4005, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [365, 363, 382, 375], 'tyres-surface-temperature': [70, 62, 77, 62], 'tyres-inner-temperature': [104, 98, 104, 92], 'engine-temperature': 106, 'tyres-pressure': [21.828598022460938, 21.48756217956543, 24.824195861816406, 24.050504684448242], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 0, 'throttle': 0.0, 'steer': 0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 0, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [0, 0, 0, 0], 'tyres-surface-temperature': [0, 0, 0, 0], 'tyres-inner-temperature': [0, 0, 0, 0], 'engine-temperature': 0, 'tyres-pressure': [0.0, 0.0, 0.0, 0.0], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}, {'speed': 0, 'throttle': 0.0, 'steer': 0.0, 'brake': 0.0, 'clutch': 0, 'gear': 0, 'engine-rpm': 0, 'drs': False, 'rev-lights-percent': 0, 'brakes-temperature': [0, 0, 0, 0], 'tyres-surface-temperature': [0, 0, 0, 0], 'tyres-inner-temperature': [0, 0, 0, 0], 'engine-temperature': 0, 'tyres-pressure': [0.0, 0.0, 0.0, 0.0], 'surface-type': ['Tarmac', 'Tarmac', 'Tarmac', 'Tarmac']}], 'mfd-panel-index': 0, 'mfd-panel-index-secondary': 255, 'suggested-gear': 0}
 
         header = PacketHeader(raw_packet[:PacketHeader.PACKET_LEN])
         parsed_packet = PacketCarTelemetryData(header, raw_packet[PacketHeader.PACKET_LEN:])

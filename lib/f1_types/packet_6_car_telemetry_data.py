@@ -24,7 +24,7 @@
 import struct
 from typing import Any, Dict, List
 
-from .base_pkt import F1PacketBase, F1SubPacketBase
+from .base_pkt import F1PacketBase, F1RawValueEnum, F1SubPacketBase
 from .common import get_num_cars
 from .header import PacketHeader
 
@@ -50,7 +50,7 @@ class CarTelemetryData(F1SubPacketBase):
         m_tyresInnerTemperature (List[int]): List of inner temperatures (celsius) for each tyre.
         m_engineTemperature (int): Engine temperature (celsius).
         m_tyresPressure (List[float]): List of tyre pressures (PSI) for each tyre.
-        m_surfaceType (List[int]): List of surface types for each wheel, see appendices.
+        m_surfaceType (List[CarTelemetryData.SurfaceType]): List of surface types for each wheel.
 
             Note:
                 The length of each list attribute should be 4, corresponding to the four wheels of the car.
@@ -59,8 +59,36 @@ class CarTelemetryData(F1SubPacketBase):
         None. No field in this structure is affected by the "Your Telemetry" setting.
     """
 
+    class SurfaceType(F1RawValueEnum):
+        """Driving surface under a wheel. Undeclared wire values cast to UNKNOWN, keeping the byte in `raw_value`."""
+
+        TARMAC = 0
+        RUMBLE_STRIP = 1
+        CONCRETE = 2
+        ROCK = 3
+        GRAVEL = 4
+        MUD = 5
+        SAND = 6
+        GRASS = 7
+        WATER = 8
+        COBBLESTONE = 9
+        METAL = 10
+        RIDGED = 11
+
+        UNKNOWN = 255
+
+        def __str__(self):
+            if self == CarTelemetryData.SurfaceType.UNKNOWN:
+                return f"Unknown ({self.raw_value})"
+            return self.name.replace("_", " ").title()
+
+        @classmethod
+        def safeCast(cls, value: int) -> "CarTelemetryData.SurfaceType":
+            """Safely cast an integer to a SurfaceType, returning UNKNOWN for invalid values."""
+            return super().safeCast(value, CarTelemetryData.SurfaceType.UNKNOWN)
+
     COMPILED_PACKET_STRUCT = struct.Struct("<"
-        "H" # uint16    m_speed;                    // Speed of car in kilometres per hour
+        "H" # uint16    m_speed;                  // Speed of car in kilometres per hour
         "f" # float     m_throttle;                 // Amount of throttle applied (0.0 to 1.0)
         "f" # float     m_steer;                    // Steering (-1.0 (full lock left) to 1.0 (full lock right))
         "f" # float     m_brake;                    // Amount of brake applied (0.0 to 1.0)
@@ -179,8 +207,9 @@ class CarTelemetryData(F1SubPacketBase):
         ) = pkt_struct.unpack(data)
 
     def _cast_enums(self) -> None:
-        """All bool conversions in one place."""
+        """All enum and bool conversions in one place."""
         self.m_drs = bool(self.m_drs)
+        self.m_surfaceType = [CarTelemetryData.SurfaceType.safeCast(s) for s in self.m_surfaceType]
 
     def __str__(self) -> str:
         """
@@ -230,7 +259,7 @@ class CarTelemetryData(F1SubPacketBase):
             "tyres-inner-temperature": self.m_tyresInnerTemperature,
             "engine-temperature": self.m_engineTemperature,
             "tyres-pressure": self.m_tyresPressure,
-            "surface-type": self.m_surfaceType,
+            "surface-type": [str(s) for s in self.m_surfaceType],
         }
 
     def __eq__(self, other: "CarTelemetryData") -> bool:
@@ -313,10 +342,10 @@ class CarTelemetryData(F1SubPacketBase):
             self.m_tyresPressure[1],
             self.m_tyresPressure[2],
             self.m_tyresPressure[3],
-            self.m_surfaceType[0],
-            self.m_surfaceType[1],
-            self.m_surfaceType[2],
-            self.m_surfaceType[3]
+            self.m_surfaceType[0].raw_value,
+            self.m_surfaceType[1].raw_value,
+            self.m_surfaceType[2].raw_value,
+            self.m_surfaceType[3].raw_value
         )
 
     @classmethod
