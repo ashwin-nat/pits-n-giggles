@@ -148,6 +148,7 @@ class DriverTelemetryRecorder(Generic[S]):
                     tyre_laps=0,
                     pit_in_lap=False,
                     pit_out_lap=False,
+                    ers_harvest_limit_j=None,
                 ),
                 telemetry=self._copy_buffers(self._current_buffers),
             )

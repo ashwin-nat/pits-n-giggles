@@ -53,6 +53,7 @@ export interface Lap {
   tyreLaps: number;
   pitInLap: boolean;
   pitOutLap: boolean;
+  ersHarvestLimitJ: number | null; // null in recordings made before this field existed
   isGood: boolean;
 }
 

@@ -115,16 +115,18 @@ def test_driver_to_api_restricted_telemetry():
 
 def test_lap_to_api_completed_lap():
     lap = ParsedLap(lap_number=12, lap_time_ms=75340, valid=True, tyre_compound="Soft",
-                    tyre_laps=5, pit_in_lap=False, pit_out_lap=False, num_points=100, is_good=True)
+                    tyre_laps=5, pit_in_lap=False, pit_out_lap=False, ers_harvest_limit_j=4_000_000.0,
+                    num_points=100, is_good=True)
     assert lap_to_api(lap) == {
         'lapNumber': 12, 'lapTime': 75340, 'valid': True, 'tyreCompound': "Soft",
-        'tyreLaps': 5, 'pitInLap': False, 'pitOutLap': False, 'isGood': True,
+        'tyreLaps': 5, 'pitInLap': False, 'pitOutLap': False, 'ersHarvestLimitJ': 4_000_000.0, 'isGood': True,
     }
 
 
 def test_lap_to_api_out_lap_no_time():
     lap = ParsedLap(lap_number=1, lap_time_ms=None, valid=False, tyre_compound="Medium",
-                    tyre_laps=1, pit_in_lap=False, pit_out_lap=True, num_points=50, is_good=False)
+                    tyre_laps=1, pit_in_lap=False, pit_out_lap=True, ers_harvest_limit_j=None,
+                    num_points=50, is_good=False)
     result = lap_to_api(lap)
     assert result['lapTime'] is None
     assert result['valid'] is False

@@ -701,6 +701,7 @@ class DataPerDriver:
                 tyre_laps=69, # TODO
                 pit_in_lap=False,
                 pit_out_lap=False,
+                ers_harvest_limit_j=self._getMgukHarvLimitPerLapJ(),
             ))
 
         # Store the snapshot data for the old lap
@@ -740,13 +741,20 @@ class DataPerDriver:
         self._resetPerLapStats()
         self.m_logger.debug("Driver %s - lap %d added to per_lap_snapshots", str(self), old_lap_number)
 
+    def _getMgukHarvLimitPerLapJ(self) -> Optional[float]:
+        """The MGU-K harvest limit for the current lap in joules, None outside F1 (no ERS)"""
+        formula = self.m_state_ref.m_session_info.m_formula
+        if not formula or not formula.is_f1():
+            return None
+        if self.m_car_info.m_2026_regs:
+            # The 2026 regs have a dynamic harv limit per lap
+            # Varies on whether OT is available and per track as well
+            return self.m_car_info.m_ers_harv_limit_per_lap_j
+        # Pre 2026 cars had a fixed limit
+        return CarStatusData.MAX_MGUK_HARV_PER_LAP
+
     def _buildPerLapSnapshot(self) -> PerLapSnapshotEntry:
         """The per lap snapshot of the car's state right now"""
-        if self.m_car_info.m_2026_regs:
-            mguk_harv_limit = self.m_car_info.m_ers_harv_limit_per_lap_j
-        else:
-            mguk_harv_limit = CarStatusData.MAX_MGUK_HARV_PER_LAP
-
         return PerLapSnapshotEntry(
             car_damage=self.m_packet_copies.m_packet_car_damage,
             car_status=self.m_packet_copies.m_packet_car_status,
@@ -757,7 +765,7 @@ class DataPerDriver:
             ers_deployed_j=self.m_car_info.m_curr_lap_ers_deployed_j,
             ers_harv_mguh_j=self.m_car_info.m_curr_lap_ers_harv_mguh_j,
             ers_harv_mguk_j=self.m_car_info.m_curr_lap_ers_harv_mguk_j,
-            ers_harv_limit_mguk_j=mguk_harv_limit,
+            ers_harv_limit_mguk_j=self._getMgukHarvLimitPerLapJ(),
         )
 
     def _resetPerLapStats(self) -> None:
@@ -1653,6 +1661,7 @@ class DataPerDriver:
                     tyre_laps=69, # TODO
                     pit_in_lap=False,
                     pit_out_lap=False,
+                    ers_harvest_limit_j=self._getMgukHarvLimitPerLapJ(),
                 ),
                 telemetry=in_progress_lap.telemetry,
             )

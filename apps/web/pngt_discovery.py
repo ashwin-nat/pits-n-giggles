@@ -179,6 +179,7 @@ def _lap_to_dict(lap: ParsedLap) -> Dict[str, Any]:
         'tyre_laps': lap.tyre_laps,
         'pit_in_lap': lap.pit_in_lap,
         'pit_out_lap': lap.pit_out_lap,
+        'ers_harvest_limit_j': lap.ers_harvest_limit_j,
         'num_points': lap.num_points,
         'is_good': lap.is_good,
     }
@@ -193,6 +194,7 @@ def _dict_to_lap(raw: Dict[str, Any]) -> ParsedLap:
         tyre_laps=raw['tyre_laps'],
         pit_in_lap=raw['pit_in_lap'],
         pit_out_lap=raw['pit_out_lap'],
+        ers_harvest_limit_j=raw.get('ers_harvest_limit_j'),
         num_points=raw.get('num_points', 0),
         is_good=raw['is_good'],
     )

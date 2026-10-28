@@ -60,6 +60,7 @@ interface LapsJson {
     tyre_laps: number;
     pit_in_lap: boolean;
     pit_out_lap: boolean;
+    ers_harvest_limit_j?: number | null;
     is_good: boolean;
   }>;
 }
@@ -220,6 +221,7 @@ export class LocalFileProvider implements LapAnalyzerProvider {
       tyreLaps: l.tyre_laps,
       pitInLap: l.pit_in_lap,
       pitOutLap: l.pit_out_lap,
+      ersHarvestLimitJ: l.ers_harvest_limit_j ?? null,
       isGood: l.is_good,
     }));
   }

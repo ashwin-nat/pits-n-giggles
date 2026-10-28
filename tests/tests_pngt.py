@@ -86,7 +86,7 @@ def sample_drivers():
 
 
 def _lap(lap_number, lap_time_ms, valid, tyre_compound, tyre_laps, pit_in_lap, pit_out_lap,
-         distances, speeds, states, temps):
+         distances, speeds, states, temps, ers_harvest_limit_j=None):
     return CompletedLap(
         metadata=LapMetadata(
             lap_number=lap_number,
@@ -96,6 +96,7 @@ def _lap(lap_number, lap_time_ms, valid, tyre_compound, tyre_laps, pit_in_lap, p
             tyre_laps=tyre_laps,
             pit_in_lap=pit_in_lap,
             pit_out_lap=pit_out_lap,
+            ers_harvest_limit_j=ers_harvest_limit_j,
         ),
         telemetry={
             "lap_distance": distances,
@@ -110,7 +111,8 @@ def sample_driver_data():
     # driver 2 is left out of driver_data entirely -- that's what makes it a
     # restricted-telemetry driver on disk, not a separate flag.
     lap1 = _lap(1, 95000, True, "Medium", 1, False, True,
-                [0.0, 100.0, 200.0, 300.0], [100.0, float("nan"), 150.0, 200.0], [1, -1, 2, 3], [20.0, 21.0, 22.0, 23.0])
+                [0.0, 100.0, 200.0, 300.0], [100.0, float("nan"), 150.0, 200.0], [1, -1, 2, 3], [20.0, 21.0, 22.0, 23.0],
+                ers_harvest_limit_j=4_000_000.0)
     lap2 = _lap(2, 90000, True, "Soft", 1, False, False,
                 [0.0, 150.0, 300.0], [110.0, 160.0, 210.0], [1, 2, 3], [24.0, 25.0, 26.0])
     in_progress = _lap(3, None, False, "Soft", 2, False, False,
@@ -175,6 +177,8 @@ def test_round_trip(tmp_path):
     assert [lap.lap_number for lap in laps] == [1, 2, 3]
     assert laps[0].num_points == 4
     assert laps[0].is_good is False
+    assert laps[0].ers_harvest_limit_j == 4_000_000.0
+    assert laps[1].ers_harvest_limit_j is None
     assert laps[1].num_points == 3
     assert laps[1].is_good is True  # fastest valid lap, auto-marked
     assert laps[2].num_points == 2  # in-progress
@@ -510,7 +514,7 @@ def test_older_file_fewer_sensors(tmp_path):
     lap = CompletedLap(
         metadata=LapMetadata(
             lap_number=1, lap_time_ms=95000, valid=True, tyre_compound="Medium", tyre_laps=1,
-            pit_in_lap=False, pit_out_lap=True,
+            pit_in_lap=False, pit_out_lap=True, ers_harvest_limit_j=None,
         ),
         telemetry={"lap_distance": [0.0, 100.0], "widget_speed": [100.0, 150.0]},
     )
@@ -520,6 +524,24 @@ def test_older_file_fewer_sensors(tmp_path):
 
     telemetry = read_lap_telemetry(dest, 1, 1)
     assert set(telemetry.keys()) == {"lap_distance", "widget_speed"}
+
+
+def test_older_file_without_ers_harvest_limit_reads_none(tmp_path):
+    dest = tmp_path / "session.pngt"
+    write_session(dest, sample_session(), sample_sensors(), sample_drivers(), sample_driver_data())
+
+    def drop_harvest_limit(name, data):
+        if name != "drivers/01/laps.json":
+            return data
+        obj = json.loads(data)
+        for lap in obj["laps"]:
+            del lap["ers_harvest_limit_j"]
+        return json.dumps(obj).encode("utf-8")
+
+    patched = tmp_path / "patched.pngt"
+    _rebuild_zip(dest, patched, patch_entry=drop_harvest_limit)
+
+    assert [lap.ers_harvest_limit_j for lap in read_driver_laps(patched, 1)] == [None, None, None]
 
 
 def test_unknown_json_field_tolerated(tmp_path):

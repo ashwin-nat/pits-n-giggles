@@ -103,6 +103,7 @@ class LapMetadata:
     tyre_laps: int
     pit_in_lap: bool
     pit_out_lap: bool
+    ers_harvest_limit_j: Optional[float]  # None in recordings made before this field existed
 
 @dataclass(frozen=True)
 class CompletedLap:

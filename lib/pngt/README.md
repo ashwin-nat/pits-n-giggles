@@ -66,7 +66,7 @@ drivers = [DriverRecord(driver_index=0, name="Driver 1", team="Red Bull Racing",
                          car_number=1, nationality="NL", platform="Steam")]
 lap = CompletedLap(
     metadata=LapMetadata(lap_number=1, lap_time_ms=105812, valid=True, tyre_compound="Soft",
-                          tyre_laps=1, pit_in_lap=False, pit_out_lap=False),
+                          tyre_laps=1, pit_in_lap=False, pit_out_lap=False, ers_harvest_limit_j=None),
     telemetry={"lap_distance": [0.0, 100.0, 200.0], "speed": [100.0, 150.0, 200.0]},
 )
 dest = write_session("session.pngt", session, sensors, drivers,
@@ -104,7 +104,8 @@ SENSORS = (
 recorder = DriverTelemetryRecorder(driver_index=0, sensors=SENSORS)
 recorder.update(TelemetrySnapshot(lap_distance=12.3, lap_time_ms=450, speed=201.4, gear=6), frame_id=1, lap_number=1)
 recorder.on_lap_change(LapMetadata(lap_number=1, lap_time_ms=None, valid=False,
-                                    tyre_compound="Soft", tyre_laps=1, pit_in_lap=False, pit_out_lap=False))
+                                    tyre_compound="Soft", tyre_laps=1, pit_in_lap=False, pit_out_lap=False,
+                                    ers_harvest_limit_j=None))
 export = recorder.export()  # -> DriverExportData
 ```
 
@@ -148,6 +149,12 @@ export = recorder.export()  # -> DriverExportData
 - Reading is forward-compatible by construction: unknown JSON fields are ignored
   (plain `dict` parsing, not a strict schema), and `read_lap_telemetry()` returns
   exactly the array names present in that lap's `.npz`.
+- **Bump `header.json`'s `version` only for changes an older reader can't handle**:
+  removing, renaming or making a field required, changing a field's meaning or units,
+  or changing the archive layout. A new field is not a bump; read it with a default
+  so older files still load. Both readers match the version exactly, so a bump must
+  also widen them to accept the old one. Every format change goes in
+  [CHANGELOG.md](CHANGELOG.md).
 - `write_session()` writes to a `.tmp` sibling and `os.replace()`s onto `dest_path`;
   every mutation in `mutate.py` follows the same atomic rebuild-then-replace pattern.
 

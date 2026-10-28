@@ -175,6 +175,7 @@ def _dict_to_lap_metadata(raw: dict, path) -> ParsedLap:
             tyre_laps=raw["tyre_laps"],
             pit_in_lap=raw["pit_in_lap"],
             pit_out_lap=raw["pit_out_lap"],
+            ers_harvest_limit_j=raw.get("ers_harvest_limit_j"),
             num_points=raw["num_points"],
             is_good=raw["is_good"],
         )

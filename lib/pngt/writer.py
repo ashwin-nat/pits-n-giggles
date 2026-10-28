@@ -213,6 +213,7 @@ def _lap_dict(lap: CompletedLap, is_good: bool) -> dict:
         "tyre_laps": metadata.tyre_laps,
         "pit_in_lap": metadata.pit_in_lap,
         "pit_out_lap": metadata.pit_out_lap,
+        "ers_harvest_limit_j": metadata.ers_harvest_limit_j,
         "num_points": len(lap.telemetry["lap_distance"]),
         "is_good": is_good,
     }
