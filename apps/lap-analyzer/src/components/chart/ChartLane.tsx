@@ -158,6 +158,8 @@ export function ChartLane({
   // without forcing a full chart rebuild.
   const propsRef = useRef({ onViewportChange, onCrosshairMove, focusZone });
   propsRef.current = { onViewportChange, onCrosshairMove, focusZone };
+  const viewportRef = useRef(viewport);
+  viewportRef.current = viewport;
 
   // The last distance *this* chart's own native cursor hook reported. Lets
   // the crosshair-sync effect below skip re-applying setCursor on the lane
@@ -428,7 +430,13 @@ export function ChartLane({
     if (hasReference) {
       data.push(displayedReference!.map((p) => p.value));
     }
-    chart.setData(data, false);
+    // Discrete lanes use stepped paths, which only rebuild once the x scale is
+    // re-ranged -- resetScales=false left them blank until the first zoom.
+    // Re-ranging resets x to the data bounds, so reapply the viewport after.
+    chart.setData(data, true);
+    const vp = viewportRef.current;
+    chart.setScale("x", vp === null ? { min: dataMin, max: dataMax } : { min: vp.distanceStart, max: vp.distanceEnd });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displayedPrimary, displayedReference, hasReference]);
 
   // Legend visibility toggle -> series show/hide, without rebuilding the
