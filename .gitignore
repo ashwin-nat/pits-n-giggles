@@ -8,6 +8,7 @@ launch.json
 *.tar.xz
 *.tar.gz
 *.json
+!apps/voice/knowledge_cards.json
 *.f1pcap
 *.txt
 *.ini
