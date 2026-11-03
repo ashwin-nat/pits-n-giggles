@@ -41,7 +41,7 @@ async def save_json_to_file(
     base_dir: Optional[Path] = None
 ) -> Path:
     """
-    Saves the given dictionary as a JSON file in data/<date>/race-info/.
+    Saves the given dictionary as a JSON file in data/<date>/.
 
     Args:
         data (dict): The data to save.
@@ -58,10 +58,9 @@ async def save_json_to_file(
     else:
         base_dir = Path(base_dir) / "data"
 
-    dir_path = base_dir / "race-info"
-    dir_path.mkdir(parents=True, exist_ok=True)
+    base_dir.mkdir(parents=True, exist_ok=True)
 
-    file_path = dir_path / filename
+    file_path = base_dir / filename
     # Write here, then rename atomically -- a reader must never see a truncated file_path.
     tmp_path = file_path.with_name(file_path.name + ".tmp")
     json_str = json.dumps(data, separators=(",", ":"))

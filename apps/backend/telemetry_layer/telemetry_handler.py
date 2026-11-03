@@ -966,12 +966,12 @@ class F1TelemetryHandler:
         now = datetime.now().astimezone()
         timestamp_str = now.strftime("%Y_%m_%d_%H_%M_%S")
         date_str = now.strftime("%Y_%m_%d")
-        dir_path = Path(resolve_user_file("data")) / date_str / "telemetry"
+        dir_path = Path(resolve_user_file("data")) / date_str
         dir_path.mkdir(parents=True, exist_ok=True)
         dest_path = dir_path / f"{event_str}{timestamp_str}.pngt"
 
         args = build_lap_telemetry_write_args(self.m_session_state_ref, dest_path,
-                                     self.m_session_state_ref.m_lap_analyzer_settings)
+                                              self.m_session_state_ref.m_lap_analyzer_settings)
         if not args[2]:
             # Settings were hot-swapped to no sensors after the caller's shouldSaveLapTelemetry()
             return None
