@@ -10,6 +10,7 @@ import {
   UnsupportedVersionError,
   MalformedSessionError,
   DriverNotFoundError,
+  NoLapRecordingError,
 } from "../lib/pngtErrors";
 
 const SUPPORTED_VERSION = 1;
@@ -17,6 +18,8 @@ const SUPPORTED_VERSION = 1;
 interface HeaderJson {
   format?: string;
   version?: number;
+  // Absent in older lap-telemetry-only files; a section is null when the file does not hold it.
+  contents?: { lap_telemetry?: object | null };
 }
 
 interface ManifestJson {
@@ -123,6 +126,10 @@ export class LocalFileProvider implements LapAnalyzerProvider {
     }
     if (header.version !== SUPPORTED_VERSION) {
       throw new UnsupportedVersionError(this.label, header.version, SUPPORTED_VERSION);
+    }
+
+    if (header.contents !== undefined && (header.contents.lap_telemetry ?? null) === null) {
+      throw new NoLapRecordingError(this.label);
     }
 
     const manifest = readJsonEntry<ManifestJson>(entries, "manifest.json");

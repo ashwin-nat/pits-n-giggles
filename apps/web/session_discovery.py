@@ -38,6 +38,7 @@ import lib.race_analyzer as RaceAnalyzer
 from lib.f1_types import (F1Utils, PacketSessionData, SessionType23,
                           SessionType24)
 from lib.logger import PngLogger
+from lib.pngt import SectionNotPresentError, read_session_data
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -68,16 +69,32 @@ _F1_FORMULA_STRINGS: frozenset = frozenset(
     str(f) for f in PacketSessionData.FormulaType if f.is_f1()
 )
 _PARSE_CONCURRENCY = 32
+_SESSION_FILE_GLOBS = ('*.json', '*.pngt')
+_CONTAINER_SUFFIX = '.pngt'
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def find_json_files(session_dir: Path) -> List[Path]:
-    """Recursively find all .json files under session_dir; paths relative to session_dir."""
+def find_session_files(session_dir: Path) -> List[Path]:
+    """Recursively find all loose .json and .pngt container files under session_dir; paths relative to
+    session_dir. A container without a session_data section is found here and dropped when parsed."""
     return [
         p.relative_to(session_dir)
-        for p in session_dir.rglob('*.json')
+        for pattern in _SESSION_FILE_GLOBS
+        for p in session_dir.rglob(pattern)
         if not p.name.startswith('.')
     ]
+
+
+def _is_container(path: Path) -> bool:
+    return path.suffix == _CONTAINER_SUFFIX
+
+
+def _read_container_session_data(path: Path) -> Optional[Dict[str, Any]]:
+    """A container's parsed session_data section. None if it has none (e.g. a lap recording on its own)."""
+    try:
+        return read_session_data(path)
+    except SectionNotPresentError:
+        return None
 
 
 def _load_cache(cache_path: Path, app_version: str, logger: PngLogger) -> Dict[str, Any]:
@@ -324,11 +341,13 @@ def _build_player_race_result(
     return result
 
 
-def _parse_session_metadata(path: Path, logger: PngLogger) -> Dict[str, Any]:
-    """Load a session JSON and extract session-info plus player lap stats."""
+def _parse_session_metadata(path: Path, logger: PngLogger) -> Optional[Dict[str, Any]]:
+    """Load a session JSON and extract session-info plus player lap stats. None if the file holds no
+    session data."""
     logger.debug("_parse_session_metadata: reading %s (%.1f MB)", path.name, path.stat().st_size / 1_048_576)
-    with open(path, 'rb') as fh:
-        data = orjson.loads(fh.read())
+    data = _read_container_session_data(path) if _is_container(path) else orjson.loads(path.read_bytes())
+    if data is None:
+        return None
 
     session_info = data.get('session-info', {})
     classification = data.get('classification-data', [])
@@ -407,7 +426,8 @@ async def _parse_one(
     cache: Dict[str, Any],
     sem: asyncio.Semaphore,
 ) -> Tuple[Path, Any]:
-    """Return (rel_path, session_info | Exception), using the mtime cache to skip unchanged files.
+    """Return (rel_path, session_info | None | Exception), using the mtime cache to skip unchanged files.
+    None means the file holds no session data.
 
     Concurrency across all files is capped via `sem` rather than by chunking into batches,
     so a slow file doesn't stall the next file from starting.
@@ -531,8 +551,8 @@ async def build_session_list(
     if not session_dir.exists():
         return
 
-    json_files = find_json_files(session_dir)
-    logger.debug("build_session_list: found %d JSON files in %s", len(json_files), session_dir)
+    json_files = find_session_files(session_dir)
+    logger.debug("build_session_list: found %d session files in %s", len(json_files), session_dir)
 
     json_files = _sort_files_newest_first(json_files)
     total = len(json_files)
@@ -563,6 +583,8 @@ async def build_session_list(
     completed = 0
     for coro in asyncio.as_completed(tasks):
         rel_path, outcome = await coro
+        if outcome is None:
+            continue
         # Contain per-file failures. _parse_one already returns read/decode errors as
         # values, but entry building can raise on its own (e.g. unparseable metadata);
         # letting that escape would abandon every other session *and* skip the cache
@@ -591,9 +613,16 @@ async def build_session_list(
 
 @alru_cache(maxsize=_JSON_CACHE_SIZE)
 async def _cached_load(full_path_str: str) -> Dict[str, Any]:
-    """Read, parse, and recompute a session JSON file. Results are LRU-cached by path."""
-    async with aiofiles.open(full_path_str, 'rb') as f:
-        data = orjson.loads(await f.read())
+    """Read, parse, and recompute a session JSON, from a loose file or a container's session_data
+    section. Results are LRU-cached by path."""
+    full_path = Path(full_path_str)
+    if _is_container(full_path):
+        data = await asyncio.to_thread(_read_container_session_data, full_path)
+        if data is None:
+            raise ValueError(f"{full_path_str} has no session data")
+    else:
+        async with aiofiles.open(full_path, 'rb') as f:
+            data = orjson.loads(await f.read())
     check_recompute_json(data)
     return data
 

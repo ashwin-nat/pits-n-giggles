@@ -42,8 +42,9 @@ from apps.web.pngt_discovery import (CACHE_FILE, build_pngt_session_list,
                                      find_pngt_files, slugify)
 from lib.logger import PngLogger
 from lib.pngt import (CompletedLap, DriverExportData, DriverRecord,
-                      LapMetadata, SensorConfig, SensorType, SessionMetadata,
-                      TrackInfo, write_session)
+                      LapMetadata, SensorConfig, SensorType, SessionDataEntry,
+                      SessionMetadata, TrackInfo, write_session,
+                      write_session_data_only)
 
 logging.setLoggerClass(PngLogger)
 
@@ -275,3 +276,23 @@ async def test_app_version_change_invalidates_whole_cache(tmp_path, monkeypatch)
 
     assert len(entries) == 1
     assert len(calls) == 1  # version bump forced a reparse despite unchanged mtime
+
+
+async def test_session_data_only_container_is_skipped_without_logging_a_failure(tmp_path, caplog):
+    _write_pngt(tmp_path / "recording.pngt")
+    write_session_data_only(tmp_path / "session.pngt", SessionDataEntry("session.json", b"{}"))
+
+    with caplog.at_level(logging.DEBUG):
+        entries, _slug_map = await _build_final(tmp_path)
+
+    assert [e.rel_path for e in entries] == ["recording.pngt"]
+    assert "failed" not in caplog.text
+
+
+async def test_container_with_both_sections_is_listed(tmp_path):
+    write_session(tmp_path / "both.pngt", _session(), _sensors(), _drivers(), _driver_data(),
+                  session_data=SessionDataEntry("both.json", b"{}"))
+
+    entries, _slug_map = await _build_final(tmp_path)
+
+    assert [e.rel_path for e in entries] == ["both.pngt"]

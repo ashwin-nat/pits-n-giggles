@@ -70,6 +70,10 @@ T = TypeVar('T')
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
+class SkipFile(Exception):
+    """Raised by a handler's `parse` for a file that is valid but not one it lists (e.g. a container
+    without the section it indexes). Skipped quietly, unlike a parse failure, and not cached."""
+
 @dataclass(frozen=True)
 class DiscoveryConfig(Generic[T]):
     """One registered file type's handler. The engine owns the directory walk,
@@ -188,6 +192,8 @@ async def _parse_one(
             entry = config.make_entry(cache_key, parsed, previous_entry)
             cache[cache_key] = {'mtime': mtime, 'data': config.to_cache_dict(entry)}
             return rel_path, entry
+        except SkipFile:
+            return rel_path, None
         except config.catch as exc:
             logger.exception("[%d/%d] failed - %s: %s", file_idx, total, rel_path, exc)
             return rel_path, None

@@ -41,9 +41,11 @@ from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
 from lib.logger import PngLogger
 from lib.pngt import (ParsedDriver, ParsedLap, ParsedSessionMetadata,
                       PngtError, SensorConfig, SensorType, SessionBest,
-                      TrackInfo, read_driver_laps, read_session)
+                      TrackInfo, read_contents, read_driver_laps,
+                      read_session)
 
-from lib.file_discovery import DiscoveryConfig, discover_all, find_files
+from lib.file_discovery import (DiscoveryConfig, SkipFile, discover_all,
+                                find_files)
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -222,7 +224,10 @@ def _parse(full_path: Path) -> _ParsedPngtFile:
     """Reads one .pngt file's session/drivers/sensors/laps in full via lib.pngt.reader.
     Runs inside asyncio.to_thread via the generic engine -- must not touch shared
     state, which is exactly why slug assignment isn't done here (see `_make_entry`).
+    Raises SkipFile for a container with no lap recording (e.g. only session data).
     """
+    if not read_contents(full_path).has_lap_telemetry:
+        raise SkipFile(full_path)
     parsed = read_session(full_path)
     laps_by_driver = {
         driver.driver_index: read_driver_laps(full_path, driver.driver_index)

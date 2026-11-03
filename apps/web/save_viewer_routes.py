@@ -244,8 +244,12 @@ async def sessions_watch_loop(server: "WebServer") -> None:
         server.m_logger.warning(
             "Session directory %s does not exist -- file watcher not started", server.m_session_dir)
         return
+    # Session data lives in loose .json files or inside .pngt containers
+    accept_json = watch_filter('.json')
+    accept_pngt = watch_filter('.pngt')
     async for changes in awatch(
-            server.m_session_dir, stop_event=_watch_stop, watch_filter=watch_filter('.json')):
+            server.m_session_dir, stop_event=_watch_stop,
+            watch_filter=lambda change, path: accept_json(change, path) or accept_pngt(change, path)):
         server.m_logger.debug("Session cache: change detected: %s", sorted(changes))
         try:
             await rebuild_session_cache(server)
