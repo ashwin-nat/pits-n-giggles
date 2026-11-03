@@ -58,7 +58,7 @@ def _filter_export(data: DriverExportData, sensor_keys: set[str]) -> DriverExpor
         in_progress_lap=_filter_lap(data.in_progress_lap, keep_keys) if data.in_progress_lap else None,
     )
 
-def build_pngt_write_args(
+def build_lap_telemetry_write_args(
     session_state: "SessionState",
     dest_path: Path,
     lap_analyzer_settings: LapAnalyzerSettings,

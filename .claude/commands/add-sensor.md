@@ -109,11 +109,11 @@ If the container value or packet copy isn't already pulled into a local at the t
 ## Step 4 — Verify
 
 ```bash
-poetry run pytest tests/tests_config/tests_lap_analyzer_settings.py tests/tests_pngt_session_export.py -n 0 -q
+poetry run pytest tests/tests_config/tests_lap_analyzer_settings.py tests/tests_lap_telemetry_export.py -n 0 -q
 poetry run pylint --rcfile scripts/.pylintrc lib/config/schema/lap_analyzer.py apps/backend/state_mgmt_layer/data_per_driver/telemetry_recorder/telemetry_recorder.py
 ```
 
-The existing tests already enforce schema <-> `F1_SENSORS` key parity, unique manifest keys, label parity and complete annotations. Do **not** add tests for preset membership (presets are a UI construct). If the sensor joined `DEFAULT`, update `DEFAULT_KEYS` in `tests/tests_pngt_session_export.py` (it holds manifest keys, not field names).
+The existing tests already enforce schema <-> `F1_SENSORS` key parity, unique manifest keys, label parity and complete annotations. Do **not** add tests for preset membership (presets are a UI construct). If the sensor joined `DEFAULT`, update `DEFAULT_KEYS` in `tests/tests_lap_telemetry_export.py` (it holds manifest keys, not field names).
 
 Do not edit `png_config.json`; missing keys are filled with the Pydantic default on startup.
 

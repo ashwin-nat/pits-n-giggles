@@ -55,9 +55,9 @@ async def handleManualSave(
     # Captured now, synchronously, before ManualSaveRsp's own await -- a session change
     # landing on the ingress task mid-save must not be able to corrupt this write.
     session_uid = session_state.m_session_info.m_session_uid or 0
-    # preparePngtWrite() no longer checks this itself -- every caller decides for itself,
-    # same as the auto-save paths' _shouldSaveJsonData()/shouldSavePngtData() split.
-    pngt_write = telemetry_handler.preparePngtWrite() if telemetry_handler.shouldSavePngtData() else None
+    # prepareLapTelemetryWrite() no longer checks this itself -- every caller decides for itself,
+    # same as the auto-save paths' _shouldSaveJsonData()/shouldSaveLapTelemetry() split.
+    lap_telemetry_write = telemetry_handler.prepareLapTelemetryWrite() if telemetry_handler.shouldSaveLapTelemetry() else None
 
     try:
         rsp = await ManualSaveRsp(logger, session_state).saveToDisk()
@@ -69,7 +69,7 @@ async def handleManualSave(
 
     # This write can hog the IPC/mgmt task. This will cause heartbeats to miss and the
     # launcher to kill the core subsystem. Hence fire and forget in process worker pool
-    telemetry_handler.firePngtWrite(pngt_write, session_uid)
+    telemetry_handler.fireLapTelemetryWrite(lap_telemetry_write, session_uid)
     return rsp
 
 async def handleForwardingConfigChange(

@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-# Tests for the app side of the .pngt export: apps.backend.state_mgmt_layer.pngt_export
+# Tests for the app side of the lap telemetry export: apps.backend.state_mgmt_layer.lap_telemetry_export
 # (sensor selection and filtering) and the lap events SessionState reports to DataPerDriver.
 # This is app/business logic, not lib/pngt, so its tests live here.
 
@@ -36,7 +36,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from apps.backend.state_mgmt_layer.data_per_driver.data_per_driver import DataPerDriver
 from apps.backend.state_mgmt_layer.data_per_driver.telemetry_recorder.telemetry_recorder import F1_SENSORS
 from apps.backend.state_mgmt_layer.session_state import SessionState
-from apps.backend.state_mgmt_layer.pngt_export import _filter_export, selected_sensors
+from apps.backend.state_mgmt_layer.lap_telemetry_export import _filter_export, selected_sensors
 from lib.config import LapAnalyzerSensorSettings, LapAnalyzerSettings
 from lib.f1_types import LapData
 from lib.pngt import CompletedLap, DriverExportData, LapMetadata

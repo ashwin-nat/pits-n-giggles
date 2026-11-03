@@ -211,7 +211,7 @@ def report_pngt_save_end_from_child(file_path: str) -> None:
     """Call this in the child process once a .pngt telemetry write attempt has concluded,
     whether it succeeded or raised.
 
-    Emitted unconditionally on completion (see postGameDumpToPngtFile's finally block) so a
+    Emitted unconditionally on completion (see postGameDumpLapTelemetry's finally block) so a
     consumer waiting on start -> end never hangs on a write that failed.
 
     Args:
