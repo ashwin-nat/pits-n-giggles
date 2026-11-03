@@ -90,3 +90,30 @@ def test_update_cached_session_name_does_not_mutate_original_entry(monkeypatch):
     routes._update_cached_session_name("spa-race", "New Name")
 
     assert entry.session.session_name == "Original Name"
+
+
+# -------------------------------------- links between the two slug namespaces -----------------------------------------
+
+import apps.web.save_viewer_routes as viewer_routes
+
+
+def test_lap_analyzer_slug_for_path_matches_the_same_file(monkeypatch):
+    spa = _entry("spa-race", "Spa")
+    monza = _entry("monza-race", "Monza")
+    monkeypatch.setattr(routes, "_by_slug", {"spa-race": spa, "monza-race": monza})
+
+    assert routes.lap_analyzer_slug_for_path("monza-race.pngt") == "monza-race"
+    assert routes.lap_analyzer_slug_for_path("other.pngt") is None
+
+
+def test_save_viewer_slug_for_path_matches_a_container(monkeypatch):
+    monkeypatch.setattr(viewer_routes, "_slug_map", {"race-spa-2026": "2026_11_03/Race_Spa_2026.pngt"})
+
+    assert viewer_routes.save_viewer_slug_for_path("2026_11_03/Race_Spa_2026.pngt") == "race-spa-2026"
+    assert viewer_routes.save_viewer_slug_for_path("2026_11_03/Other.pngt") is None
+
+
+def test_save_viewer_slug_for_path_never_links_a_loose_json(monkeypatch):
+    monkeypatch.setattr(viewer_routes, "_slug_map", {"race-spa-2026": "2026_11_03/Race_Spa_2026.json"})
+
+    assert viewer_routes.save_viewer_slug_for_path("2026_11_03/Race_Spa_2026.json") is None

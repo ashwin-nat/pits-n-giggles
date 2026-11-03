@@ -85,11 +85,11 @@ def find_session_files(session_dir: Path) -> List[Path]:
     ]
 
 
-def _is_container(path: Path) -> bool:
+def is_container(path: Path) -> bool:
     return path.suffix == _CONTAINER_SUFFIX
 
 
-def _read_container_session_data(path: Path) -> Optional[Dict[str, Any]]:
+def read_container_session_data(path: Path) -> Optional[Dict[str, Any]]:
     """A container's parsed session_data section. None if it has none (e.g. a lap recording on its own)."""
     try:
         return read_session_data(path)
@@ -345,7 +345,7 @@ def _parse_session_metadata(path: Path, logger: PngLogger) -> Optional[Dict[str,
     """Load a session JSON and extract session-info plus player lap stats. None if the file holds no
     session data."""
     logger.debug("_parse_session_metadata: reading %s (%.1f MB)", path.name, path.stat().st_size / 1_048_576)
-    data = _read_container_session_data(path) if _is_container(path) else orjson.loads(path.read_bytes())
+    data = read_container_session_data(path) if is_container(path) else orjson.loads(path.read_bytes())
     if data is None:
         return None
 
@@ -616,8 +616,8 @@ async def _cached_load(full_path_str: str) -> Dict[str, Any]:
     """Read, parse, and recompute a session JSON, from a loose file or a container's session_data
     section. Results are LRU-cached by path."""
     full_path = Path(full_path_str)
-    if _is_container(full_path):
-        data = await asyncio.to_thread(_read_container_session_data, full_path)
+    if is_container(full_path):
+        data = await asyncio.to_thread(read_container_session_data, full_path)
         if data is None:
             raise ValueError(f"{full_path_str} has no session data")
     else:

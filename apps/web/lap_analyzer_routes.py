@@ -37,7 +37,7 @@ import dataclasses
 import time
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from pydantic import ValidationError
 from quart import url_for
@@ -52,6 +52,8 @@ from .lap_analyzer_api import (RenameSessionRequest, api_error, driver_to_api,
                                lap_to_api, session_to_api,
                                telemetry_points_to_api, track_section_to_api)
 from .pngt_discovery import PngtSessionEntry, build_pngt_session_list
+from .save_viewer_routes import (get_slug_map, save_viewer_slug_for_path,
+                                 wait_for_session_cache)
 
 if TYPE_CHECKING:
     from .web_server import WebServer
@@ -99,6 +101,17 @@ class _TelemetryRequestError(Exception):
         self.code = code
         self.message = message
         self.status = status
+
+
+async def wait_for_lap_analyzer_cache() -> None:
+    """Block until the first cache build completes. For routes in other modules that read this
+    module's cache."""
+    await _cache_ready.wait()
+
+
+def lap_analyzer_slug_for_path(rel_path: str) -> Optional[str]:
+    """The slug of the recording at rel_path (relative to the session dir), or None."""
+    return next((slug for slug, entry in _by_slug.items() if entry.rel_path == rel_path), None)
 
 
 def _resolve_telemetry_session(session_id: str) -> PngtSessionEntry:
@@ -235,6 +248,29 @@ def define_lap_analyzer_routes(server: "WebServer") -> None:
             if entry.session.laps_count > 0
         ]
         return server.jsonify(sessions), HTTPStatus.OK
+
+    # Lives here, not in save_viewer_routes.py, because it reads this module's cache and this
+    # module already imports save_viewer_routes (the reverse import would be circular).
+    @server.http_route('/save-viewer/api/sessions/<slug>/lap-analyzer-slug')
+    async def apiSaveViewerLapAnalyzerSlug(slug: str):
+        """The lap-analyzer slug for the same container, or null if there is none."""
+        await wait_for_session_cache()
+        await _cache_ready.wait()
+        relative = get_slug_map().get(slug)
+        if not relative:
+            return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
+        return server.jsonify({'slug': lap_analyzer_slug_for_path(relative)}), HTTPStatus.OK
+
+    @server.http_route('/lap-analyzer/api/v1/sessions/<session_id>/save-viewer-slug')
+    async def apiLapAnalyzerSaveViewerSlug(session_id: str):
+        """The save-viewer slug for the same container, or null if there is none."""
+        await _cache_ready.wait()
+        await wait_for_session_cache()
+        entry = _by_slug.get(session_id)
+        if entry is None:
+            return api_error('SESSION_NOT_FOUND',
+                             f'Unknown session id: {session_id}'), HTTPStatus.NOT_FOUND
+        return server.jsonify({'slug': save_viewer_slug_for_path(entry.rel_path)}), HTTPStatus.OK
 
     @server.http_route('/lap-analyzer/api/v1/sessions/<session_id>/drivers')
     async def apiLapAnalyzerDrivers(session_id: str):
