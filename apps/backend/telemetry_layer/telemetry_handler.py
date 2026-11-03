@@ -541,7 +541,11 @@ class F1TelemetryHandler:
             # log, and no file. JSON and lap telemetry are independent decisions and independent
             # tasks -- one being off/slow/failing must not affect the other.
             if self.m_capture_settings.unified_save_format:
-                self.startUnifiedSave(SaveReason.AUTO, final_json=final_json)
+                self.startUnifiedSave(
+                    SaveReason.AUTO,
+                    include_session_data=self._shouldSaveJsonData(),
+                    include_lap_telemetry=self.shouldSaveLapTelemetry(),
+                    final_json=final_json)
             else:
                 if self._shouldSaveJsonData():
                     # Named now: the next session's UID change can clear the state before the task runs
@@ -883,25 +887,43 @@ class F1TelemetryHandler:
         self.clearAllDataStructures(f"Session {uid} restarted")
         self.m_last_lap_data_frame = frame
 
-    def startUnifiedSave(self, reason: SaveReason, final_json: Optional[Dict[str, Any]] = None) -> None:
+    @property
+    def unified_save_enabled(self) -> bool:
+        """Whether saves go into one container (Capture.unified_save_format). Needs a restart to change."""
+        return self.m_capture_settings.unified_save_format
+
+    def startUnifiedSave(
+        self,
+        reason: SaveReason,
+        include_session_data: bool,
+        include_lap_telemetry: bool,
+        final_json: Optional[Dict[str, Any]] = None,
+    ) -> Optional[SaveRequest]:
         """Snapshots the session and writes it as one container in the background, for
-        Capture.unified_save_format. Each half keeps its own gate: session data follows the Capture
-        autosave settings, lap telemetry follows the LapAnalyzer ones. Synchronous up to the task
-        creation, and must run before any await in the caller, since the state may be cleared next.
+        Capture.unified_save_format. The caller decides what to include, since each half has its own
+        gate (session data: Capture autosave settings, lap telemetry: LapAnalyzer ones) and the
+        manual save skips the first. Synchronous up to the task creation, and must run before any
+        await in the caller, since the state may be cleared next.
 
         Args:
             reason (SaveReason): Why the save is happening.
+            include_session_data (bool): Save the session data.
+            include_lap_telemetry (bool): Save the lap telemetry.
             final_json (Optional[Dict]): The session data, if the caller already built it.
+
+        Returns:
+            Optional[SaveRequest]: What is being written, or None if there was nothing to write.
         """
         request = build_save_request(
             self.m_session_state_ref, reason,
-            include_session_data=self._shouldSaveJsonData(),
-            include_lap_telemetry=self.shouldSaveLapTelemetry(),
+            include_session_data=include_session_data,
+            include_lap_telemetry=include_lap_telemetry,
             logger=self.m_logger,
             final_json=final_json)
         if request is None:
-            return
+            return None
         self.m_save_task = asyncio.create_task(self._runSave(request), name=f"Save Session Data ({reason.name})")
+        return request
 
     async def _runSave(self, request: SaveRequest) -> None:
         """Writes one SaveRequest as a single container, via a .tmp file and one atomic replace.
@@ -1288,13 +1310,18 @@ class F1TelemetryHandler:
             report_session_save_skipped_from_child("no-lap-data")
             return
 
-        if self.m_json_save_task or self.m_lap_telemetry_save_task:
+        unified = self.unified_save_enabled
+        if self.m_save_task if unified else (self.m_json_save_task or self.m_lap_telemetry_save_task):
             self.m_logger.debug("A save task is already running.")
             return
 
         self.m_logger.warning(
             "Session %d ended without a final classification. Saving data just in case.",
             outgoing_session_uid)
+
+        if unified:
+            self.startUnifiedSave(SaveReason.JUST_IN_CASE, should_save_json, should_save_lap_telemetry)
+            return
 
         if should_save_json:
             try:
