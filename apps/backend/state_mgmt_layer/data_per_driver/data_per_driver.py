@@ -701,6 +701,7 @@ class DataPerDriver:
                 tyre_laps=69, # TODO
                 pit_in_lap=False,
                 pit_out_lap=False,
+                ers_harvest_limit_j=self._getMgukHarvLimitPerLapJ(),
             ))
 
         # Store the snapshot data for the old lap
@@ -740,13 +741,20 @@ class DataPerDriver:
         self._resetPerLapStats()
         self.m_logger.debug("Driver %s - lap %d added to per_lap_snapshots", str(self), old_lap_number)
 
+    def _getMgukHarvLimitPerLapJ(self) -> Optional[float]:
+        """The MGU-K harvest limit for the current lap in joules, None outside F1 (no ERS)"""
+        formula = self.m_state_ref.m_session_info.m_formula
+        if not formula or not formula.is_f1():
+            return None
+        if self.m_car_info.m_2026_regs:
+            # The 2026 regs have a dynamic harv limit per lap
+            # Varies on whether OT is available and per track as well
+            return self.m_car_info.m_ers_harv_limit_per_lap_j
+        # Pre 2026 cars had a fixed limit
+        return CarStatusData.MAX_MGUK_HARV_PER_LAP
+
     def _buildPerLapSnapshot(self) -> PerLapSnapshotEntry:
         """The per lap snapshot of the car's state right now"""
-        if self.m_car_info.m_2026_regs:
-            mguk_harv_limit = self.m_car_info.m_ers_harv_limit_per_lap_j
-        else:
-            mguk_harv_limit = CarStatusData.MAX_MGUK_HARV_PER_LAP
-
         return PerLapSnapshotEntry(
             car_damage=self.m_packet_copies.m_packet_car_damage,
             car_status=self.m_packet_copies.m_packet_car_status,
@@ -757,7 +765,7 @@ class DataPerDriver:
             ers_deployed_j=self.m_car_info.m_curr_lap_ers_deployed_j,
             ers_harv_mguh_j=self.m_car_info.m_curr_lap_ers_harv_mguh_j,
             ers_harv_mguk_j=self.m_car_info.m_curr_lap_ers_harv_mguk_j,
-            ers_harv_limit_mguk_j=mguk_harv_limit,
+            ers_harv_limit_mguk_j=self._getMgukHarvLimitPerLapJ(),
         )
 
     def _resetPerLapStats(self) -> None:
@@ -1563,6 +1571,8 @@ class DataPerDriver:
         motion_pkt = self.m_packet_copies.m_packet_motion
         tyre_wear = self.m_tyre_info.tyre_wear.latest
         ers_store_energy_j = car_status_pkt.m_ersStoreEnergy if car_status_pkt else None
+        surface_temps = self.m_tyre_info.getSurfaceTempsJSON()
+        inner_temps = self.m_tyre_info.getInnerTempsJSON()
 
         raw_lap_distance = self.m_lap_info.m_lap_dist_raw
 
@@ -1588,6 +1598,23 @@ class DataPerDriver:
             tyre_wear_fr=tyre_wear.fr_tyre_wear if tyre_wear else None,
             tyre_wear_rl=tyre_wear.rl_tyre_wear if tyre_wear else None,
             tyre_wear_rr=tyre_wear.rr_tyre_wear if tyre_wear else None,
+
+            tyre_surface_temp_fl=surface_temps["fl"] if surface_temps else None,
+            tyre_surface_temp_fr=surface_temps["fr"] if surface_temps else None,
+            tyre_surface_temp_rl=surface_temps["rl"] if surface_temps else None,
+            tyre_surface_temp_rr=surface_temps["rr"] if surface_temps else None,
+            tyre_inner_temp_fl=inner_temps["fl"] if inner_temps else None,
+            tyre_inner_temp_fr=inner_temps["fr"] if inner_temps else None,
+            tyre_inner_temp_rl=inner_temps["rl"] if inner_temps else None,
+            tyre_inner_temp_rr=inner_temps["rr"] if inner_temps else None,
+            tyre_pressure_fl=(car_telemetry_pkt.m_tyresPressure[F1Utils.INDEX_FRONT_LEFT] if car_telemetry_pkt else None),
+            tyre_pressure_fr=(car_telemetry_pkt.m_tyresPressure[F1Utils.INDEX_FRONT_RIGHT] if car_telemetry_pkt else None),
+            tyre_pressure_rl=(car_telemetry_pkt.m_tyresPressure[F1Utils.INDEX_REAR_LEFT] if car_telemetry_pkt else None),
+            tyre_pressure_rr=(car_telemetry_pkt.m_tyresPressure[F1Utils.INDEX_REAR_RIGHT] if car_telemetry_pkt else None),
+            surface_type_fl=(car_telemetry_pkt.m_surfaceType[F1Utils.INDEX_FRONT_LEFT].raw_value if car_telemetry_pkt else None),
+            surface_type_fr=(car_telemetry_pkt.m_surfaceType[F1Utils.INDEX_FRONT_RIGHT].raw_value if car_telemetry_pkt else None),
+            surface_type_rl=(car_telemetry_pkt.m_surfaceType[F1Utils.INDEX_REAR_LEFT].raw_value if car_telemetry_pkt else None),
+            surface_type_rr=(car_telemetry_pkt.m_surfaceType[F1Utils.INDEX_REAR_RIGHT].raw_value if car_telemetry_pkt else None),
 
             motion_pos_x=(motion_pkt.m_worldPositionX if motion_pkt else None),
             motion_pos_y=(motion_pkt.m_worldPositionY if motion_pkt else None),
@@ -1634,6 +1661,7 @@ class DataPerDriver:
                     tyre_laps=69, # TODO
                     pit_in_lap=False,
                     pit_out_lap=False,
+                    ers_harvest_limit_j=self._getMgukHarvLimitPerLapJ(),
                 ),
                 telemetry=in_progress_lap.telemetry,
             )

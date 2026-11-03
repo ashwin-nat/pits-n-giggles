@@ -419,6 +419,7 @@ class TestHudSettings(TestF1ConfigBase):
             MfdPageId.TYRE_SETS,
             MfdPageId.PACE_COMP,
             MfdPageId.TRAFFIC_MONITOR,
+            MfdPageId.RIVALS_STATUS,
         }
 
         for page in expected_pages:

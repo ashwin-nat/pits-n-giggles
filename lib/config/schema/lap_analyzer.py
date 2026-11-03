@@ -45,12 +45,14 @@ class SensorGroup(str, Enum):
     ERS = "ERS"
     TYRE_WEAR = "Tyre Wear"
     MOTION = "Motion"
+    TYRE_STATUS = "Tyre Status"
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 # Optional group tooltips. A group without an entry gets no tooltip.
 SENSOR_GROUP_INFO: Dict[SensorGroup, str] = {
     SensorGroup.ERS: "Energy recovery system state: deploy mode and battery charge",
+    SensorGroup.TYRE_STATUS: "Per-tyre temperatures and pressure, and the surface under each wheel",
     SensorGroup.MOTION: "Car world position and heading (yaw)",
 }
 
@@ -139,6 +141,72 @@ class LapAnalyzerSensorSettings(ConfigDiffMixin, BaseModel):
         label="Tyre Wear RR", group=SensorGroup.TYRE_WEAR, restricted=True,
         presets={SensorPreset.ADVANCED, SensorPreset.ALL},
         info="Rear right tyre wear %")
+
+    # Tyre status
+    tyre_surface_temp_fl: bool = sensor_field(
+        label="Tyre Surface Temp FL", group=SensorGroup.TYRE_STATUS, restricted=False,
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
+        info="Front left tyre surface temperature in °C")
+    tyre_surface_temp_fr: bool = sensor_field(
+        label="Tyre Surface Temp FR", group=SensorGroup.TYRE_STATUS, restricted=False,
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
+        info="Front right tyre surface temperature in °C")
+    tyre_surface_temp_rl: bool = sensor_field(
+        label="Tyre Surface Temp RL", group=SensorGroup.TYRE_STATUS, restricted=False,
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
+        info="Rear left tyre surface temperature in °C")
+    tyre_surface_temp_rr: bool = sensor_field(
+        label="Tyre Surface Temp RR", group=SensorGroup.TYRE_STATUS, restricted=False,
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
+        info="Rear right tyre surface temperature in °C")
+    tyre_inner_temp_fl: bool = sensor_field(
+        label="Tyre Inner Temp FL", group=SensorGroup.TYRE_STATUS, restricted=False,
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
+        info="Front left tyre inner temperature in °C")
+    tyre_inner_temp_fr: bool = sensor_field(
+        label="Tyre Inner Temp FR", group=SensorGroup.TYRE_STATUS, restricted=False,
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
+        info="Front right tyre inner temperature in °C")
+    tyre_inner_temp_rl: bool = sensor_field(
+        label="Tyre Inner Temp RL", group=SensorGroup.TYRE_STATUS, restricted=False,
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
+        info="Rear left tyre inner temperature in °C")
+    tyre_inner_temp_rr: bool = sensor_field(
+        label="Tyre Inner Temp RR", group=SensorGroup.TYRE_STATUS, restricted=False,
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
+        info="Rear right tyre inner temperature in °C")
+    tyre_pressure_fl: bool = sensor_field(
+        label="Tyre Pressure FL", group=SensorGroup.TYRE_STATUS, restricted=False,
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
+        info="Front left tyre pressure in PSI")
+    tyre_pressure_fr: bool = sensor_field(
+        label="Tyre Pressure FR", group=SensorGroup.TYRE_STATUS, restricted=False,
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
+        info="Front right tyre pressure in PSI")
+    tyre_pressure_rl: bool = sensor_field(
+        label="Tyre Pressure RL", group=SensorGroup.TYRE_STATUS, restricted=False,
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
+        info="Rear left tyre pressure in PSI")
+    tyre_pressure_rr: bool = sensor_field(
+        label="Tyre Pressure RR", group=SensorGroup.TYRE_STATUS, restricted=False,
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
+        info="Rear right tyre pressure in PSI")
+    surface_type_fl: bool = sensor_field(
+        label="Surface Type FL", group=SensorGroup.TYRE_STATUS, restricted=False,
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
+        info="Driving surface under the front left wheel")
+    surface_type_fr: bool = sensor_field(
+        label="Surface Type FR", group=SensorGroup.TYRE_STATUS, restricted=False,
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
+        info="Driving surface under the front right wheel")
+    surface_type_rl: bool = sensor_field(
+        label="Surface Type RL", group=SensorGroup.TYRE_STATUS, restricted=False,
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
+        info="Driving surface under the rear left wheel")
+    surface_type_rr: bool = sensor_field(
+        label="Surface Type RR", group=SensorGroup.TYRE_STATUS, restricted=False,
+        presets={SensorPreset.ADVANCED, SensorPreset.ALL},
+        info="Driving surface under the rear right wheel")
 
     # Motion
     motion_pos_x: bool = sensor_field(

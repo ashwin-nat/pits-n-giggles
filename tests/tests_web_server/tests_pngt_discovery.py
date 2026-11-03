@@ -78,7 +78,7 @@ def _drivers():
 def _driver_data():
     lap = CompletedLap(
         metadata=LapMetadata(lap_number=1, lap_time_ms=90000, valid=True, tyre_compound="Soft",
-                             tyre_laps=1, pit_in_lap=False, pit_out_lap=False),
+                             tyre_laps=1, pit_in_lap=False, pit_out_lap=False, ers_harvest_limit_j=None),
         telemetry={"lap_distance": [0.0, 100.0], "speed": [100.0, 110.0]},
     )
     return {1: DriverExportData(driver_index=1, completed_laps=[lap])}

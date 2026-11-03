@@ -87,7 +87,8 @@ def test_selected_sensors_all_off_is_empty():
 
 def _lap(number: int, *, in_progress: bool = False) -> CompletedLap:
     meta = LapMetadata(lap_number=number, lap_time_ms=None if in_progress else 90000, valid=not in_progress,
-                       tyre_compound="soft", tyre_laps=1, pit_in_lap=False, pit_out_lap=False)
+                       tyre_compound="soft", tyre_laps=1, pit_in_lap=False, pit_out_lap=False,
+                       ers_harvest_limit_j=None)
     return CompletedLap(meta, {"lap_distance": [0, 1, 2], "lap_time_ms": [0, 10, 20],
                                "throttle": [1, 2, 3], "brake": [4, 5, 6], "ers.deploy_mode": [0, 1, 2]})
 

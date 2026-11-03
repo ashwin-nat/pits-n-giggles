@@ -137,6 +137,7 @@ def lap_to_api(lap: ParsedLap) -> Dict[str, Any]:
         'tyreLaps': lap.tyre_laps,
         'pitInLap': lap.pit_in_lap,
         'pitOutLap': lap.pit_out_lap,
+        'ersHarvestLimitJ': lap.ers_harvest_limit_j,
         'isGood': lap.is_good,
     }
 

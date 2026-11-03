@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from lib.f1_types import (CarDamageData, CarStatusData, PacketTyreSetsData,
                           SafetyCarType)
@@ -54,7 +54,7 @@ class PerLapSnapshotEntry:
         ers_harv_mguh_j: float,
         ers_harv_mguk_j: float,
         ers_deployed_j: float,
-        ers_harv_limit_mguk_j: float
+        ers_harv_limit_mguk_j: Optional[float]
         ):
         """Init the snapshot entry object
 
@@ -68,8 +68,7 @@ class PerLapSnapshotEntry:
             ers_harv_mguh_j (float): The lap's total ERS energy harvested by MGU-H in joules
             ers_harv_mguk_j (float): The lap's total ERS energy harvested by MGU-K in joules
             ers_deployed_j (float): The lap's total ERS energy deployed in joules
-            ers_harv_limit_mguk_j (float): The lap's total ERS energy harvested limit by MGU-K in joules
-            ers_harv_limit_mguk_j (float): The lap's total ERS energy harvested limit by MGU-K in joules
+            ers_harv_limit_mguk_j (Optional[float]): The lap's MGU-K harvest limit in joules, None outside F1.
                     May change per lap in 2026 regs, fixed in older regs
         """
 
@@ -82,7 +81,7 @@ class PerLapSnapshotEntry:
         self.m_ers_harv_mguh_j: float = ers_harv_mguh_j
         self.m_ers_harv_mguk_j: float = ers_harv_mguk_j
         self.m_ers_deployed_j: float = ers_deployed_j
-        self.m_ers_harv_limit_mguk_j: float = ers_harv_limit_mguk_j
+        self.m_ers_harv_limit_mguk_j: Optional[float] = ers_harv_limit_mguk_j
 
     def toJSON(self, lap_number : int) -> Dict[str, Any]:
         """Dump this object into JSON

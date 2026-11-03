@@ -58,6 +58,7 @@ def sample_lap_metadata(lap_number: int) -> LapMetadata:
         tyre_laps=lap_number,
         pit_in_lap=False,
         pit_out_lap=False,
+        ers_harvest_limit_j=None,
     )
 
 
