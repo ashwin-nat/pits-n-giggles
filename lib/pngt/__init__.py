@@ -33,6 +33,7 @@ from .dto import (
     ParsedDriver,
     ParsedLap,
     ParsedSessionMetadata,
+    PngtContents,
     SensorConfig,
     SensorType,
     SessionBest,
@@ -48,11 +49,13 @@ from .exceptions import (
     MalformedSessionError,
     NotAZipFileError,
     PngtError,
+    SectionNotPresentError,
     UnsupportedFormatError,
     UnsupportedVersionError,
 )
 from .mutate import delete_laps, mark_lap_good, rename_session
-from .reader import ParsedSession, read_driver_laps, read_lap_telemetry, read_session
+from .reader import (ParsedSession, read_contents, read_driver_laps,
+                     read_lap_telemetry, read_session, read_session_data)
 from .recorder import BaseTelemetrySnapshot, DriverTelemetryRecorder, RecordedSensor
 from .writer import write_container, write_session, write_session_data_only
 
@@ -78,8 +81,10 @@ __all__ = [
     'ParsedLap',
     'ParsedSession',
     'ParsedSessionMetadata',
+    'PngtContents',
     'PngtError',
     'RecordedSensor',
+    'SectionNotPresentError',
     'SensorConfig',
     'SensorType',
     'SessionBest',
@@ -90,9 +95,11 @@ __all__ = [
     'UnsupportedVersionError',
     'delete_laps',
     'mark_lap_good',
+    'read_contents',
     'read_driver_laps',
     'read_lap_telemetry',
     'read_session',
+    'read_session_data',
     'rename_session',
     'write_container',
     'write_session',

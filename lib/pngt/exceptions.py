@@ -60,6 +60,12 @@ class MalformedSessionError(PngtError):
     def __init__(self, path, reason):
         super().__init__(f"Malformed session data in {path}: {reason}")
 
+class SectionNotPresentError(PngtError):
+    """Raised when a read or edit needs a section (lap_telemetry, session_data) the file does not hold."""
+    def __init__(self, path, section):
+        super().__init__(f"{path} has no {section} section")
+        self.section = section
+
 class DriverNotFoundError(PngtError):
     """Raised when telemetry for a driver_index/lap_number cannot be found in the archive."""
     def __init__(self, path, driver_index):

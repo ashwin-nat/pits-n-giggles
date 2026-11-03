@@ -48,7 +48,7 @@ missing value.
 | `dto.py` | Input dataclasses (`SessionMetadata`, `DriverRecord`, `LapMetadata`, `CompletedLap`, `DriverExportData`, `SensorConfig` + `SensorType`, `DeleteLapsResult`, `MarkLapGoodResult`) carrying only caller-filled fields, plus the `Parsed*` read-side subclasses (`ParsedSessionMetadata`, `ParsedDriver`, `ParsedLap`) that add the fields `write_session()` derives |
 | `archive.py` | `header.json` validation (`validate_pngt_zip`), shared JSON read/write helpers, archive rebuild, and `recompute_totals()` (laps count + session best), used by both `writer.py` and `mutate.py` |
 | `writer.py` | `write_session()` — validates, derives `laps_count`/`session_best`/`is_telemetry_public`/`num_points`/`is_good`, then writes the ZIP |
-| `reader.py` | `read_session()` / `read_driver_laps()` / `read_lap_telemetry()` |
+| `reader.py` | `read_contents()` (which sections a file holds) / `read_session_data()` (parsed) / `read_session()` / `read_driver_laps()` / `read_lap_telemetry()`. Lap reads and `mutate.py` raise `SectionNotPresentError` on a file with no lap telemetry |
 | `mutate.py` | `delete_laps()` / `mark_lap_good()` / `rename_session()` — in-place archive rebuilds |
 | `recorder.py` | `BaseTelemetrySnapshot` (mandatory `lap_distance`/`lap_time_ms`), `RecordedSensor` (a sensor's manifest entry + how to read its value off a snapshot), `DriverTelemetryRecorder` (accumulation, lap rollover, flashback rollback, export; lap events are reported by the caller) |
 | `exceptions.py` | `PngtError` base and its subclasses — one per failure mode |

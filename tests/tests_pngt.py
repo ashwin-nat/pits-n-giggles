@@ -37,12 +37,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from lib.pngt import (CompletedLap, CorruptedTelemetryError,
                       DriverExportData, DriverNotFoundError, DriverRecord,
                       InvalidHeaderError, InvalidManifestError, LapMetadata,
-                      MalformedSessionError, NotAZipFileError, SensorConfig,
-                      SensorType, SessionBest, SessionDataEntry,
-                      SessionMetadata, TrackInfo,
-                      UnsupportedFormatError, UnsupportedVersionError,
-                      delete_laps, mark_lap_good, read_driver_laps,
-                      read_lap_telemetry, read_session, rename_session,
+                      MalformedSessionError, NotAZipFileError, PngtContents,
+                      SectionNotPresentError, SensorConfig, SensorType,
+                      SessionBest, SessionDataEntry, SessionMetadata,
+                      TrackInfo, UnsupportedFormatError,
+                      UnsupportedVersionError, delete_laps, mark_lap_good,
+                      read_contents, read_driver_laps, read_lap_telemetry,
+                      read_session, read_session_data, rename_session,
                       write_container, write_session,
                       write_session_data_only)
 
@@ -1041,3 +1042,120 @@ def test_write_container_args_survive_pickling(tmp_path):
 
     assert _header(dest)["contents"]["session_data"] == {"path": SESSION_DATA.entry_name}
     assert read_session(dest).drivers
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Section-aware reads
+# ----------------------------------------------------------------------------------------------------------------------
+
+def _session_data_only(tmp_path):
+    dest = tmp_path / "session.pngt"
+    write_session_data_only(dest, SESSION_DATA)
+    return dest
+
+
+def _both_sections(tmp_path):
+    dest = tmp_path / "both.pngt"
+    write_session(dest, sample_session(), sample_sensors(), sample_drivers(), sample_driver_data(),
+                  session_data=SESSION_DATA)
+    return dest
+
+
+def test_read_contents_lap_telemetry_only(tmp_path):
+    dest = tmp_path / "session.pngt"
+    write_session(dest, sample_session(), sample_sensors(), sample_drivers(), sample_driver_data())
+    assert read_contents(dest) == PngtContents(has_lap_telemetry=True, session_data_entry=None)
+
+
+def test_read_contents_session_data_only(tmp_path):
+    assert read_contents(_session_data_only(tmp_path)) == PngtContents(
+        has_lap_telemetry=False, session_data_entry=SESSION_DATA.entry_name)
+
+
+def test_read_contents_both_sections(tmp_path):
+    assert read_contents(_both_sections(tmp_path)) == PngtContents(
+        has_lap_telemetry=True, session_data_entry=SESSION_DATA.entry_name)
+
+
+def test_read_contents_header_without_contents_is_lap_telemetry_only(tmp_path):
+    src = tmp_path / "session.pngt"
+    write_session(src, sample_session(), sample_sensors(), sample_drivers(), sample_driver_data())
+    old = tmp_path / "old.pngt"
+    _rebuild_zip(src, old, lambda n, d: json.dumps({"format": "pngt", "version": 1}).encode()
+                 if n == "header.json" else d)
+
+    assert read_contents(old) == PngtContents(has_lap_telemetry=True, session_data_entry=None)
+    assert read_session(old).drivers
+
+
+@pytest.mark.parametrize("contents", ["nope", {"session_data": {}}, {"session_data": {"path": 3}}])
+def test_read_contents_rejects_bad_contents(tmp_path, contents):
+    src = _session_data_only(tmp_path)
+    bad = tmp_path / "bad.pngt"
+    _rebuild_zip(src, bad, lambda n, d: json.dumps({"format": "pngt", "version": 1, "contents": contents}).encode()
+                 if n == "header.json" else d)
+
+    with pytest.raises(InvalidHeaderError):
+        read_contents(bad)
+
+
+def test_read_session_data_returns_payload(tmp_path):
+    assert read_session_data(_session_data_only(tmp_path)) == {"a": 1}
+    assert read_session_data(_both_sections(tmp_path)) == {"a": 1}
+
+
+def test_read_session_data_without_section_raises(tmp_path):
+    dest = tmp_path / "session.pngt"
+    write_session(dest, sample_session(), sample_sensors(), sample_drivers(), sample_driver_data())
+
+    with pytest.raises(SectionNotPresentError) as exc:
+        read_session_data(dest)
+    assert exc.value.section == "session_data"
+
+
+def test_read_session_data_missing_entry_raises_malformed(tmp_path):
+    src = _session_data_only(tmp_path)
+    broken = tmp_path / "broken.pngt"
+    _strip_entry(src, broken, SESSION_DATA.entry_name)
+
+    with pytest.raises(MalformedSessionError):
+        read_session_data(broken)
+
+
+@pytest.mark.parametrize("payload", [b"not json", b"[1, 2]"])
+def test_read_session_data_rejects_non_object_json(tmp_path, payload):
+    dest = tmp_path / "session.pngt"
+    write_session_data_only(dest, SessionDataEntry("s.json", payload))
+
+    with pytest.raises(MalformedSessionError):
+        read_session_data(dest)
+
+
+def test_lap_reads_on_session_data_only_file_raise_section_not_present(tmp_path):
+    dest = _session_data_only(tmp_path)
+
+    for call in (lambda: read_session(dest), lambda: read_driver_laps(dest, 1),
+                 lambda: read_lap_telemetry(dest, 1, 1)):
+        with pytest.raises(SectionNotPresentError) as exc:
+            call()
+        assert exc.value.section == "lap_telemetry"
+
+
+def test_mutations_on_session_data_only_file_raise_section_not_present(tmp_path):
+    dest = _session_data_only(tmp_path)
+    before = dest.read_bytes()
+
+    for call in (lambda: delete_laps(dest, 1, [1]), lambda: mark_lap_good(dest, 1, 1),
+                 lambda: rename_session(dest, "New")):
+        with pytest.raises(SectionNotPresentError):
+            call()
+    assert dest.read_bytes() == before
+
+
+def test_rename_session_keeps_session_data(tmp_path):
+    dest = _both_sections(tmp_path)
+    rename_session(dest, "Renamed")
+
+    assert read_session(dest).session.session_name == "Renamed"
+    assert read_session_data(dest) == {"a": 1}
+    assert read_contents(dest).session_data_entry == SESSION_DATA.entry_name

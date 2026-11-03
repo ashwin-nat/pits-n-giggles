@@ -27,10 +27,10 @@ import zipfile
 from pathlib import Path
 from typing import Iterable, Optional, Union
 
-from .dto import SessionBest, SessionDataEntry
+from .dto import PngtContents, SessionBest, SessionDataEntry
 from .exceptions import (InvalidHeaderError, MalformedSessionError,
-                         NotAZipFileError, UnsupportedFormatError,
-                         UnsupportedVersionError)
+                         NotAZipFileError, SectionNotPresentError,
+                         UnsupportedFormatError, UnsupportedVersionError)
 
 # -------------------------------------- CONSTANTS ----------------------------------------------------------------------
 
@@ -105,6 +105,36 @@ def validate_pngt_zip(path: Union[Path, str]) -> zipfile.ZipFile:
         zf.close()
         raise UnsupportedVersionError(path, actual_version, HEADER_VERSION)
 
+    return zf
+
+
+def read_contents_from_zip(zf: zipfile.ZipFile, path: Union[Path, str]) -> PngtContents:
+    """Which sections an already-validated archive holds. A header without `contents` is an older
+    lap-telemetry-only file."""
+    contents = json.loads(zf.read(HEADER_ENTRY)).get("contents")
+    if contents is None:
+        return PngtContents(has_lap_telemetry=True, session_data_entry=None)
+    if not isinstance(contents, dict):
+        raise InvalidHeaderError(path, "'contents' is not an object")
+    session_data = contents.get(CONTENT_SESSION_DATA)
+    if session_data is not None and not isinstance(session_data.get("path"), str):
+        raise InvalidHeaderError(path, "'contents.session_data' has no 'path'")
+    return PngtContents(
+        has_lap_telemetry=contents.get(CONTENT_LAP_TELEMETRY) is not None,
+        session_data_entry=None if session_data is None else session_data["path"],
+    )
+
+
+def open_lap_telemetry_zip(path: Union[Path, str]) -> zipfile.ZipFile:
+    """validate_pngt_zip() for callers that need the lap_telemetry section. Raises
+    SectionNotPresentError if the file has none."""
+    zf = validate_pngt_zip(path)
+    try:
+        if not read_contents_from_zip(zf, path).has_lap_telemetry:
+            raise SectionNotPresentError(path, CONTENT_LAP_TELEMETRY)
+    except Exception:
+        zf.close()
+        raise
     return zf
 
 

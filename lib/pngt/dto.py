@@ -74,6 +74,17 @@ class SessionDataEntry:
         return f"{SESSION_DATA_DIR}/{self.file_name}"
 
 @dataclass(frozen=True)
+class PngtContents:
+    """Which sections a .pngt file holds.
+
+    Attributes:
+        has_lap_telemetry (bool): The file holds a lap recording.
+        session_data_entry (Optional[str]): Archive entry name of the session JSON, None if the file has none.
+    """
+    has_lap_telemetry: bool
+    session_data_entry: Optional[str]
+
+@dataclass(frozen=True)
 class TrackInfo:
     id: int  # the sim's own TrackID enum value, e.g. 10 = Spa
     name: str
