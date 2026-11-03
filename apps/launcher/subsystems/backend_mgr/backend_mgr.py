@@ -120,8 +120,9 @@ class BackendAppMgr(BackendSettingsChangeBase):
         message = rsp.get("message")
 
         if status == "success":
-            self.info_log(f"Manual save success. Path {message}")
-            self.show_success("Manual Save Success", f"The session has been saved successfully at:\n{message}")
+            self.info_log(f"Manual save started. Path {message}")
+            self.show_success("Manual Save Started",
+                              f"The session is being saved to:\n{message}\n\nA large session can take a few seconds to finish writing.")
 
         else:
             error = rsp.get("error", "Unknown error")
