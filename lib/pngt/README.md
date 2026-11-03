@@ -16,7 +16,7 @@ catalog and the concrete snapshot type it reads from both live in
 A `.pngt` file is a ZIP archive:
 
 ```
-header.json                      # {"format": "pngt", "version": 1} -- pure format identity
+header.json                      # {"format": "pngt", "version": 1, "contents": {...}} -- format identity + which sections exist
 manifest.json                    # sensor registry: {"sensors": {key: {label, unit, type, should_display, range?}, ...}}
 session.json                     # session facts: track, timestamp, laps count/best, etc.
 drivers.json                     # all drivers, including Restricted ones
@@ -26,9 +26,10 @@ drivers/{driver_index:02d}/
 ```
 
 `write_session(..., session_data=SessionDataEntry(name, payload))` adds one opaque,
-caller-owned entry (e.g. `race-info/<stem>.json`) and lists it in `header.json`'s
-`contents` next to `lap_telemetry`; without it `contents` is omitted and the file is
-the legacy shape. `write_session_data_only()` writes a container of just `header.json`
+caller-owned entry as `session_data/<file_name>` (e.g. `session_data/<stem>.json`) and lists it in `header.json`'s
+`contents` next to `lap_telemetry`. `contents` always names both sections, with `null` for
+one the file does not hold (a file with no `contents` is an older lap-telemetry-only one).
+`write_session_data_only()` writes a container of just `header.json`
 plus that entry (no `lap_telemetry`), for a save where lap recording is off. Both write
 to a `.tmp` and `os.replace` it into place. Reader support for `contents` is not in yet.
 

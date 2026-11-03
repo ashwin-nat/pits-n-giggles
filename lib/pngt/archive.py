@@ -41,22 +41,20 @@ SENSOR_MANIFEST_ENTRY = "manifest.json"
 ZIP_MAGIC = b"PK\x03\x04"
 CONTENT_LAP_TELEMETRY = "lap_telemetry"
 CONTENT_SESSION_DATA = "session_data"
-CONTENT_VERSION = 1
 
 # -------------------------------------- FUNCTIONS ----------------------------------------------------------------------
 
 def build_header(session_data: Optional[SessionDataEntry], has_lap_telemetry: bool) -> dict:
-    """header.json's content. Without session data it is the legacy {format, version} (a missing
-    `contents` means lap telemetry only), so a lap-only file stays byte-identical to older writers."""
-    header = {"format": HEADER_FORMAT, "version": HEADER_VERSION}
-    if session_data is None:
-        return header
-    contents = {}
-    if has_lap_telemetry:
-        contents[CONTENT_LAP_TELEMETRY] = {"version": CONTENT_VERSION}
-    contents[CONTENT_SESSION_DATA] = {"version": CONTENT_VERSION, "path": session_data.entry_name}
-    header["contents"] = contents
-    return header
+    """header.json's content. `contents` names every section, with None for one the file does not
+    hold. A file without `contents` is an older lap-telemetry-only one."""
+    return {
+        "format": HEADER_FORMAT,
+        "version": HEADER_VERSION,
+        "contents": {
+            CONTENT_LAP_TELEMETRY: {} if has_lap_telemetry else None,
+            CONTENT_SESSION_DATA: {"path": session_data.entry_name} if session_data else None,
+        },
+    }
 
 
 def validate_pngt_zip(path: Union[Path, str]) -> zipfile.ZipFile:

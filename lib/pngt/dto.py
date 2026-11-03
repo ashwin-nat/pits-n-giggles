@@ -29,7 +29,7 @@ from typing import Optional
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 MANDATORY_TELEMETRY_KEYS = ("lap_distance", "lap_time_ms")
-RESERVED_ENTRY_NAMES = frozenset({"header.json", "manifest.json", "session.json", "drivers.json"})
+SESSION_DATA_DIR = "session_data"
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -59,18 +59,19 @@ class SensorConfig:
 
 @dataclass(frozen=True)
 class SessionDataEntry:
-    """An opaque caller-owned blob stored as its own archive entry (the `session_data` section).
-    `entry_name` is a relative path like "race-info/<stem>.json"; the library never parses `payload`."""
-    entry_name: str
+    """An opaque caller-owned blob, stored as `session_data/<file_name>` (the `session_data` section).
+    `file_name` is a plain file name like "<stem>.json"; the library never parses `payload`."""
+    file_name: str
     payload: bytes
 
     def __post_init__(self) -> None:
-        parts = self.entry_name.split("/")
-        if (not self.entry_name or self.entry_name.startswith("/") or "\\" in self.entry_name
-                or any(part in {"", ".", ".."} for part in parts)):
-            raise ValueError(f"Invalid session data entry name {self.entry_name!r}; expected a relative path")
-        if self.entry_name in RESERVED_ENTRY_NAMES or parts[0] == "drivers":
-            raise ValueError(f"Session data entry name {self.entry_name!r} collides with a lap telemetry entry")
+        if not self.file_name or self.file_name in {".", ".."} or "/" in self.file_name or "\\" in self.file_name:
+            raise ValueError(f"Invalid session data file name {self.file_name!r}; expected a plain file name")
+
+    @property
+    def entry_name(self) -> str:
+        """The entry's path inside the archive."""
+        return f"{SESSION_DATA_DIR}/{self.file_name}"
 
 @dataclass(frozen=True)
 class TrackInfo:
