@@ -70,6 +70,9 @@ class SaveRequest:
     session_data: Optional[Dict[str, Any]]
     lap_telemetry_args: Optional[Tuple]
 
+    def __str__(self) -> str:
+        return f"lap_telemetry={self.lap_telemetry_args is not None} | session_data={self.session_data is not None}"
+
     def session_data_entry(self) -> Optional[SessionDataEntry]:
         """The session JSON as the container's session_data entry, byte-identical to what the loose
         file holds. CPU-heavy for a race (~100 ms), so call it off the event loop."""

@@ -126,6 +126,29 @@ def write_session_data_only(dest_path: Union[Path, str], session_data: SessionDa
     return dest_path
 
 
+def write_container(
+    dest_path: Union[Path, str],
+    lap_telemetry_args: Optional[tuple],
+    session_data: Optional[SessionDataEntry],
+) -> Path:
+    """Writes whichever sections were given as one container. Module level and picklable, for a
+    process pool worker.
+
+    Args:
+        dest_path (Union[Path, str]): Where to write.
+        lap_telemetry_args (Optional[tuple]): write_session()'s positional args (dest_path first),
+            or None for a container without lap telemetry.
+        session_data (Optional[SessionDataEntry]): The session data section, or None.
+
+    Raises ValueError if neither section was given.
+    """
+    if lap_telemetry_args is not None:
+        return write_session(*lap_telemetry_args, session_data=session_data)
+    if session_data is None:
+        raise ValueError("Nothing to write: no lap telemetry and no session data")
+    return write_session_data_only(dest_path, session_data)
+
+
 def _write_session_data(zf: zipfile.ZipFile, session_data: SessionDataEntry) -> None:
     zf.writestr(session_data.entry_name, session_data.payload, compress_type=zipfile.ZIP_DEFLATED)
 

@@ -81,3 +81,15 @@ def test_session_data_entry_is_named_after_stem_and_compact():
     assert entry.file_name == "Race_Mexico_Manual_2026_10_21_19_59_31.json"
     assert entry.entry_name == "session_data/Race_Mexico_Manual_2026_10_21_19_59_31.json"
     assert entry.payload == json.dumps(data, separators=(",", ":")).encode("utf-8")
+
+
+@pytest.mark.parametrize("session_data, lap_telemetry_args, expected", [
+    ({"a": 1}, None, "lap_telemetry=False | session_data=True"),
+    (None, ("args",), "lap_telemetry=True | session_data=False"),
+    ({"a": 1}, ("args",), "lap_telemetry=True | session_data=True"),
+])
+def test_str(session_data, lap_telemetry_args, expected):
+    request = SaveRequest(
+        stem="s", dest_path=Path("s.pngt"), reason=SaveReason.AUTO, session_uid=1,
+        session_data=session_data, lap_telemetry_args=lap_telemetry_args)
+    assert str(request) == expected

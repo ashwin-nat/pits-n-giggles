@@ -43,7 +43,8 @@ from lib.pngt import (CompletedLap, CorruptedTelemetryError,
                       UnsupportedFormatError, UnsupportedVersionError,
                       delete_laps, mark_lap_good, read_driver_laps,
                       read_lap_telemetry, read_session, rename_session,
-                      write_session, write_session_data_only)
+                      write_container, write_session,
+                      write_session_data_only)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Fixtures
@@ -997,3 +998,46 @@ def test_session_data_only_container_has_two_entries(tmp_path):
 def test_session_data_entry_rejects_bad_file_names(name):
     with pytest.raises(ValueError):
         SessionDataEntry(name, b"{}")
+
+
+def test_write_container_both_sections(tmp_path):
+    dest = tmp_path / "session.pngt"
+    args = (dest, sample_session(), sample_sensors(), sample_drivers(), sample_driver_data())
+    write_container(dest, args, SESSION_DATA)
+
+    assert _header(dest)["contents"]["lap_telemetry"] == {}
+    assert _header(dest)["contents"]["session_data"] == {"path": SESSION_DATA.entry_name}
+
+
+def test_write_container_session_data_only(tmp_path):
+    dest = tmp_path / "session.pngt"
+    write_container(dest, None, SESSION_DATA)
+
+    assert _header(dest)["contents"]["lap_telemetry"] is None
+    assert _header(dest)["contents"]["session_data"] == {"path": SESSION_DATA.entry_name}
+
+
+def test_write_container_lap_telemetry_only(tmp_path):
+    dest = tmp_path / "session.pngt"
+    args = (dest, sample_session(), sample_sensors(), sample_drivers(), sample_driver_data())
+    write_container(dest, args, None)
+
+    assert _header(dest)["contents"]["session_data"] is None
+    assert read_session(dest).drivers
+
+
+def test_write_container_rejects_nothing_to_write(tmp_path):
+    with pytest.raises(ValueError):
+        write_container(tmp_path / "session.pngt", None, None)
+
+
+def test_write_container_args_survive_pickling(tmp_path):
+    # run_in_process() sends these to a worker process, so they must pickle and still write
+    import pickle
+    dest = tmp_path / "session.pngt"
+    args = (dest, sample_session(), sample_sensors(), sample_drivers(), sample_driver_data())
+    sent = pickle.loads(pickle.dumps((dest, args, SESSION_DATA)))
+    write_container(*sent)
+
+    assert _header(dest)["contents"]["session_data"] == {"path": SESSION_DATA.entry_name}
+    assert read_session(dest).drivers
