@@ -49,8 +49,8 @@ def write_session(
     """Writes a complete .pngt file to dest_path.
 
     `session_data`, when given, is stored as its own opaque entry next to the lap
-    telemetry and listed in header.json's `contents`. Omitted, the file is
-    byte-for-byte what older writers produced.
+    telemetry and listed in header.json's `contents`. `contents` is always written,
+    with `session_data` null when omitted.
 
     `sensors` is a top-level parameter, not part of `session` -- it maps to its own
     manifest.json entry. Every sensor is stored float32; NaN is the only missing

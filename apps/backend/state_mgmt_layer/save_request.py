@@ -25,10 +25,10 @@
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Optional, Set, Tuple
 
 from lib.file_path import resolve_user_file
 from lib.pngt import SessionDataEntry
@@ -37,6 +37,9 @@ from .lap_telemetry_export import build_lap_telemetry_write_args
 
 if TYPE_CHECKING:
     from .session_state import SessionState
+
+# Containers handed out by claim_stem(), so two saves in flight never share a file
+_claimed_dests: Set[Path] = set()
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -88,6 +91,17 @@ def build_stem(event_str: str, reason: SaveReason, now: datetime) -> str:
     token = f"{reason.value}_" if reason.value else ""
     return f"{event_str}{token}{now.strftime('%Y_%m_%d_%H_%M_%S')}"
 
+def claim_stem(event_str: str, reason: SaveReason, now: datetime, dest_dir: Path) -> str:
+    """build_stem(), moved forward a second at a time while that container is taken, either on disk
+    or by a save still being written, so two saves in the same second never share a file."""
+    while True:
+        stem = build_stem(event_str, reason, now)
+        dest = dest_dir / f"{stem}.pngt"
+        if dest not in _claimed_dests and not dest.exists():
+            _claimed_dests.add(dest)
+            return stem
+        now += timedelta(seconds=1)
+
 def build_save_request(
     session_state: "SessionState",
     reason: SaveReason,
@@ -118,8 +132,9 @@ def build_save_request(
         return None
 
     now = datetime.now().astimezone()
-    stem = build_stem(event_str, reason, now)
-    dest_path = Path(resolve_user_file("data")) / now.strftime("%Y_%m_%d") / f"{stem}.pngt"
+    dest_dir = Path(resolve_user_file("data")) / now.strftime("%Y_%m_%d")
+    stem = claim_stem(event_str, reason, now, dest_dir)
+    dest_path = dest_dir / f"{stem}.pngt"
 
     session_data = None
     if include_session_data:

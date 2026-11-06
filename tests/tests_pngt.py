@@ -1092,7 +1092,7 @@ def test_read_contents_header_without_contents_is_lap_telemetry_only(tmp_path):
     assert read_session(old).drivers
 
 
-@pytest.mark.parametrize("contents", ["nope", {"session_data": {}}, {"session_data": {"path": 3}}])
+@pytest.mark.parametrize("contents", ["nope", {"session_data": {}}, {"session_data": {"path": 3}}, {"session_data": "nope"}])
 def test_read_contents_rejects_bad_contents(tmp_path, contents):
     src = _session_data_only(tmp_path)
     bad = tmp_path / "bad.pngt"

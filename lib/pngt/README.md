@@ -31,7 +31,7 @@ caller-owned entry as `session_data/<file_name>` (e.g. `session_data/<stem>.json
 one the file does not hold (a file with no `contents` is an older lap-telemetry-only one).
 `write_session_data_only()` writes a container of just `header.json`
 plus that entry (no `lap_telemetry`), for a save where lap recording is off. Both write
-to a `.tmp` and `os.replace` it into place. Reader support for `contents` is not in yet.
+to a `.tmp` and `os.replace` it into place.
 
 A driver with `is_telemetry_public == False` appears in `drivers.json` but has
 **no** `drivers/{idx}/` folder at all — `read_driver_laps()` returns `[]` for one,

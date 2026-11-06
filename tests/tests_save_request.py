@@ -34,7 +34,7 @@ import pytest
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from apps.backend.state_mgmt_layer.save_request import (SaveReason, SaveRequest, build_stem)
+from apps.backend.state_mgmt_layer.save_request import (SaveReason, SaveRequest, build_stem, claim_stem)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -93,3 +93,19 @@ def test_str(session_data, lap_telemetry_args, expected):
         stem="s", dest_path=Path("s.pngt"), reason=SaveReason.AUTO, session_uid=1,
         session_data=session_data, lap_telemetry_args=lap_telemetry_args)
     assert str(request) == expected
+
+
+def test_claim_stem_never_hands_out_the_same_container_twice(tmp_path):
+    first = claim_stem("Race_Mexico_", SaveReason.MANUAL, NOW, tmp_path)
+    second = claim_stem("Race_Mexico_", SaveReason.MANUAL, NOW, tmp_path)
+    third = claim_stem("Race_Mexico_", SaveReason.MANUAL, NOW, tmp_path)
+
+    assert first == "Race_Mexico_Manual_2026_10_21_19_59_31"
+    assert second == "Race_Mexico_Manual_2026_10_21_19_59_32"
+    assert third == "Race_Mexico_Manual_2026_10_21_19_59_33"
+
+
+def test_claim_stem_skips_a_container_already_on_disk(tmp_path):
+    (tmp_path / "Race_Mexico_2026_10_21_19_59_31.pngt").write_bytes(b"")
+
+    assert claim_stem("Race_Mexico_", SaveReason.AUTO, NOW, tmp_path) == "Race_Mexico_2026_10_21_19_59_32"

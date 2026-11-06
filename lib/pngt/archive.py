@@ -119,7 +119,7 @@ def read_contents_from_zip(zf: zipfile.ZipFile, path: Union[Path, str]) -> PngtC
     if not isinstance(contents, dict):
         raise InvalidHeaderError(path, "'contents' is not an object")
     session_data = contents.get(CONTENT_SESSION_DATA)
-    if session_data is not None and not isinstance(session_data.get("path"), str):
+    if session_data is not None and not (isinstance(session_data, dict) and isinstance(session_data.get("path"), str)):
         raise InvalidHeaderError(path, "'contents.session_data' has no 'path'")
     return PngtContents(
         has_lap_telemetry=contents.get(CONTENT_LAP_TELEMETRY) is not None,
