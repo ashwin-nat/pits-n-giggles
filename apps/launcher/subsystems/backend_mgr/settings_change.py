@@ -117,6 +117,7 @@ class BackendSettingsChangeBase(PngAppMgrBase):
             ],
             "Capture" : [
                 "session_dir",
+                "unified_save_format",
             ],
             "Display" : [
                 "local_telemetry_rate",

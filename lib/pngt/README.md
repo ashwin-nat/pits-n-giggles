@@ -16,7 +16,7 @@ catalog and the concrete snapshot type it reads from both live in
 A `.pngt` file is a ZIP archive:
 
 ```
-header.json                      # {"format": "pngt", "version": 1} -- pure format identity
+header.json                      # {"format": "pngt", "version": 1, "contents": {...}} -- format identity + which sections exist
 manifest.json                    # sensor registry: {"sensors": {key: {label, unit, type, should_display, range?}, ...}}
 session.json                     # session facts: track, timestamp, laps count/best, etc.
 drivers.json                     # all drivers, including Restricted ones
@@ -24,6 +24,14 @@ drivers/{driver_index:02d}/
     laps.json                    # this driver's lap metadata (completed + in-progress)
     lap_{lap_number:03d}.npz     # this lap's telemetry arrays
 ```
+
+`write_session(..., session_data=SessionDataEntry(name, payload))` adds one opaque,
+caller-owned entry as `session_data/<file_name>` (e.g. `session_data/<stem>.json`) and lists it in `header.json`'s
+`contents` next to `lap_telemetry`. `contents` always names both sections (`lap_telemetry` lists its entry paths for completeness; readers use the fixed names), with `null` for
+one the file does not hold (a file with no `contents` is an older lap-telemetry-only one).
+`write_session_data_only()` writes a container of just `header.json`
+plus that entry (no `lap_telemetry`), for a save where lap recording is off. Both write
+to a `.tmp` and `os.replace` it into place.
 
 A driver with `is_telemetry_public == False` appears in `drivers.json` but has
 **no** `drivers/{idx}/` folder at all — `read_driver_laps()` returns `[]` for one,
@@ -40,7 +48,7 @@ missing value.
 | `dto.py` | Input dataclasses (`SessionMetadata`, `DriverRecord`, `LapMetadata`, `CompletedLap`, `DriverExportData`, `SensorConfig` + `SensorType`, `DeleteLapsResult`, `MarkLapGoodResult`) carrying only caller-filled fields, plus the `Parsed*` read-side subclasses (`ParsedSessionMetadata`, `ParsedDriver`, `ParsedLap`) that add the fields `write_session()` derives |
 | `archive.py` | `header.json` validation (`validate_pngt_zip`), shared JSON read/write helpers, archive rebuild, and `recompute_totals()` (laps count + session best), used by both `writer.py` and `mutate.py` |
 | `writer.py` | `write_session()` — validates, derives `laps_count`/`session_best`/`is_telemetry_public`/`num_points`/`is_good`, then writes the ZIP |
-| `reader.py` | `read_session()` / `read_driver_laps()` / `read_lap_telemetry()` |
+| `reader.py` | `read_contents()` (which sections a file holds) / `read_session_data()` (parsed) / `read_session()` / `read_driver_laps()` / `read_lap_telemetry()`. Lap reads and `mutate.py` raise `SectionNotPresentError` on a file with no lap telemetry |
 | `mutate.py` | `delete_laps()` / `mark_lap_good()` / `rename_session()` — in-place archive rebuilds |
 | `recorder.py` | `BaseTelemetrySnapshot` (mandatory `lap_distance`/`lap_time_ms`), `RecordedSensor` (a sensor's manifest entry + how to read its value off a snapshot), `DriverTelemetryRecorder` (accumulation, lap rollover, flashback rollback, export; lap events are reported by the caller) |
 | `exceptions.py` | `PngtError` base and its subclasses — one per failure mode |

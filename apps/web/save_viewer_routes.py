@@ -39,14 +39,15 @@ import json
 import time
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from quart import send_file, url_for
 from watchfiles import awatch
 
 from lib.file_discovery import watch_filter
 
-from .session_discovery import build_session_list, formula_group_key
+from .session_discovery import (build_session_list, formula_group_key,
+                                is_container, read_container_session_data)
 
 if TYPE_CHECKING:
     from .web_server import WebServer
@@ -87,6 +88,15 @@ def get_slug_map() -> Dict[str, str]:
     """The current slug -> relative-path map. Read-only for callers outside this
     module; only `rebuild_session_cache()` ever reassigns it."""
     return _slug_map
+
+
+def save_viewer_slug_for_path(rel_path: str) -> Optional[str]:
+    """The slug of the session whose data lives in the container at rel_path (relative to the
+    session dir), or None. Only containers link: a loose JSON is never the same file as a
+    lap recording."""
+    if not is_container(Path(rel_path)):
+        return None
+    return next((slug for slug, rel in _slug_map.items() if rel == rel_path), None)
 
 
 def _best(sessions: List[Dict[str, Any]], key: str) -> float:
@@ -187,6 +197,11 @@ def define_save_viewer_routes(server: "WebServer") -> None:
         if not full.exists():
             return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
         server.m_logger.debug("GET /save-viewer/api/sessions/%s -> %s", slug, full)
+        if is_container(full):
+            data = await asyncio.to_thread(read_container_session_data, full)
+            if data is None:
+                return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
+            return server.jsonify(data), HTTPStatus.OK
         return await send_file(full, mimetype='application/json')
 
     @server.http_route('/save-viewer/api/track-pbs')
@@ -244,8 +259,12 @@ async def sessions_watch_loop(server: "WebServer") -> None:
         server.m_logger.warning(
             "Session directory %s does not exist -- file watcher not started", server.m_session_dir)
         return
+    # Session data lives in loose .json files or inside .pngt containers
+    accept_json = watch_filter('.json')
+    accept_pngt = watch_filter('.pngt')
     async for changes in awatch(
-            server.m_session_dir, stop_event=_watch_stop, watch_filter=watch_filter('.json')):
+            server.m_session_dir, stop_event=_watch_stop,
+            watch_filter=lambda change, path: accept_json(change, path) or accept_pngt(change, path)):
         server.m_logger.debug("Session cache: change detected: %s", sorted(changes))
         try:
             await rebuild_session_cache(server)

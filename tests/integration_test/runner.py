@@ -33,6 +33,7 @@ from lib.child_proc_mgmt import (enable_integration_test_mode,
 from lib.config import load_config_from_json
 from lib.f1_types import MAX_DRIVERS
 from lib.ipc import IpcClientSync, get_free_tcp_port
+from lib.pngt import PngtError, read_session_data
 from lib.save_invariants import checkSaveFile
 from tests.integration_test.diff_utils import (create_worktree, diff_captures,
                                                normalize_for_diff, remove_worktree,
@@ -403,16 +404,20 @@ def check_save_invariants(save_path: Path) -> Optional[int]:
     """Run the state-layer invariants over a written save file.
 
     Args:
-        save_path (Path): The save file to check
+        save_path (Path): The save file to check. A loose JSON, or a .pngt container whose
+            session_data section holds the save.
 
     Returns:
         Optional[int]: Number of violations, or None if the file could not be read
     """
 
     try:
-        with open(save_path, "r", encoding="utf-8") as f:
-            save = json.load(f)
-    except (OSError, json.JSONDecodeError) as e:
+        if save_path.suffix == ".pngt":
+            save = read_session_data(save_path)
+        else:
+            with open(save_path, "r", encoding="utf-8") as f:
+                save = json.load(f)
+    except (OSError, json.JSONDecodeError, PngtError) as e:
         logger.test_log(f"  [FAIL] Could not read save file {save_path}: {e}")
         return None
 

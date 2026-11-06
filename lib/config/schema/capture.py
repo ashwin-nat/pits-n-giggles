@@ -81,6 +81,20 @@ class CaptureSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    unified_save_format: bool = Field(
+        default=False,
+        description="Unified save format",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True,
+                "ext_info": [
+                    "Save both the session data (JSON) and lap telemetry into a single .pngt file.",
+                    "Benefits: Compression, Easier to manage, and a single sharable .pngt file that contains everything.",
+                ]
+            }
+        }
+    )
     session_dir: str = Field(
         default="data",
         description="Directory where saved session JSON files are stored",

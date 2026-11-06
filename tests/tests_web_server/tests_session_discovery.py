@@ -36,9 +36,13 @@ from pathlib import Path
 import pytest
 
 from apps.web.session_discovery import (CACHE_FILE, _normalize_saved_at,
-                                        build_session_list, parse_filename,
-                                        to_slug)
+                                        build_session_list, load_session_json,
+                                        parse_filename, to_slug)
 from lib.logger import PngLogger
+from lib.pngt import (CompletedLap, DriverExportData, DriverRecord,
+                      LapMetadata, SensorConfig, SensorType, SessionDataEntry,
+                      SessionMetadata, TrackInfo, write_session,
+                      write_session_data_only)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -69,6 +73,29 @@ def _save(saved_at: str = _SAVED_AT) -> dict:
         }],
         'debug': {'timestamp': saved_at},
     }
+
+
+def _lap_session():
+    return SessionMetadata(
+        session_uid=1, session_name="Test", session_type="race", app_version="0.0.1-test", game_year=2026,
+        formula="F1", game_version="1.00", timestamp="2024-06-01T14:32:00Z", track=TrackInfo(id=999, name="Fake"))
+
+
+def _lap_sensors():
+    return [SensorConfig(key="speed", label="Speed", unit="km/h", type=SensorType.CONTINUOUS)]
+
+
+def _lap_drivers():
+    return [DriverRecord(driver_index=1, name="Driver A", team="Team A", car_number=1,
+                         nationality="GB", platform="Steam")]
+
+
+def _lap_driver_data():
+    lap = CompletedLap(
+        metadata=LapMetadata(lap_number=1, lap_time_ms=90000, valid=True, tyre_compound="Soft",
+                             tyre_laps=1, pit_in_lap=False, pit_out_lap=False, ers_harvest_limit_j=None),
+        telemetry={"lap_distance": [0.0, 100.0], "speed": [100.0, 110.0]})
+    return {1: DriverExportData(driver_index=1, completed_laps=[lap])}
 
 
 def _write(directory: Path, name: str, payload) -> Path:
@@ -198,3 +225,81 @@ async def test_filename_date_is_used_when_the_save_has_no_timestamp(tmp_path):
     entry = (await _build(tmp_path))[0]
 
     assert entry['date'] == _EXPECTED_DATE
+
+
+# -------------------------------------- .pngt containers --------------------------------------------------------------
+
+def _container(directory: Path, name: str, payload=None, *, lap_telemetry: bool = False) -> Path:
+    """A .pngt holding `payload` as its session_data section, plus a lap recording if asked."""
+    path = directory / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    entry = None if payload is None else SessionDataEntry(
+        Path(name).with_suffix('.json').name, json.dumps(payload).encode('utf-8'))
+    if lap_telemetry:
+        write_session(path, _lap_session(), _lap_sensors(), _lap_drivers(), _lap_driver_data(), session_data=entry)
+    else:
+        write_session_data_only(path, entry)
+    return path
+
+
+async def test_session_data_only_container_is_listed(tmp_path):
+    _container(tmp_path, _GOOD_NAME.replace('.json', '.pngt'), _save())
+
+    sessions = await _build(tmp_path)
+
+    assert [s['track'] for s in sessions] == ['Sakhir']
+    assert sessions[0]['date'] == _EXPECTED_DATE
+    assert sessions[0]['validLapCount'] == 1
+
+
+async def test_container_with_lap_telemetry_is_listed_by_its_session_data(tmp_path):
+    _container(tmp_path, _GOOD_NAME.replace('.json', '.pngt'), _save(), lap_telemetry=True)
+
+    sessions = await _build(tmp_path)
+
+    assert [s['track'] for s in sessions] == ['Sakhir']
+
+
+async def test_container_without_session_data_is_not_listed(tmp_path):
+    """A lap recording on its own is the lap analyzer's file, not a save-viewer session."""
+    _container(tmp_path, 'Race_Spa_2026_08_31_01_58_46.pngt', lap_telemetry=True)
+    _write(tmp_path, _GOOD_NAME, _save())
+
+    sessions = await _build(tmp_path)
+
+    assert [s['track'] for s in sessions] == ['Sakhir']
+
+
+async def test_loose_json_and_container_are_listed_together(tmp_path):
+    _write(tmp_path, _GOOD_NAME, _save())
+    _container(tmp_path, 'Race_Spa_2026_09_01_01_58_46.pngt', _save(), lap_telemetry=True)
+
+    assert len(await _build(tmp_path)) == 2
+
+
+async def test_container_session_data_loads_by_slug(tmp_path, monkeypatch):
+    # The minimal payload is not a full save, so skip the derived-field recompute
+    monkeypatch.setattr('apps.web.session_discovery.check_recompute_json', lambda _data: False)
+    _container(tmp_path, _GOOD_NAME.replace('.json', '.pngt'), _save())
+    slug_map = {}
+    async for _sessions, slug_map in build_session_list(tmp_path, _logger(), '0.0.0-test'):
+        pass
+
+    data = await load_session_json(tmp_path, slug_map, to_slug(Path(_GOOD_NAME)))
+
+    assert data['session-info']['track-id'] == 'Sakhir'
+
+
+async def test_load_session_json_none_for_container_without_session_data(tmp_path):
+    path = _container(tmp_path, 'Race_Spa_2026_08_31_01_58_46.pngt', lap_telemetry=True)
+
+    assert await load_session_json(tmp_path, {'x': path.name}, 'x') is None
+
+
+async def test_corrupt_container_does_not_take_down_the_others(tmp_path):
+    (tmp_path / 'Race_Spa_2026_09_01_01_58_46.pngt').write_bytes(b'not a zip')
+    _write(tmp_path, _GOOD_NAME, _save())
+
+    sessions = await _build(tmp_path)
+
+    assert 'Sakhir' in [s['track'] for s in sessions]

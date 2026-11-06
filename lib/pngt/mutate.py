@@ -37,7 +37,7 @@ from pathlib import Path
 from typing import Iterator, Union
 
 from .archive import (read_json, rebuild_archive, recompute_totals,
-                      session_best_to_dict, validate_pngt_zip)
+                      open_lap_telemetry_zip, session_best_to_dict)
 from .dto import DeleteLapsResult, MarkLapGoodResult
 from .exceptions import DriverNotFoundError
 
@@ -61,7 +61,7 @@ def delete_laps(
     if not lap_numbers:
         raise ValueError("lap_numbers must not be empty")
 
-    zf = validate_pngt_zip(path)
+    zf = open_lap_telemetry_zip(path)
     try:
         all_names = set(zf.namelist())
         folder = f"drivers/{driver_index:02d}"
@@ -134,7 +134,7 @@ def mark_lap_good(
     Raises ValueError if lap_number is not present in that driver's laps.json.
     """
     path = Path(pngt_path)
-    zf = validate_pngt_zip(path)
+    zf = open_lap_telemetry_zip(path)
     try:
         folder = f"drivers/{driver_index:02d}"
         laps_entry = f"{folder}/laps.json"
@@ -167,7 +167,7 @@ def rename_session(
     """Sets session.json's session_name to new_name. session_uid and every other
     field are untouched."""
     path = Path(pngt_path)
-    zf = validate_pngt_zip(path)
+    zf = open_lap_telemetry_zip(path)
     try:
         session_raw = read_json(zf, "session.json", path)
     finally:

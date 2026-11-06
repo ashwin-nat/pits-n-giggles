@@ -19,7 +19,7 @@ This:
 5. After each recording, hits the HTTP endpoints (`/driver-info`, `/race-info`, etc.) and
    checks they respond.
 6. Whenever the app writes a session save, checks that save file for impossible states
-   (an invariant checker - things like "a driver can't have negative laps").
+   (an invariant checker - things like "a driver can't have negative laps") The save is either a loose JSON or, with `unified_save_format` on, the session data inside a `.pngt` container.
 7. Prints a stats summary and exits 1 if anything failed.
 
 Nothing here is committed anywhere or reviewed - it is a throwaway check you run locally.

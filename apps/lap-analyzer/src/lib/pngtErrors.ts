@@ -39,6 +39,13 @@ export class MalformedSessionError extends PngtError {
   }
 }
 
+// The file is a valid .pngt, but holds only session data. Message is user-facing (shown on drop).
+export class NoLapRecordingError extends PngtError {
+  constructor(path: string) {
+    super(`${path} has no lap recording (it only holds session data), so there is nothing to analyze.`);
+  }
+}
+
 export class DriverNotFoundError extends PngtError {
   constructor(path: string, driverIndex: number) {
     super(`No telemetry found for driver_index ${driverIndex} in ${path}`);

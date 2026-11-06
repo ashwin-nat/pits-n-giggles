@@ -29,6 +29,7 @@ from typing import Optional
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 MANDATORY_TELEMETRY_KEYS = ("lap_distance", "lap_time_ms")
+SESSION_DATA_DIR = "session_data"
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -55,6 +56,58 @@ class SensorConfig:
             raise ValueError(f"Invalid sensor type {self.type!r} for sensor {self.key!r}; expected a SensorType")
         if self.range is not None and self.range[0] >= self.range[1]:
             raise ValueError(f"Invalid range {self.range!r} for sensor {self.key!r}; expected (min, max) with min < max")
+
+@dataclass(frozen=True)
+class SessionDataEntry:
+    """An opaque caller-owned blob, stored as `session_data/<file_name>` (the `session_data` section).
+    `file_name` is a plain file name like "<stem>.json"; the library never parses `payload`."""
+    file_name: str
+    payload: bytes
+
+    def __post_init__(self) -> None:
+        if not self.file_name or self.file_name in {".", ".."} or "/" in self.file_name or "\\" in self.file_name:
+            raise ValueError(f"Invalid session data file name {self.file_name!r}; expected a plain file name")
+
+    @property
+    def entry_name(self) -> str:
+        """The entry's path inside the archive."""
+        return f"{SESSION_DATA_DIR}/{self.file_name}"
+
+@dataclass(frozen=True)
+class LapTelemetryPaths:
+    """Where the lap_telemetry section's entries are in the archive. header.json lists them under
+    `contents.lap_telemetry` for completeness; readers use these fixed names, not the header's.
+
+    Attributes:
+        session (str): Session metadata JSON.
+        sensor_manifest (str): Sensor registry JSON.
+        drivers (str): Driver list JSON.
+        drivers_dir (str): Directory of per-driver folders, each holding laps.json and the lap_NNN.npz files.
+    """
+    session: str = "session.json"
+    sensor_manifest: str = "manifest.json"
+    drivers: str = "drivers.json"
+    drivers_dir: str = "drivers"
+
+    def driver_dir(self, driver_index: int) -> str:
+        return f"{self.drivers_dir}/{driver_index:02d}"
+
+    def laps_entry(self, driver_index: int) -> str:
+        return f"{self.driver_dir(driver_index)}/laps.json"
+
+    def lap_entry(self, driver_index: int, lap_number: int) -> str:
+        return f"{self.driver_dir(driver_index)}/lap_{lap_number:03d}.npz"
+
+@dataclass(frozen=True)
+class PngtContents:
+    """Which sections a .pngt file holds.
+
+    Attributes:
+        has_lap_telemetry (bool): The file holds a lap recording.
+        session_data_entry (Optional[str]): Archive entry name of the session JSON, None if the file has none.
+    """
+    has_lap_telemetry: bool
+    session_data_entry: Optional[str]
 
 @dataclass(frozen=True)
 class TrackInfo:

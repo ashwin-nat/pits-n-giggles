@@ -30,17 +30,22 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
-                    Tuple)
+                    Set, Tuple)
 
 from apps.backend.app_ctx import AppCtx
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
-from apps.backend.state_mgmt_layer.pngt_export import (build_pngt_write_args,
-                                                       selected_sensors)
+from apps.backend.state_mgmt_layer.lap_telemetry_export import (
+    build_lap_telemetry_write_args, selected_sensors)
+from apps.backend.state_mgmt_layer.save_request import (SaveReason,
+                                                        SaveRequest,
+                                                        build_save_request,
+                                                        release_claim)
 from lib.button_debouncer import ButtonDebouncer
 from lib.child_proc_mgmt import (report_pngt_save_end_from_child,
                                  report_pngt_save_start_from_child,
-                                 report_session_save_skipped_from_child)
+                                 report_session_save_skipped_from_child,
+                                 report_session_saved_from_child)
 from lib.config import CaptureSettings, OverlayId
 from lib.event_counter import EventCounter
 from lib.f1_types import (F1PacketBase, F1PacketType, PacketCarDamageData,
@@ -55,7 +60,7 @@ from lib.f1_types import (F1PacketBase, F1PacketType, PacketCarDamageData,
 from lib.file_path import resolve_user_file
 from lib.logger import PngLogger
 from lib.packet_forwarder import AsyncUDPForwarder
-from lib.pngt import write_session
+from lib.pngt import write_container, write_session
 from lib.save_to_disk import save_json_to_file
 from lib.subsystem import AsyncSubsystem, PngSubsysId, SubsystemTask
 from lib.telemetry_manager import (AsyncF1TelemetryManager,
@@ -221,11 +226,15 @@ class F1TelemetryHandler:
         self.m_manager_task: Optional[SubsystemTask] = None
         # Task handles because asyncio expects a handle to be saved, otherwise it is not
         # guaranteed to be run to completion without being garbage collected. Separate
-        # slots per format -- JSON and pngt are independent writes (see
-        # _shouldSaveJsonData()/shouldSavePngtData()), so one can be in flight, timed
+        # slots per format -- JSON and lap telemetry are independent writes (see
+        # _shouldSaveJsonData()/shouldSaveLapTelemetry()), so one can be in flight, timed
         # out, or cancelled without affecting the other.
         self.m_json_save_task: Optional[asyncio.Task] = None
-        self.m_pngt_save_task: Optional[asyncio.Task] = None
+        self.m_lap_telemetry_save_task: Optional[asyncio.Task] = None
+        # With Capture.unified_save_format on, both halves go into one container written by one task
+        # instead, so the two slots above stay empty.
+        # Unified saves in flight. Several can overlap (manual during an auto-save, etc.)
+        self.m_save_tasks: Set[asyncio.Task] = set()
         self.registerCallbacks()
 
     def register_tasks(self, subsys: AsyncSubsystem) -> None:
@@ -312,7 +321,8 @@ class F1TelemetryHandler:
         self.m_wdt.stop()
         self.m_menu_wdt.stop()
         await self._waitForSaveTask(self.m_json_save_task, "JSON")
-        await self._waitForSaveTask(self.m_pngt_save_task, "pngt")
+        await self._waitForSaveTask(self.m_lap_telemetry_save_task, "lap_telemetry")
+        await asyncio.gather(*(self._waitForSaveTask(task, "unified") for task in list(self.m_save_tasks)))
         self.m_logger.debug("Telemetry handler stopped. manager and wdt stopped.")
 
     async def _waitForSaveTask(self, task: Optional[asyncio.Task], label: str) -> None:
@@ -526,27 +536,34 @@ class F1TelemetryHandler:
             final_json = self.m_session_state_ref.processFinalClassificationUpdate(packet)
             self.m_final_classification_processed = True
 
-            # Tracked via m_json_save_task/m_pngt_save_task (not fire_and_forget) so
-            # stop() can wait for them - a .pngt write especially is heavy enough (a
+            # Tracked via m_json_save_task/m_lap_telemetry_save_task (not fire_and_forget) so
+            # stop() can wait for them - a lap telemetry write especially is heavy enough (a
             # full session's telemetry) to still be running when the app is closed,
             # and an untracked task would just be killed mid-write with no error, no
-            # log, and no file. JSON and pngt are independent decisions and independent
+            # log, and no file. JSON and lap telemetry are independent decisions and independent
             # tasks -- one being off/slow/failing must not affect the other.
-            if self._shouldSaveJsonData():
-                # Named now: the next session's UID change can clear the state before the task runs
-                if json_file_name := self.prepareJsonWrite(final_json):
-                    self.m_json_save_task = asyncio.create_task(
-                        self._autoSaveJsonTask(final_json, json_file_name, packet.m_header.m_sessionUID),
-                        name="Auto-save Session Data (JSON)",
-                    )
-            if self.shouldSavePngtData():
-                pngt_write = self.preparePngtWrite()
-                if pngt_write is not None:
-                    dest_path, args = pngt_write
-                    self.m_pngt_save_task = asyncio.create_task(
-                        self._autoSavePngtTask(dest_path, args, packet.m_header.m_sessionUID),
-                        name="Auto-save Session Data (pngt)",
-                    )
+            if self.m_capture_settings.unified_save_format:
+                self.startUnifiedSave(
+                    SaveReason.AUTO,
+                    include_session_data=self._shouldSaveJsonData(),
+                    include_lap_telemetry=self.shouldSaveLapTelemetry(),
+                    final_json=final_json)
+            else:
+                if self._shouldSaveJsonData():
+                    # Named now: the next session's UID change can clear the state before the task runs
+                    if json_file_name := self.prepareJsonWrite(final_json):
+                        self.m_json_save_task = asyncio.create_task(
+                            self._autoSaveJsonTask(final_json, json_file_name, packet.m_header.m_sessionUID),
+                            name="Auto-save Session Data (JSON)",
+                        )
+                if self.shouldSaveLapTelemetry():
+                    lap_telemetry_write = self.prepareLapTelemetryWrite()
+                    if lap_telemetry_write is not None:
+                        dest_path, args = lap_telemetry_write
+                        self.m_lap_telemetry_save_task = asyncio.create_task(
+                            self._autoSaveLapTelemetryTask(dest_path, args, packet.m_header.m_sessionUID),
+                            name="Auto-save Session Data (lap telemetry)",
+                        )
 
             # Notify the frontend about the final classification
             session_type = self.m_session_state_ref.m_session_info.m_session_type
@@ -872,6 +889,70 @@ class F1TelemetryHandler:
         self.clearAllDataStructures(f"Session {uid} restarted")
         self.m_last_lap_data_frame = frame
 
+    @property
+    def unified_save_enabled(self) -> bool:
+        """Whether saves go into one container (Capture.unified_save_format). Needs a restart to change."""
+        return self.m_capture_settings.unified_save_format
+
+    def startUnifiedSave(
+        self,
+        reason: SaveReason,
+        include_session_data: bool,
+        include_lap_telemetry: bool,
+        final_json: Optional[Dict[str, Any]] = None,
+    ) -> Optional[SaveRequest]:
+        """Snapshots the session and writes it as one container in the background, for
+        Capture.unified_save_format. The caller decides what to include, since each half has its own
+        gate (session data: Capture autosave settings, lap telemetry: LapAnalyzer ones) and the
+        manual save skips the first. Synchronous up to the task creation, and must run before any
+        await in the caller, since the state may be cleared next.
+
+        Args:
+            reason (SaveReason): Why the save is happening.
+            include_session_data (bool): Save the session data.
+            include_lap_telemetry (bool): Save the lap telemetry.
+            final_json (Optional[Dict]): The session data, if the caller already built it.
+
+        Returns:
+            Optional[SaveRequest]: What is being written, or None if there was nothing to write.
+        """
+        request = build_save_request(
+            self.m_session_state_ref, reason,
+            include_session_data=include_session_data,
+            include_lap_telemetry=include_lap_telemetry,
+            logger=self.m_logger,
+            final_json=final_json)
+        if request is None:
+            return None
+        task = asyncio.create_task(self._runSave(request), name=f"Save Session Data ({reason.name})")
+        self.m_save_tasks.add(task)
+        task.add_done_callback(self.m_save_tasks.discard)
+        return request
+
+    async def _runSave(self, request: SaveRequest) -> None:
+        """Writes one SaveRequest as a single container, via a .tmp file and one atomic replace.
+        Run as a task in m_save_tasks. Must not read session_state: request is already a snapshot.
+
+        Args:
+            request (SaveRequest): What to write.
+        """
+        report_pngt_save_start_from_child(str(request.dest_path))
+        try:
+            start_time = time.perf_counter()
+            session_data = await asyncio.to_thread(request.session_data_entry)
+            await self.m_subsystem.run_in_process(
+                write_container, request.dest_path, request.lap_telemetry_args, session_data)
+            self.m_logger.info("Wrote %s [%s]. Session UID %d. took %.3f sec", request.dest_path, request,
+                               request.session_uid, time.perf_counter() - start_time)
+            if request.session_data is not None:
+                report_session_saved_from_child(str(request.dest_path))
+        except Exception: # pylint: disable=broad-exception-caught
+            # No need to crash the app just because write failed
+            self.m_logger.exception("Failed to write %s [%s]", request.dest_path, request)
+        finally:
+            report_pngt_save_end_from_child(str(request.dest_path))
+            release_claim(request.dest_path)
+
     async def _autoSaveJsonTask(self, final_json: Dict[str, Any], file_name: str, session_uid: int) -> None:
         """Writes the auto-save JSON for one session. Run as m_json_save_task from the
         ingress task -- see handleFinalClassification().
@@ -884,22 +965,22 @@ class F1TelemetryHandler:
         await self.postGameDumpToFile(final_json, file_name, session_uid=session_uid)
         self.m_json_save_task = None
 
-    async def _autoSavePngtTask(self, dest_path: Path, args: tuple, session_uid: int) -> None:
-        """Writes the .pngt telemetry dump for one session. Run as m_pngt_save_task --
+    async def _autoSaveLapTelemetryTask(self, dest_path: Path, args: tuple, session_uid: int) -> None:
+        """Writes the .pngt telemetry dump for one session. Run as m_lap_telemetry_save_task --
         shared by handleFinalClassification() and _saveJustInCaseIfNeeded(), since
-        both just need preparePngtWrite()'s result written and the slot cleared after.
+        both just need prepareLapTelemetryWrite()'s result written and the slot cleared after.
 
         Args:
-            dest_path (Path): Where to write -- from preparePngtWrite().
-            args (tuple): write_session()'s args -- from preparePngtWrite().
+            dest_path (Path): Where to write -- from prepareLapTelemetryWrite().
+            args (tuple): write_session()'s args -- from prepareLapTelemetryWrite().
             session_uid (int): Session UID, for the write's own log messages.
         """
-        await self.postGameDumpToPngtFile(dest_path, args, session_uid=session_uid)
-        self.m_pngt_save_task = None
+        await self.postGameDumpLapTelemetry(dest_path, args, session_uid=session_uid)
+        self.m_lap_telemetry_save_task = None
 
     def prepareJsonWrite(self, final_json: Dict[str, Any]) -> Optional[str]:
         """Fills final_json's debug block and picks its file name, from the session as it is now.
-        Synchronous, and must run before any await in the caller, the same as preparePngtWrite().
+        Synchronous, and must run before any await in the caller, the same as prepareLapTelemetryWrite().
 
         Arguments:
             final_json (Dict): Dictionary containing JSON data after final classification
@@ -948,11 +1029,11 @@ class F1TelemetryHandler:
             # No need to crash the app just because write failed
             self.m_logger.exception("Failed to write race info to %s [UID: %d]", file_name, session_uid)
 
-    def preparePngtWrite(self) -> Optional[Tuple[Path, tuple]]:
-        """Captures everything postGameDumpToPngtFile() needs from session_state.
+    def prepareLapTelemetryWrite(self) -> Optional[Tuple[Path, tuple]]:
+        """Captures everything postGameDumpLapTelemetry() needs from session_state.
         Synchronous, and must run before any await in the caller. Does NOT check
-        shouldSavePngtData() -- that's the caller's job (same as JSON autosave's
-        _shouldSaveJsonData()), so a caller that wants to attempt a pngt write
+        shouldSaveLapTelemetry() -- that's the caller's job (same as JSON autosave's
+        _shouldSaveJsonData()), so a caller that wants to attempt a lap telemetry write
         unconditionally (or has already decided) isn't forced through it.
 
         Returns:
@@ -966,42 +1047,42 @@ class F1TelemetryHandler:
         now = datetime.now().astimezone()
         timestamp_str = now.strftime("%Y_%m_%d_%H_%M_%S")
         date_str = now.strftime("%Y_%m_%d")
-        dir_path = Path(resolve_user_file("data")) / date_str / "telemetry"
+        dir_path = Path(resolve_user_file("data")) / date_str
         dir_path.mkdir(parents=True, exist_ok=True)
         dest_path = dir_path / f"{event_str}{timestamp_str}.pngt"
 
-        args = build_pngt_write_args(self.m_session_state_ref, dest_path,
-                                     self.m_session_state_ref.m_lap_analyzer_settings)
+        args = build_lap_telemetry_write_args(self.m_session_state_ref, dest_path,
+                                              self.m_session_state_ref.m_lap_analyzer_settings)
         if not args[2]:
-            # Settings were hot-swapped to no sensors after the caller's shouldSavePngtData()
+            # Settings were hot-swapped to no sensors after the caller's shouldSaveLapTelemetry()
             return None
         return dest_path, args
 
-    def firePngtWrite(self, pngt_write: Optional[Tuple[Path, tuple]], session_uid: int) -> None:
+    def fireLapTelemetryWrite(self, lap_telemetry_write: Optional[Tuple[Path, tuple]], session_uid: int) -> None:
         """Writes the .pngt in the background via fire_and_forget()
 
         Args:
-            pngt_write (Optional[Tuple[Path, tuple]]): preparePngtWrite()'s result, or
+            lap_telemetry_write (Optional[Tuple[Path, tuple]]): prepareLapTelemetryWrite()'s result, or
                 None if there was nothing to write.
             session_uid (int): Session UID, for the write's own log messages.
         """
-        if pngt_write is None:
+        if lap_telemetry_write is None:
             return
-        dest_path, args = pngt_write
+        dest_path, args = lap_telemetry_write
         self.m_subsystem.fire_and_forget(
-            self.postGameDumpToPngtFile(dest_path, args, session_uid=session_uid),
-            name="Manual Save .pngt Write",
+            self.postGameDumpLapTelemetry(dest_path, args, session_uid=session_uid),
+            name="Manual Save Lap Telemetry Write",
         )
 
-    async def postGameDumpToPngtFile(self, dest_path: Path, args: tuple, session_uid: int) -> None:
+    async def postGameDumpLapTelemetry(self, dest_path: Path, args: tuple, session_uid: int) -> None:
         """
         Write the session's recorded telemetry to a .pngt file, from args
-        preparePngtWrite() already captured synchronously. Must not read session_state
+        prepareLapTelemetryWrite() already captured synchronously. Must not read session_state
         itself
 
         Arguments:
-            dest_path (Path): Where to write -- from preparePngtWrite().
-            args (tuple): write_session()'s args -- from preparePngtWrite().
+            dest_path (Path): Where to write -- from prepareLapTelemetryWrite().
+            args (tuple): write_session()'s args -- from prepareLapTelemetryWrite().
             session_uid (int): Session UID for which the final classification was received.
         """
 
@@ -1059,14 +1140,14 @@ class F1TelemetryHandler:
         report_session_save_skipped_from_child(f"autosave-disabled:{curr_session_type}")
         return False
 
-    def shouldSavePngtData(self) -> bool:
+    def shouldSaveLapTelemetry(self) -> bool:
         """
         Check if the .pngt telemetry dump should be saved, based on LapAnalyzer
         settings for the current session type. Deliberately separate from
-        _shouldSaveJsonData(): pngt saving has its own settings, not the Capture
+        _shouldSaveJsonData(): lap telemetry saving has its own settings, not the Capture
         (JSON) autosave-by-session-type ones. Public (unlike _shouldSaveJsonData())
         -- callers outside this class (e.g. command_handlers.handleManualSave) decide
-        with it too, the same way they already call preparePngtWrite() directly.
+        with it too, the same way they already call prepareLapTelemetryWrite() directly.
 
         Returns:
             bool: True if the .pngt should be saved, False otherwise.
@@ -1076,12 +1157,12 @@ class F1TelemetryHandler:
             return False
 
         if not selected_sensors(settings):
-            self.m_logger.info("Not saving pngt data - no sensors selected")
+            self.m_logger.info("Not saving lap telemetry - no sensors selected")
             return False
 
         curr_session_type = self.m_session_state_ref.m_session_info.m_session_type
         if not curr_session_type:
-            self.m_logger.warning("Session type is None. Not saving pngt data. Ignore if first session.")
+            self.m_logger.warning("Session type is None. Not saving lap telemetry. Ignore if first session.")
             return False
 
         if curr_session_type.isFpTypeSession() and settings.record_in_fp:
@@ -1096,7 +1177,7 @@ class F1TelemetryHandler:
         # Either recording is off for this session type, or it is a mode we never
         # record (movie, story). Announce it, so a consumer can tell a deliberate
         # skip from a failed save.
-        self.m_logger.debug("Not saving pngt data for %s - disabled for this session type", curr_session_type)
+        self.m_logger.debug("Not saving lap telemetry for %s - disabled for this session type", curr_session_type)
         return False
 
     def _isUdpActionButtonPressed(self,
@@ -1202,7 +1283,7 @@ class F1TelemetryHandler:
         Caller's responsibility: only call this for a genuine UID change (i.e. there was a
         prior session - not on the very first UID the app ever sees) or a restart on the same UID. Must be called before
         m_last_session_uid is overwritten and before clearAllDataStructures runs, since both
-        ManualSaveRsp and preparePngtWrite() snapshot session_state synchronously here, at
+        ManualSaveRsp and prepareLapTelemetryWrite() snapshot session_state synchronously here, at
         construction/call time.
 
         Args:
@@ -1215,11 +1296,11 @@ class F1TelemetryHandler:
         if self.m_final_classification_processed:
             return
 
-        # JSON and pngt are independent decisions -- one being off for this session
+        # JSON and lap telemetry are independent decisions -- one being off for this session
         # type must not silently skip the other.
         should_save_json = self._shouldSaveJsonData()
-        should_save_pngt = self.shouldSavePngtData()
-        if not should_save_json and not should_save_pngt:
+        should_save_lap_telemetry = self.shouldSaveLapTelemetry()
+        if not should_save_json and not should_save_lap_telemetry:
             return
 
         # A UID change fires on any packet, so an outgoing "session" can be a lead-in blip of
@@ -1231,13 +1312,19 @@ class F1TelemetryHandler:
             report_session_save_skipped_from_child("no-lap-data")
             return
 
-        if self.m_json_save_task or self.m_pngt_save_task:
+        # A unified save owns its snapshot, so one already running (e.g. a manual save) is no reason to skip
+        unified = self.unified_save_enabled
+        if not unified and (self.m_json_save_task or self.m_lap_telemetry_save_task):
             self.m_logger.debug("A save task is already running.")
             return
 
         self.m_logger.warning(
             "Session %d ended without a final classification. Saving data just in case.",
             outgoing_session_uid)
+
+        if unified:
+            self.startUnifiedSave(SaveReason.JUST_IN_CASE, should_save_json, should_save_lap_telemetry)
+            return
 
         if should_save_json:
             try:
@@ -1251,15 +1338,15 @@ class F1TelemetryHandler:
             except ValueError as e:
                 self.m_logger.warning("Not saving just in case data for session %d: %s", outgoing_session_uid, e)
 
-        if should_save_pngt:
+        if should_save_lap_telemetry:
             # Captured now, synchronously - not inside the task, since
             # clearAllDataStructures() runs right after this method returns.
-            pngt_write = self.preparePngtWrite()
-            if pngt_write is not None:
-                dest_path, args = pngt_write
-                self.m_pngt_save_task = asyncio.create_task(
-                    self._autoSavePngtTask(dest_path, args, outgoing_session_uid),
-                    name="Just in case save task (pngt)")
+            lap_telemetry_write = self.prepareLapTelemetryWrite()
+            if lap_telemetry_write is not None:
+                dest_path, args = lap_telemetry_write
+                self.m_lap_telemetry_save_task = asyncio.create_task(
+                    self._autoSaveLapTelemetryTask(dest_path, args, outgoing_session_uid),
+                    name="Just in case save task (lap telemetry)")
 
     async def _saveJustInCaseJsonTask(self, session_uid: int, save_rsp: ManualSaveRsp) -> None:
         """Writes the just-in-case JSON via the pre-built ManualSaveRsp. Run as

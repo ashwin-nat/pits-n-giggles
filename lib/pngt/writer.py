@@ -26,14 +26,15 @@ import os
 import zipfile
 from io import BytesIO
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 
-from .archive import (HEADER_FORMAT, HEADER_VERSION, recompute_totals,
-                      session_best_to_dict, write_json)
+from .archive import (build_header, recompute_totals, session_best_to_dict,
+                      write_json)
 from .dto import (MANDATORY_TELEMETRY_KEYS, CompletedLap, DriverExportData,
-                  DriverRecord, SensorConfig, SessionMetadata)
+                  DriverRecord, LapTelemetryPaths, SensorConfig,
+                  SessionDataEntry, SessionMetadata)
 
 # -------------------------------------- FUNCTIONS ----------------------------------------------------------------------
 
@@ -43,8 +44,13 @@ def write_session(
     sensors: list[SensorConfig],
     drivers: list[DriverRecord],
     driver_data: dict[int, DriverExportData],
+    session_data: Optional[SessionDataEntry] = None,
 ) -> Path:
     """Writes a complete .pngt file to dest_path.
+
+    `session_data`, when given, is stored as its own opaque entry next to the lap
+    telemetry and listed in header.json's `contents`. `contents` is always written,
+    with `session_data` null when omitted.
 
     `sensors` is a top-level parameter, not part of `session` -- it maps to its own
     manifest.json entry. Every sensor is stored float32; NaN is the only missing
@@ -66,6 +72,7 @@ def write_session(
     validated against a fixed set -- see _validate_lap.
     """
     dest_path = Path(dest_path)
+    paths = LapTelemetryPaths()
 
     _validate_sensors(sensors)
     _validate_driver_data(sensors, drivers, driver_data)
@@ -84,26 +91,66 @@ def write_session(
 
     tmp_path = dest_path.with_name(dest_path.name + ".tmp")
     with zipfile.ZipFile(tmp_path, "w") as zf:
-        write_json(zf, "header.json", {"format": HEADER_FORMAT, "version": HEADER_VERSION})
-        write_json(zf, "manifest.json", {
+        write_json(zf, "header.json", build_header(session_data, has_lap_telemetry=True))
+        if session_data is not None:
+            _write_session_data(zf, session_data)
+        write_json(zf, paths.sensor_manifest, {
             "sensors": {
                 sensor.key: _sensor_manifest_entry(sensor)
                 for sensor in sensors
             }
         })
-        write_json(zf, "session.json", _session_to_dict(session, laps_count, session_best))
-        write_json(zf, "drivers.json", {
+        write_json(zf, paths.session, _session_to_dict(session, laps_count, session_best))
+        write_json(zf, paths.drivers, {
             "drivers": [_driver_to_dict(d, d.driver_index in driver_data) for d in drivers]
         })
 
         for driver_index, laps in driver_laps.items():
-            folder = f"drivers/{driver_index:02d}"
-            write_json(zf, f"{folder}/laps.json", {"laps": driver_lap_dicts[driver_index]})
+            write_json(zf, paths.laps_entry(driver_index), {"laps": driver_lap_dicts[driver_index]})
             for lap, _ in laps:
-                _write_lap_npz(zf, f"{folder}/lap_{lap.metadata.lap_number:03d}.npz", lap)
+                _write_lap_npz(zf, paths.lap_entry(driver_index, lap.metadata.lap_number), lap)
 
     os.replace(tmp_path, dest_path)
     return dest_path
+
+
+def write_session_data_only(dest_path: Union[Path, str], session_data: SessionDataEntry) -> Path:
+    """Writes a container holding only `session_data`: header.json plus its one entry, no lap
+    telemetry. For a save where lap recording is off."""
+    dest_path = Path(dest_path)
+    tmp_path = dest_path.with_name(dest_path.name + ".tmp")
+    with zipfile.ZipFile(tmp_path, "w") as zf:
+        write_json(zf, "header.json", build_header(session_data, has_lap_telemetry=False))
+        _write_session_data(zf, session_data)
+    os.replace(tmp_path, dest_path)
+    return dest_path
+
+
+def write_container(
+    dest_path: Union[Path, str],
+    lap_telemetry_args: Optional[tuple],
+    session_data: Optional[SessionDataEntry],
+) -> Path:
+    """Writes whichever sections were given as one container. Module level and picklable, for a
+    process pool worker.
+
+    Args:
+        dest_path (Union[Path, str]): Where to write.
+        lap_telemetry_args (Optional[tuple]): write_session()'s positional args (dest_path first),
+            or None for a container without lap telemetry.
+        session_data (Optional[SessionDataEntry]): The session data section, or None.
+
+    Raises ValueError if neither section was given.
+    """
+    if lap_telemetry_args is not None:
+        return write_session(*lap_telemetry_args, session_data=session_data)
+    if session_data is None:
+        raise ValueError("Nothing to write: no lap telemetry and no session data")
+    return write_session_data_only(dest_path, session_data)
+
+
+def _write_session_data(zf: zipfile.ZipFile, session_data: SessionDataEntry) -> None:
+    zf.writestr(session_data.entry_name, session_data.payload, compress_type=zipfile.ZIP_DEFLATED)
 
 
 def _default_good_flags(laps: list[CompletedLap]) -> list[bool]:

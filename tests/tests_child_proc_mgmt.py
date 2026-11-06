@@ -206,7 +206,7 @@ class TestIpcPortExtraction(TestChildProcMgmt):
 # renamed tag fails here rather than silently passing against a literal nothing emits any more.
 GATED_TOKENS = [
     (_SESSION_SAVED_TAG_PREFIX, report_session_saved_from_child, extract_saved_path_from_line,
-     "data/2026_01_01/race-info/Race_Monza.json"),
+     "data/2026_01_01/Race_Monza.json"),
     (_SESSION_SAVE_SKIPPED_TAG_PREFIX, report_session_save_skipped_from_child,
      extract_save_skipped_from_line, "no-lap-data"),
     # Free-form message with punctuation - the non-greedy match has to return all of it.
@@ -217,9 +217,9 @@ GATED_TOKENS = [
 # Stdout tokens the child emits unconditionally, whatever the mode.
 UNCONDITIONAL_TOKENS = [
     (_PNGT_SAVE_START_TAG_PREFIX, report_pngt_save_start_from_child,
-     extract_pngt_save_start_from_line, "data/2026_01_01/telemetry/Race_Monza_2026_01_01_12_00_00.pngt"),
+     extract_pngt_save_start_from_line, "data/2026_01_01/Race_Monza_2026_01_01_12_00_00.pngt"),
     (_PNGT_SAVE_END_TAG_PREFIX, report_pngt_save_end_from_child,
-     extract_pngt_save_end_from_line, "data/2026_01_01/telemetry/Race_Monza_2026_01_01_12_00_00.pngt"),
+     extract_pngt_save_end_from_line, "data/2026_01_01/Race_Monza_2026_01_01_12_00_00.pngt"),
 ]
 
 TOKENS = GATED_TOKENS + UNCONDITIONAL_TOKENS

@@ -30,12 +30,17 @@ from pathlib import Path
 from typing import Union
 
 import numpy as np
+import orjson
 
-from .archive import SENSOR_MANIFEST_ENTRY, read_json, validate_pngt_zip
+from .archive import (CONTENT_SESSION_DATA, SENSOR_MANIFEST_ENTRY,
+                      open_lap_telemetry_zip, read_contents_from_zip,
+                      read_json, validate_pngt_zip)
 from .dto import (ParsedDriver, ParsedLap, ParsedSessionMetadata,
-                  SensorConfig, SensorType, SessionBest, TrackInfo)
+                  PngtContents, SensorConfig, SensorType, SessionBest,
+                  TrackInfo)
 from .exceptions import (CorruptedTelemetryError, DriverNotFoundError,
-                         InvalidManifestError, MalformedSessionError)
+                         InvalidManifestError, MalformedSessionError,
+                         SectionNotPresentError)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -47,11 +52,50 @@ class ParsedSession:
 
 # -------------------------------------- FUNCTIONS ----------------------------------------------------------------------
 
+def read_contents(path: Union[Path, str]) -> PngtContents:
+    """Which sections the file holds, from header.json alone. Raises NotAZipFileError/
+    InvalidHeaderError/UnsupportedFormatError/UnsupportedVersionError."""
+    zf = validate_pngt_zip(path)
+    try:
+        return read_contents_from_zip(zf, path)
+    finally:
+        zf.close()
+
+
+def read_session_data(path: Union[Path, str]) -> dict:
+    """The session_data section, parsed. The library enforces no schema beyond it being a JSON
+    object. Raises SectionNotPresentError if the file has none, MalformedSessionError if the header
+    names an entry the archive lacks or the entry is not a JSON object.
+
+    NOTE: This function will just ensure that the JSON parses into a dict.
+    It does not validate the contents of the dict against any schema.
+    The caller is responsible for validating the contents if needed.
+    """
+    zf = validate_pngt_zip(path)
+    try:
+        entry = read_contents_from_zip(zf, path).session_data_entry
+        if entry is None:
+            raise SectionNotPresentError(path, CONTENT_SESSION_DATA)
+        try:
+            raw = zf.read(entry)
+        except KeyError as exc:
+            raise MalformedSessionError(path, f"{entry} is missing") from exc
+        try:
+            data = orjson.loads(raw)
+        except orjson.JSONDecodeError as exc:
+            raise MalformedSessionError(path, f"{entry} is not valid JSON: {exc}") from exc
+        if not isinstance(data, dict):
+            raise MalformedSessionError(path, f"{entry} is not a JSON object")
+        return data
+    finally:
+        zf.close()
+
+
 def read_session(path: Union[Path, str]) -> ParsedSession:
     """Reads header.json + manifest.json + session.json + drivers.json into a
     ParsedSession. Raises NotAZipFileError/InvalidHeaderError/UnsupportedFormatError/
-    UnsupportedVersionError/InvalidManifestError/MalformedSessionError."""
-    zf = validate_pngt_zip(path)
+    UnsupportedVersionError/SectionNotPresentError/InvalidManifestError/MalformedSessionError."""
+    zf = open_lap_telemetry_zip(path)
     try:
         session_raw = read_json(zf, "session.json", path)
         drivers_raw = read_json(zf, "drivers.json", path)
@@ -66,7 +110,7 @@ def read_session(path: Union[Path, str]) -> ParsedSession:
 def read_driver_laps(path: Union[Path, str], driver_index: int) -> list[ParsedLap]:
     """Reads lap metadata for one driver. A Restricted driver has no folder on disk --
     this is expected, documented behavior, so it returns [] rather than raising."""
-    zf = validate_pngt_zip(path)
+    zf = open_lap_telemetry_zip(path)
     try:
         entry = f"drivers/{driver_index:02d}/laps.json"
         if entry not in zf.namelist():
@@ -81,7 +125,7 @@ def read_lap_telemetry(path: Union[Path, str], driver_index: int, lap_number: in
     """Reads one lap's telemetry arrays. Returns exactly the array names present in
     that .npz file -- an older file with fewer sensors or a newer one with extra
     sensor keys both work with zero special-case code."""
-    zf = validate_pngt_zip(path)
+    zf = open_lap_telemetry_zip(path)
     try:
         entry = f"drivers/{driver_index:02d}/lap_{lap_number:03d}.npz"
         try:

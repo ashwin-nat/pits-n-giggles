@@ -25,7 +25,7 @@
 Run from the repo root:
 
     # one specific file
-    poetry run python -m apps.dev_tools.check_save_invariants data/2026_07_29/race-info/Race_Melbourne_*.json
+    poetry run python -m apps.dev_tools.check_save_invariants data/2026_07_29/Race_Melbourne_*.json
 
     # everything produced by an integration run
     poetry run python -m apps.dev_tools.check_save_invariants "data/**/*.json"
