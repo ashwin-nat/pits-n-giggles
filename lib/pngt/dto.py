@@ -74,6 +74,31 @@ class SessionDataEntry:
         return f"{SESSION_DATA_DIR}/{self.file_name}"
 
 @dataclass(frozen=True)
+class LapTelemetryPaths:
+    """Where the lap_telemetry section's entries are in the archive. header.json lists them under
+    `contents.lap_telemetry` for completeness; readers use these fixed names, not the header's.
+
+    Attributes:
+        session (str): Session metadata JSON.
+        sensor_manifest (str): Sensor registry JSON.
+        drivers (str): Driver list JSON.
+        drivers_dir (str): Directory of per-driver folders, each holding laps.json and the lap_NNN.npz files.
+    """
+    session: str = "session.json"
+    sensor_manifest: str = "manifest.json"
+    drivers: str = "drivers.json"
+    drivers_dir: str = "drivers"
+
+    def driver_dir(self, driver_index: int) -> str:
+        return f"{self.drivers_dir}/{driver_index:02d}"
+
+    def laps_entry(self, driver_index: int) -> str:
+        return f"{self.driver_dir(driver_index)}/laps.json"
+
+    def lap_entry(self, driver_index: int, lap_number: int) -> str:
+        return f"{self.driver_dir(driver_index)}/lap_{lap_number:03d}.npz"
+
+@dataclass(frozen=True)
 class PngtContents:
     """Which sections a .pngt file holds.
 

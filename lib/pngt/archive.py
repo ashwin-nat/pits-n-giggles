@@ -22,12 +22,14 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import dataclasses
 import json
 import zipfile
 from pathlib import Path
 from typing import Iterable, Optional, Union
 
-from .dto import PngtContents, SessionBest, SessionDataEntry
+from .dto import (LapTelemetryPaths, PngtContents, SessionBest,
+                  SessionDataEntry)
 from .exceptions import (InvalidHeaderError, MalformedSessionError,
                          NotAZipFileError, SectionNotPresentError,
                          UnsupportedFormatError, UnsupportedVersionError)
@@ -45,13 +47,13 @@ CONTENT_SESSION_DATA = "session_data"
 # -------------------------------------- FUNCTIONS ----------------------------------------------------------------------
 
 def build_header(session_data: Optional[SessionDataEntry], has_lap_telemetry: bool) -> dict:
-    """header.json's content. `contents` names every section, with None for one the file does not
-    hold. A file without `contents` is an older lap-telemetry-only one."""
+    """header.json's content. `contents` names every section and where its entries are, with None for
+    one the file does not hold. A file without `contents` is an older lap-telemetry-only one."""
     return {
         "format": HEADER_FORMAT,
         "version": HEADER_VERSION,
         "contents": {
-            CONTENT_LAP_TELEMETRY: {} if has_lap_telemetry else None,
+            CONTENT_LAP_TELEMETRY: dataclasses.asdict(LapTelemetryPaths()) if has_lap_telemetry else None,
             CONTENT_SESSION_DATA: {"path": session_data.entry_name} if session_data else None,
         },
     }

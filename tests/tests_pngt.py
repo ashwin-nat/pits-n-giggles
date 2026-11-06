@@ -948,6 +948,10 @@ def test_rename_session_malformed_session_json_raises_malformed(tmp_path):
 # ----------------------------------------------------------------------------------------------------------------------
 
 SESSION_DATA = SessionDataEntry("Test_Race_2026_10_28_12_00_00.json", b'{"a":1}')
+DEFAULT_PATHS = {
+    "session": "session.json", "sensor_manifest": "manifest.json",
+    "drivers": "drivers.json", "drivers_dir": "drivers",
+}
 
 
 def _header(path):
@@ -960,7 +964,7 @@ def test_lap_only_header_lists_null_session_data(tmp_path):
     write_session(dest, sample_session(), sample_sensors(), sample_drivers(), sample_driver_data())
     assert _header(dest) == {
         "format": "pngt", "version": 1,
-        "contents": {"lap_telemetry": {}, "session_data": None},
+        "contents": {"lap_telemetry": DEFAULT_PATHS, "session_data": None},
     }
 
 
@@ -972,7 +976,7 @@ def test_write_session_with_session_data_lists_both_sections(tmp_path):
     assert _header(dest) == {
         "format": "pngt", "version": 1,
         "contents": {
-            "lap_telemetry": {},
+            "lap_telemetry": DEFAULT_PATHS,
             "session_data": {"path": SESSION_DATA.entry_name},
         },
     }
@@ -1006,7 +1010,7 @@ def test_write_container_both_sections(tmp_path):
     args = (dest, sample_session(), sample_sensors(), sample_drivers(), sample_driver_data())
     write_container(dest, args, SESSION_DATA)
 
-    assert _header(dest)["contents"]["lap_telemetry"] == {}
+    assert _header(dest)["contents"]["lap_telemetry"] == DEFAULT_PATHS
     assert _header(dest)["contents"]["session_data"] == {"path": SESSION_DATA.entry_name}
 
 
@@ -1159,3 +1163,4 @@ def test_rename_session_keeps_session_data(tmp_path):
     assert read_session(dest).session.session_name == "Renamed"
     assert read_session_data(dest) == {"a": 1}
     assert read_contents(dest).session_data_entry == SESSION_DATA.entry_name
+

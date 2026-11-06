@@ -33,8 +33,8 @@ import numpy as np
 from .archive import (build_header, recompute_totals, session_best_to_dict,
                       write_json)
 from .dto import (MANDATORY_TELEMETRY_KEYS, CompletedLap, DriverExportData,
-                  DriverRecord, SensorConfig, SessionDataEntry,
-                  SessionMetadata)
+                  DriverRecord, LapTelemetryPaths, SensorConfig,
+                  SessionDataEntry, SessionMetadata)
 
 # -------------------------------------- FUNCTIONS ----------------------------------------------------------------------
 
@@ -72,6 +72,7 @@ def write_session(
     validated against a fixed set -- see _validate_lap.
     """
     dest_path = Path(dest_path)
+    paths = LapTelemetryPaths()
 
     _validate_sensors(sensors)
     _validate_driver_data(sensors, drivers, driver_data)
@@ -93,22 +94,21 @@ def write_session(
         write_json(zf, "header.json", build_header(session_data, has_lap_telemetry=True))
         if session_data is not None:
             _write_session_data(zf, session_data)
-        write_json(zf, "manifest.json", {
+        write_json(zf, paths.sensor_manifest, {
             "sensors": {
                 sensor.key: _sensor_manifest_entry(sensor)
                 for sensor in sensors
             }
         })
-        write_json(zf, "session.json", _session_to_dict(session, laps_count, session_best))
-        write_json(zf, "drivers.json", {
+        write_json(zf, paths.session, _session_to_dict(session, laps_count, session_best))
+        write_json(zf, paths.drivers, {
             "drivers": [_driver_to_dict(d, d.driver_index in driver_data) for d in drivers]
         })
 
         for driver_index, laps in driver_laps.items():
-            folder = f"drivers/{driver_index:02d}"
-            write_json(zf, f"{folder}/laps.json", {"laps": driver_lap_dicts[driver_index]})
+            write_json(zf, paths.laps_entry(driver_index), {"laps": driver_lap_dicts[driver_index]})
             for lap, _ in laps:
-                _write_lap_npz(zf, f"{folder}/lap_{lap.metadata.lap_number:03d}.npz", lap)
+                _write_lap_npz(zf, paths.lap_entry(driver_index, lap.metadata.lap_number), lap)
 
     os.replace(tmp_path, dest_path)
     return dest_path
