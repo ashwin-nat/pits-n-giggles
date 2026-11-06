@@ -34,7 +34,7 @@ import pytest
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from apps.backend.state_mgmt_layer.save_request import (SaveReason, SaveRequest, build_stem, claim_stem)
+from apps.backend.state_mgmt_layer.save_request import (SaveReason, SaveRequest, build_stem, claim_stem, release_claim)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -109,3 +109,10 @@ def test_claim_stem_skips_a_container_already_on_disk(tmp_path):
     (tmp_path / "Race_Mexico_2026_10_21_19_59_31.pngt").write_bytes(b"")
 
     assert claim_stem("Race_Mexico_", SaveReason.AUTO, NOW, tmp_path) == "Race_Mexico_2026_10_21_19_59_32"
+
+
+def test_released_claim_can_be_claimed_again(tmp_path):
+    first = claim_stem("Race_Mexico_", SaveReason.MANUAL, NOW, tmp_path)
+    release_claim(tmp_path / f"{first}.pngt")
+
+    assert claim_stem("Race_Mexico_", SaveReason.MANUAL, NOW, tmp_path) == first

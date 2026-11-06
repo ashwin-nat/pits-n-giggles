@@ -125,11 +125,11 @@ class BackendAppMgr(BackendSettingsChangeBase):
                               f"The session is being saved to:\n{message}\n\nA large session can take a few seconds to finish writing.")
 
         else:
-            error = rsp.get("error", "Unknown error")
+            error = rsp.get("error")
             message = rsp.get("message", "")
             self.info_log(f"Error in manual save: error={error} message={message}")
 
-            error_details = "\n".join(filter(None, [error, message]))
+            error_details = "\n".join(filter(None, [error, message])) or "Unknown error"
             self.show_error("Manual Save Error", error_details)
 
     def start_stop_callback(self):

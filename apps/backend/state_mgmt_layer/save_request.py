@@ -102,6 +102,11 @@ def claim_stem(event_str: str, reason: SaveReason, now: datetime, dest_dir: Path
             return stem
         now += timedelta(seconds=1)
 
+def release_claim(dest_path: Path) -> None:
+    """Gives back a claim_stem() claim once its save is over (written, failed or abandoned). A written
+    container is then protected by being on disk."""
+    _claimed_dests.discard(dest_path)
+
 def build_save_request(
     session_state: "SessionState",
     reason: SaveReason,
@@ -136,28 +141,34 @@ def build_save_request(
     stem = claim_stem(event_str, reason, now, dest_dir)
     dest_path = dest_dir / f"{stem}.pngt"
 
-    session_data = None
-    if include_session_data:
-        session_data = _build_session_data(session_state, reason, stem, now, logger, final_json)
+    request = None
+    try:
+        session_data = None
+        if include_session_data:
+            session_data = _build_session_data(session_state, reason, stem, now, logger, final_json)
 
-    lap_telemetry_args = None
-    if include_lap_telemetry:
-        args = build_lap_telemetry_write_args(session_state, dest_path, session_state.m_lap_analyzer_settings)
-        # An empty sensor list means settings were hot-swapped to no sensors after the caller's gating
-        lap_telemetry_args = args if args[2] else None
+        lap_telemetry_args = None
+        if include_lap_telemetry:
+            args = build_lap_telemetry_write_args(session_state, dest_path, session_state.m_lap_analyzer_settings)
+            # An empty sensor list means settings were hot-swapped to no sensors after the caller's gating
+            lap_telemetry_args = args if args[2] else None
 
-    if session_data is None and lap_telemetry_args is None:
-        return None
+        if session_data is None and lap_telemetry_args is None:
+            return None
 
-    dest_path.parent.mkdir(parents=True, exist_ok=True)
-    return SaveRequest(
-        stem=stem,
-        dest_path=dest_path,
-        reason=reason,
-        session_uid=session_state.m_session_info.m_session_uid or 0,
-        session_data=session_data,
-        lap_telemetry_args=lap_telemetry_args,
-    )
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        request = SaveRequest(
+            stem=stem,
+            dest_path=dest_path,
+            reason=reason,
+            session_uid=session_state.m_session_info.m_session_uid or 0,
+            session_data=session_data,
+            lap_telemetry_args=lap_telemetry_args,
+        )
+        return request
+    finally:
+        if request is None:
+            release_claim(dest_path)
 
 def _build_session_data(
     session_state: "SessionState",

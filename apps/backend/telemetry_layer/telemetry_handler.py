@@ -30,7 +30,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
-                    Tuple)
+                    Set, Tuple)
 
 from apps.backend.app_ctx import AppCtx
 from apps.backend.state_mgmt_layer import SessionState
@@ -39,7 +39,8 @@ from apps.backend.state_mgmt_layer.lap_telemetry_export import (
     build_lap_telemetry_write_args, selected_sensors)
 from apps.backend.state_mgmt_layer.save_request import (SaveReason,
                                                         SaveRequest,
-                                                        build_save_request)
+                                                        build_save_request,
+                                                        release_claim)
 from lib.button_debouncer import ButtonDebouncer
 from lib.child_proc_mgmt import (report_pngt_save_end_from_child,
                                  report_pngt_save_start_from_child,
@@ -232,7 +233,8 @@ class F1TelemetryHandler:
         self.m_lap_telemetry_save_task: Optional[asyncio.Task] = None
         # With Capture.unified_save_format on, both halves go into one container written by one task
         # instead, so the two slots above stay empty.
-        self.m_save_task: Optional[asyncio.Task] = None
+        # Unified saves in flight. Several can overlap (manual during an auto-save, etc.)
+        self.m_save_tasks: Set[asyncio.Task] = set()
         self.registerCallbacks()
 
     def register_tasks(self, subsys: AsyncSubsystem) -> None:
@@ -320,7 +322,7 @@ class F1TelemetryHandler:
         self.m_menu_wdt.stop()
         await self._waitForSaveTask(self.m_json_save_task, "JSON")
         await self._waitForSaveTask(self.m_lap_telemetry_save_task, "lap_telemetry")
-        await self._waitForSaveTask(self.m_save_task, "unified")
+        await asyncio.gather(*(self._waitForSaveTask(task, "unified") for task in list(self.m_save_tasks)))
         self.m_logger.debug("Telemetry handler stopped. manager and wdt stopped.")
 
     async def _waitForSaveTask(self, task: Optional[asyncio.Task], label: str) -> None:
@@ -922,12 +924,14 @@ class F1TelemetryHandler:
             final_json=final_json)
         if request is None:
             return None
-        self.m_save_task = asyncio.create_task(self._runSave(request), name=f"Save Session Data ({reason.name})")
+        task = asyncio.create_task(self._runSave(request), name=f"Save Session Data ({reason.name})")
+        self.m_save_tasks.add(task)
+        task.add_done_callback(self.m_save_tasks.discard)
         return request
 
     async def _runSave(self, request: SaveRequest) -> None:
         """Writes one SaveRequest as a single container, via a .tmp file and one atomic replace.
-        Run as m_save_task. Must not read session_state: request is already a snapshot.
+        Run as a task in m_save_tasks. Must not read session_state: request is already a snapshot.
 
         Args:
             request (SaveRequest): What to write.
@@ -947,9 +951,7 @@ class F1TelemetryHandler:
             self.m_logger.exception("Failed to write %s [%s]", request.dest_path, request)
         finally:
             report_pngt_save_end_from_child(str(request.dest_path))
-            # A newer save may have replaced the handle while this one ran
-            if self.m_save_task is asyncio.current_task():
-                self.m_save_task = None
+            release_claim(request.dest_path)
 
     async def _autoSaveJsonTask(self, final_json: Dict[str, Any], file_name: str, session_uid: int) -> None:
         """Writes the auto-save JSON for one session. Run as m_json_save_task from the
@@ -1310,8 +1312,9 @@ class F1TelemetryHandler:
             report_session_save_skipped_from_child("no-lap-data")
             return
 
+        # A unified save owns its snapshot, so one already running (e.g. a manual save) is no reason to skip
         unified = self.unified_save_enabled
-        if self.m_save_task if unified else (self.m_json_save_task or self.m_lap_telemetry_save_task):
+        if not unified and (self.m_json_save_task or self.m_lap_telemetry_save_task):
             self.m_logger.debug("A save task is already running.")
             return
 
