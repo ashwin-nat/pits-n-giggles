@@ -32,6 +32,8 @@ export interface Session {
   formula: string;
   gameVersion: string;
   sessionBest: SessionBest | null;
+  // The save-viewer session in the same container; absent for local files and older saves.
+  sessionSlug?: string | null;
   sensorManifest: SensorDefinition[];
 }
 
@@ -55,6 +57,9 @@ export interface Lap {
   pitOutLap: boolean;
   ersHarvestLimitJ: number | null; // null in recordings made before this field existed
   isGood: boolean;
+  // Whether the recording covers the lap start to finish; absent for local files.
+  complete?: boolean;
+  incompleteReason?: string | null;
 }
 
 export interface TelemetryPoint {

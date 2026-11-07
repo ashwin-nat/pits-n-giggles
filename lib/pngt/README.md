@@ -18,10 +18,11 @@ A `.pngt` file is a ZIP archive:
 ```
 header.json                      # {"format": "pngt", "version": 1, "contents": {...}} -- format identity + which sections exist
 manifest.json                    # sensor registry: {"sensors": {key: {label, unit, type, should_display, range?}, ...}}
-session.json                     # session facts: track, timestamp, laps count/best, etc.
+session.json                     # session facts: track, timestamp, laps count/best, track length, player index,
+                                 # sector starts, ERS capacity (all nullable; see CHANGELOG.md)
 drivers.json                     # all drivers, including Restricted ones
 drivers/{driver_index:02d}/
-    laps.json                    # this driver's lap metadata (completed + in-progress)
+    laps.json                    # this driver's lap metadata (completed + in-progress), incl. distance coverage and sector ends
     lap_{lap_number:03d}.npz     # this lap's telemetry arrays
 ```
 

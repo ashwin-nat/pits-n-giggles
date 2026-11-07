@@ -52,6 +52,9 @@ function lapLabel(lap: Lap, isSessionBest: boolean): string {
   if (lap.pitInLap || lap.pitOutLap) {
     parts.push("🔧");
   }
+  if (lap.complete === false && lap.lapTime !== null) {
+    parts.push("◐ partial");
+  }
   return parts.join("  •  ");
 }
 
@@ -78,6 +81,7 @@ export function LapSelector({ selection, onChange, disabled }: LapSelectorProps)
   }, [laps]);
 
   const sessionBest = session?.sessionBest ?? null;
+  const selectedLap = laps?.find((l) => l.lapNumber === selection.lapNumber);
 
   if (disabled) {
     return <DisabledSelect message="Select a driver first" />;
@@ -121,6 +125,11 @@ export function LapSelector({ selection, onChange, disabled }: LapSelectorProps)
             );
           })}
         </select>
+      )}
+      {selectedLap?.complete === false && selectedLap.lapTime !== null && (
+        <p className="text-xs text-amber-400">
+          Partly recorded: {selectedLap.incompleteReason ?? "not captured in full"}
+        </p>
       )}
     </div>
   );

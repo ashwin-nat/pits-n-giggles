@@ -27,9 +27,19 @@ covered by the manual smoke script per this repo's convention -- see
 apps/web/test_viewer_api.py).
 """
 
+import logging
+from http import HTTPStatus
+from io import BytesIO
+from types import SimpleNamespace
+
+import numpy as np
+import pytest
+
 import apps.web.lap_analyzer_routes as routes
 from apps.web.pngt_discovery import PngtSessionEntry
-from lib.pngt import ParsedSessionMetadata, TrackInfo
+from lib.pngt import (CompletedLap, DriverExportData, DriverRecord,
+                      LapMetadata, ParsedSessionMetadata, SensorConfig,
+                      SensorType, SessionMetadata, TrackInfo, write_session)
 
 
 def _entry(slug: str, name: str) -> PngtSessionEntry:
@@ -92,28 +102,45 @@ def test_update_cached_session_name_does_not_mutate_original_entry(monkeypatch):
     assert entry.session.session_name == "Original Name"
 
 
-# -------------------------------------- links between the two slug namespaces -----------------------------------------
+# -------------------------------------- recording <-> session links ---------------------------------------------------
 
-import apps.web.save_viewer_routes as viewer_routes
-
-
-def test_lap_analyzer_slug_for_path_matches_the_same_file(monkeypatch):
-    spa = _entry("spa-race", "Spa")
-    monza = _entry("monza-race", "Monza")
-    monkeypatch.setattr(routes, "_by_slug", {"spa-race": spa, "monza-race": monza})
-
-    assert routes.lap_analyzer_slug_for_path("monza-race.pngt") == "monza-race"
-    assert routes.lap_analyzer_slug_for_path("other.pngt") is None
+from apps.web.save_viewer_routes import link_recordings_to_sessions
 
 
-def test_save_viewer_slug_for_path_matches_a_container(monkeypatch):
-    monkeypatch.setattr(viewer_routes, "_slug_map", {"race-spa-2026": "2026_11_03/Race_Spa_2026.pngt"})
+def test_container_links_to_its_own_session():
+    slug_map = {"race-spa": "2026_11_03/Race_Spa_2026_11_03_10_00_00.pngt"}
+    assert link_recordings_to_sessions(["2026_11_03/Race_Spa_2026_11_03_10_00_00.pngt"], slug_map) == {
+        "2026_11_03/Race_Spa_2026_11_03_10_00_00.pngt": "race-spa"}
 
-    assert viewer_routes.save_viewer_slug_for_path("2026_11_03/Race_Spa_2026.pngt") == "race-spa-2026"
-    assert viewer_routes.save_viewer_slug_for_path("2026_11_03/Other.pngt") is None
+
+def test_loose_recording_pairs_with_the_json_of_the_same_name():
+    slug_map = {"race-spa": "race-info/Race_Spa_2026_11_03_10_00_00.json"}
+    links = link_recordings_to_sessions(["telemetry/Race_Spa_2026_11_03_10_00_00.pngt"], slug_map)
+    assert links == {"telemetry/Race_Spa_2026_11_03_10_00_00.pngt": "race-spa"}
 
 
-def test_save_viewer_slug_for_path_never_links_a_loose_json(monkeypatch):
-    monkeypatch.setattr(viewer_routes, "_slug_map", {"race-spa-2026": "2026_11_03/Race_Spa_2026.json"})
+def test_just_in_case_and_manual_markers_are_ignored_when_pairing():
+    slug_map = {"jic": "race-info/Race_Spa_Just_in_case_2026_11_03_10_00_00.json",
+                "man": "race-info/Quali_Spa_Manual_2026_11_03_11_00_00.json"}
+    links = link_recordings_to_sessions(
+        ["telemetry/Race_Spa_2026_11_03_10_00_00.pngt", "telemetry/Quali_Spa_2026_11_03_11_00_00.pngt"], slug_map)
+    assert list(links.values()) == ["jic", "man"]
 
-    assert viewer_routes.save_viewer_slug_for_path("2026_11_03/Race_Spa_2026.json") is None
+
+def test_save_stamped_a_few_seconds_later_still_pairs():
+    slug_map = {"man": "race-info/Race_Suzuka_Manual_2026_10_17_10_34_14.json"}
+    links = link_recordings_to_sessions(["telemetry/Race_Suzuka_2026_10_17_10_34_13.pngt"], slug_map)
+    assert links == {"telemetry/Race_Suzuka_2026_10_17_10_34_13.pngt": "man"}
+
+
+def test_a_nearby_session_is_not_taken_from_a_recording_that_matches_it_exactly():
+    slug_map = {"s": "race-info/Race_Suzuka_2026_10_17_10_34_14.json"}
+    links = link_recordings_to_sessions(
+        ["telemetry/Race_Suzuka_2026_10_17_10_34_13.pngt", "telemetry/Race_Suzuka_2026_10_17_10_34_14.pngt"], slug_map)
+    assert links == {"telemetry/Race_Suzuka_2026_10_17_10_34_14.pngt": "s"}
+
+
+def test_unrelated_recording_and_a_far_stamp_do_not_pair():
+    slug_map = {"s": "race-info/Race_Spa_2026_11_03_10_00_00.json"}
+    assert link_recordings_to_sessions(
+        ["telemetry/Race_Spa_2026_11_03_10_00_06.pngt", "telemetry/Race_Monza_2026_11_03_10_00_00.pngt"], slug_map) == {}

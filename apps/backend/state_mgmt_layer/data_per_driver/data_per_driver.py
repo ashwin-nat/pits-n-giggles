@@ -1623,6 +1623,16 @@ class DataPerDriver:
         )
         self.m_tel_rec.update(snapshot, frame_id, self.m_lap_info.m_current_lap)
 
+    @staticmethod
+    def _sectorEndsMs(hist_lap) -> Optional[Tuple[int, int]]:
+        """Elapsed time at the end of sectors 1 and 2, or None if the splits are missing or
+        cannot be real (a partial lap copies a sector into its lap time)."""
+        sector1 = hist_lap.m_sector1TimeInMS + hist_lap.m_sector1TimeMinutes * 60000
+        sector2 = hist_lap.m_sector2TimeInMS + hist_lap.m_sector2TimeMinutes * 60000
+        if sector1 > 0 and sector2 > 0 and sector1 + sector2 < hist_lap.m_lapTimeInMS:
+            return (sector1, sector1 + sector2)
+        return None
+
     def exportTelemetry(self) -> DriverExportData:
         """Exports recorded telemetry, reconciling lap_time_ms/valid against Session
         History (onLapChange() can't know either -- only Session History reports them)
@@ -1645,6 +1655,7 @@ class DataPerDriver:
                             lap.metadata,
                             lap_time_ms=hist_lap.m_lapTimeInMS or None,
                             valid=hist_lap.isLapValid(),
+                            sector_ends_ms=self._sectorEndsMs(hist_lap),
                         ),
                         telemetry=lap.telemetry,
                     ))

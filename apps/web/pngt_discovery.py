@@ -118,6 +118,10 @@ def _session_to_dict(session: ParsedSessionMetadata) -> Dict[str, Any]:
         'game_version': session.game_version,
         'timestamp': session.timestamp,
         'track': {'id': session.track.id, 'name': session.track.name},
+        'track_length_m': session.track_length_m,
+        'player_index': session.player_index,
+        'sector_starts_m': session.sector_starts_m,
+        'ers_max_capacity_j': session.ers_max_capacity_j,
         'laps_count': session.laps_count,
         'session_best': None if session.session_best is None else {
             'driver_index': session.session_best.driver_index,
@@ -139,6 +143,10 @@ def _dict_to_session(raw: Dict[str, Any]) -> ParsedSessionMetadata:
         game_version=raw['game_version'],
         timestamp=raw['timestamp'],
         track=TrackInfo(id=raw['track']['id'], name=raw['track']['name']),
+        track_length_m=raw.get('track_length_m'),
+        player_index=raw.get('player_index'),
+        sector_starts_m=None if raw.get('sector_starts_m') is None else tuple(raw['sector_starts_m']),
+        ers_max_capacity_j=raw.get('ers_max_capacity_j'),
         laps_count=raw['laps_count'],
         session_best=None if session_best_raw is None else SessionBest(
             driver_index=session_best_raw['driver_index'],
@@ -182,8 +190,12 @@ def _lap_to_dict(lap: ParsedLap) -> Dict[str, Any]:
         'pit_in_lap': lap.pit_in_lap,
         'pit_out_lap': lap.pit_out_lap,
         'ers_harvest_limit_j': lap.ers_harvest_limit_j,
+        'sector_ends_ms': lap.sector_ends_ms,
         'num_points': lap.num_points,
         'is_good': lap.is_good,
+        'start_distance_m': lap.start_distance_m,
+        'end_distance_m': lap.end_distance_m,
+        'max_gap_m': lap.max_gap_m,
     }
 
 
@@ -197,8 +209,12 @@ def _dict_to_lap(raw: Dict[str, Any]) -> ParsedLap:
         pit_in_lap=raw['pit_in_lap'],
         pit_out_lap=raw['pit_out_lap'],
         ers_harvest_limit_j=raw.get('ers_harvest_limit_j'),
+        sector_ends_ms=None if raw.get('sector_ends_ms') is None else tuple(raw['sector_ends_ms']),
         num_points=raw.get('num_points', 0),
         is_good=raw['is_good'],
+        start_distance_m=raw.get('start_distance_m'),
+        end_distance_m=raw.get('end_distance_m'),
+        max_gap_m=raw.get('max_gap_m'),
     )
 
 

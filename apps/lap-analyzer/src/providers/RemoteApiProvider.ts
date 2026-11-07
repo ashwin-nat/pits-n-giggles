@@ -1,5 +1,6 @@
 import type { Session, Driver, Lap, TelemetryPoint, TrackSection } from "../types/api";
 import type { LapAnalyzerProvider, ProviderCapabilities } from "./types";
+import { npzToTelemetryPoints } from "../lib/parseNpy";
 
 const API_ROOT = "/lap-analyzer/api/v1";
 
@@ -18,7 +19,7 @@ export class ApiError extends Error {
   }
 }
 
-async function getJson<T>(path: string): Promise<T> {
+async function fetchOk(path: string): Promise<Response> {
   let response: Response;
   try {
     response = await fetch(path);
@@ -31,11 +32,11 @@ async function getJson<T>(path: string): Promise<T> {
     const message = body?.error?.message ?? `Request to ${path} failed with status ${response.status}`;
     throw new ApiError(code, message);
   }
-  return (await response.json()) as T;
+  return response;
 }
 
-interface TelemetryResponse {
-  points: TelemetryPoint[];
+async function getJson<T>(path: string): Promise<T> {
+  return (await (await fetchOk(path)).json()) as T;
 }
 
 // Implements LapAnalyzerProvider against the Phase 6 backend
@@ -70,11 +71,9 @@ export class RemoteApiProvider implements LapAnalyzerProvider {
     lapNumber: number,
     sensors: string[]
   ): Promise<TelemetryPoint[]> {
-    const params = new URLSearchParams({ sensors: sensors.join(",") });
-    const { points } = await getJson<TelemetryResponse>(
-      `${API_ROOT}/telemetry/${encodeURIComponent(sessionId)}/${driverIndex}/${lapNumber}?${params}`
-    );
-    return points;
+    const path = `${API_ROOT}/telemetry/${encodeURIComponent(sessionId)}/${driverIndex}/${lapNumber}`;
+    const bytes = new Uint8Array(await (await fetchOk(path)).arrayBuffer());
+    return npzToTelemetryPoints(bytes, sensors, path);
   }
 
   async getTrackSections(trackId: number): Promise<TrackSection[]> {

@@ -1,7 +1,7 @@
 import type { Session, Driver, Lap, TelemetryPoint, TrackSection, SensorDefinition, SessionBest } from "../types/api";
 import type { LapAnalyzerProvider, ProviderCapabilities } from "./types";
 import { unzipArchive, readJsonEntry, type ZipEntries } from "../lib/unzip";
-import { parseNpzSensors } from "../lib/parseNpy";
+import { npzToTelemetryPoints } from "../lib/parseNpy";
 import { getTrackSections as getBundledTrackSections } from "../lib/segments";
 import {
   InvalidHeaderError,
@@ -246,32 +246,7 @@ export class LocalFileProvider implements LapAnalyzerProvider {
       throw new DriverNotFoundError(label, driverIndex);
     }
 
-    const keys = Array.from(new Set(["lap_distance", "lap_time_ms", ...sensors]));
-    const arrays = parseNpzSensors(npzBytes, keys, label);
-    const lapDistance = arrays["lap_distance"];
-    if (lapDistance === undefined) {
-      throw new MalformedSessionError(label, `${path} is missing the required 'lap_distance' array`);
-    }
-    const lapTimeMs = arrays["lap_time_ms"];
-
-    const points: TelemetryPoint[] = [];
-    for (let i = 0; i < lapDistance.length; i++) {
-      const point: TelemetryPoint = { lapDistance: lapDistance[i] };
-      // Mandatory, like lap_distance -- included regardless of `sensors`, mirroring
-      // lap_analyzer_api.py's telemetry_points_to_api() (see its docstring). The
-      // chart area uses it to derive the delta trace against a reference lap.
-      if (lapTimeMs !== undefined) {
-        point["lap_time_ms"] = lapTimeMs[i];
-      }
-      for (const sensor of sensors) {
-        const array = arrays[sensor];
-        if (array !== undefined) {
-          point[sensor] = array[i];
-        }
-      }
-      points.push(point);
-    }
-    return points;
+    return npzToTelemetryPoints(npzBytes, sensors, label);
   }
 
   async getTrackSections(trackId: number): Promise<TrackSection[]> {

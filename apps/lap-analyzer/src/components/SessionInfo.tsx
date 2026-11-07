@@ -20,6 +20,14 @@ export function SessionInfo({ sessionId }: SessionInfoProps) {
         {session.formula} {session.gameYear} • Patch {session.gameVersion}
       </p>
       <p>App v{session.appVersion}</p>
+      {session.sessionSlug && (
+        <a
+          href={`/save-viewer/sessions/${encodeURIComponent(session.sessionSlug)}?tab=lap-telemetry`}
+          className="text-sky-400 hover:underline"
+        >
+          Open in Save Viewer
+        </a>
+      )}
     </div>
   );
 }

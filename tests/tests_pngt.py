@@ -27,6 +27,7 @@ import os
 import sys
 import zipfile
 from io import BytesIO
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -41,10 +42,11 @@ from lib.pngt import (CompletedLap, CorruptedTelemetryError,
                       SectionNotPresentError, SensorConfig, SensorType,
                       SessionBest, SessionDataEntry, SessionMetadata,
                       TrackInfo, UnsupportedFormatError,
-                      UnsupportedVersionError, delete_laps, mark_lap_good,
-                      read_contents, read_driver_laps, read_lap_telemetry,
-                      read_session, read_session_data, rename_session,
-                      write_container, write_session,
+                      UnsupportedVersionError, LapCoverage, delete_laps,
+                      judge_lap_coverage, mark_lap_good, measure_lap_coverage,
+                      read_contents, read_driver_laps, read_lap_npz_bytes,
+                      read_lap_telemetry, read_session, read_session_data,
+                      rename_session, write_container, write_session,
                       write_session_data_only)
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1164,3 +1166,90 @@ def test_rename_session_keeps_session_data(tmp_path):
     assert read_session_data(dest) == {"a": 1}
     assert read_contents(dest).session_data_entry == SESSION_DATA.entry_name
 
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Lap coverage, completeness verdict, raw npz bytes
+# ----------------------------------------------------------------------------------------------------------------------
+
+def test_measure_lap_coverage_ignores_pre_line_and_non_finite():
+    cov = measure_lap_coverage([-20.0, float("nan"), 2.0, 10.0, 25.0, 25.0, 60.0])
+    assert (cov.start_distance_m, cov.end_distance_m, cov.max_gap_m) == (2.0, 60.0, 35.0)
+
+
+def test_measure_lap_coverage_nothing_past_the_line():
+    assert measure_lap_coverage([-5.0, -1.0]) == LapCoverage(None, None, None)
+    assert measure_lap_coverage([]) == LapCoverage(None, None, None)
+
+
+_COMPLETENESS_CASES = Path(__file__).parent.parent / "apps/external/f1-save-viewer/tests/fixtures/lap-completeness-cases.json"
+
+@pytest.mark.skipif(not _COMPLETENESS_CASES.exists(), reason="f1-save-viewer submodule not checked out")
+def test_judge_lap_coverage_matches_the_viewer_cases():
+    for case in json.loads(_COMPLETENESS_CASES.read_text(encoding="utf-8"))["cases"]:
+        cov = LapCoverage(case["start"], case["end"], case["gap"])
+        verdict = judge_lap_coverage(case["lapTimeMs"], cov, case["trackLengthM"])
+        assert (verdict.complete, verdict.reason) == (case["complete"], case["reason"]), case
+
+
+def test_write_persists_coverage_and_old_files_read_as_none(tmp_path):
+    path = tmp_path / "s.pngt"
+    write_session(path, sample_session(), sample_sensors(), sample_drivers(), sample_driver_data())
+    laps = {lap.lap_number: lap for lap in read_driver_laps(path, 1)}
+    assert (laps[1].start_distance_m, laps[1].end_distance_m, laps[1].max_gap_m) == (0.0, 300.0, 100.0)
+
+    stripped = tmp_path / "old.pngt"
+
+    def _drop(name, data):
+        if not name.endswith("laps.json"):
+            return data
+        doc = json.loads(data)
+        for lap in doc["laps"]:
+            for key in ("start_distance_m", "end_distance_m", "max_gap_m"):
+                lap.pop(key)
+        return json.dumps(doc).encode()
+
+    _rebuild_zip(path, stripped, _drop)
+    old = read_driver_laps(stripped, 1)[0]
+    assert (old.start_distance_m, old.end_distance_m, old.max_gap_m) == (None, None, None)
+
+
+def test_track_length_round_trips_and_defaults_to_none(tmp_path):
+    path = tmp_path / "s.pngt"
+    write_session(path, dataclasses.replace(sample_session(), track_length_m=4381), sample_sensors(),
+                  sample_drivers(), sample_driver_data())
+    assert read_session(path).session.track_length_m == 4381
+
+    write_session(path, sample_session(), sample_sensors(), sample_drivers(), sample_driver_data())
+    assert read_session(path).session.track_length_m is None
+
+
+def test_session_and_lap_facts_round_trip_and_default_to_none(tmp_path):
+    path = tmp_path / "s.pngt"
+    session = dataclasses.replace(sample_session(), player_index=21, sector_starts_m=(1897.5, 3726.9),
+                                  ers_max_capacity_j=4_000_000.0)
+    data = sample_driver_data()
+    lap = data[1].completed_laps[0]
+    data[1].completed_laps[0] = dataclasses.replace(
+        lap, metadata=dataclasses.replace(lap.metadata, sector_ends_ms=(35769, 68306)))
+    write_session(path, session, sample_sensors(), sample_drivers(), data)
+
+    read = read_session(path).session
+    assert (read.player_index, read.sector_starts_m, read.ers_max_capacity_j) == (
+        21, (1897.5, 3726.9), 4_000_000.0)
+    laps = read_driver_laps(path, 1)
+    assert laps[0].sector_ends_ms == (35769, 68306)
+    assert laps[1].sector_ends_ms is None
+
+    write_session(path, sample_session(), sample_sensors(), sample_drivers(), sample_driver_data())
+    bare = read_session(path).session
+    assert (bare.player_index, bare.sector_starts_m, bare.ers_max_capacity_j) == (None,) * 3
+
+
+def test_read_lap_npz_bytes_matches_stored_arrays(tmp_path):
+    path = tmp_path / "s.pngt"
+    write_session(path, sample_session(), sample_sensors(), sample_drivers(), sample_driver_data())
+    raw = read_lap_npz_bytes(path, 1, 2)
+    with np.load(BytesIO(raw)) as npz:
+        assert npz["lap_distance"].tolist() == [0.0, 150.0, 300.0]
+    with pytest.raises(DriverNotFoundError):
+        read_lap_npz_bytes(path, 1, 99)

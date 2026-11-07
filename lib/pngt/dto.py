@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
@@ -133,6 +133,14 @@ class SessionMetadata:
     game_version: str
     timestamp: str  # ISO-8601, passed through verbatim, never parsed
     track: TrackInfo
+    # Lap length in metres. kw_only so ParsedSessionMetadata can keep adding required
+    # fields after it; None in files written before this existed, or when unknown.
+    track_length_m: Optional[int] = field(default=None, kw_only=True)
+    # The recording player's driver index, the lap distances where sectors 2 and 3 start,
+    # and the battery size in joules. None when unknown.
+    player_index: Optional[int] = field(default=None, kw_only=True)
+    sector_starts_m: Optional[tuple[float, float]] = field(default=None, kw_only=True)
+    ers_max_capacity_j: Optional[float] = field(default=None, kw_only=True)
 
 @dataclass(frozen=True)
 class DriverRecord:
@@ -157,6 +165,8 @@ class LapMetadata:
     pit_in_lap: bool
     pit_out_lap: bool
     ers_harvest_limit_j: Optional[float]  # None in recordings made before this field existed
+    # Official elapsed time (ms) at the end of sectors 1 and 2; None when the lap has no trustworthy splits.
+    sector_ends_ms: Optional[tuple[int, int]] = field(default=None, kw_only=True)
 
 @dataclass(frozen=True)
 class CompletedLap:
@@ -214,3 +224,8 @@ class ParsedLap(LapMetadata):
     """LapMetadata plus the fields write_session() derives and persists."""
     num_points: int
     is_good: bool
+    # Distance coverage, persisted at write time. None in files written before these
+    # existed; consumers fall back to measuring the lap's own lap_distance array.
+    start_distance_m: Optional[float] = None
+    end_distance_m: Optional[float] = None
+    max_gap_m: Optional[float] = None

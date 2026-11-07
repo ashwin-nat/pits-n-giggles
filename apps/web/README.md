@@ -7,9 +7,13 @@ Quart + Socket.IO server behind the browser UI: live dashboards, the save-viewer
 | Mode | Launched by | Serves |
 |------|-------------|--------|
 | Managed | the Launcher | live dashboards, save-viewer, home page. Consumes broker telemetry and queries the backend |
-| Headless | you, with `--headless` | home page and save-viewer only. No launcher, broker or backend needed |
+| Headless | you, with `--headless` | home page, save-viewer and lap analyzer (including `/lap-analyzer/api/v1`, which the save-viewer's Lap telemetry tab reads). No launcher, broker or backend needed |
 
 Never run the managed mode standalone: it fails the heartbeat check and self-terminates.
+
+## Lap recording API
+
+`/lap-analyzer/api/v1` serves `.pngt` lap recordings: sessions, drivers, laps and raw per-lap `.npz` telemetry. It is the single API for both the lap analyzer and the bundled save-viewer. Loose recordings are paired to save-viewer sessions by filename (`link_recordings_to_sessions`).
 
 ## Headless mode
 

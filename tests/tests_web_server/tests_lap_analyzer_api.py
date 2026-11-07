@@ -29,14 +29,15 @@ equivalence is what Phase 6's exit criterion ("no behavioural difference between
 LocalFileProvider and RemoteApiProvider") actually depends on.
 """
 
-import numpy as np
+import dataclasses
+
 import pytest
 from pydantic import ValidationError
 
 from apps.web.lap_analyzer_api import (RenameSessionRequest, api_error,
-                                       driver_to_api, lap_to_api,
+                                       driver_to_api, laps_by_driver_to_api,
+                                       lap_to_api, session_summary_to_api,
                                        session_to_api,
-                                       telemetry_points_to_api,
                                        title_case_session_type,
                                        track_section_to_api)
 from apps.web.pngt_discovery import PngtSessionEntry
@@ -86,8 +87,17 @@ def test_session_to_api_maps_all_fields():
         'formula': "F1",
         'gameVersion': "1.05",
         'sessionBest': {'driverIndex': 1, 'lapNumber': 2, 'lapTimeMs': 90000},
+        'trackLengthM': 0.0,
+        'sessionSlug': None,
+        'playerIndex': None,
+        'sectorStartsM': None,
+        'ersMaxCapacityJ': None,
         'sensorManifest': [{'key': "speed", 'label': "Speed", 'unit': "km/h", 'type': "continuous"}],
     }
+
+
+def test_session_to_api_reports_the_save_viewer_slug():
+    assert session_to_api(_entry(), "race-monza")['sessionSlug'] == "race-monza"
 
 
 def test_session_to_api_null_session_best():
@@ -117,109 +127,58 @@ def test_lap_to_api_completed_lap():
     lap = ParsedLap(lap_number=12, lap_time_ms=75340, valid=True, tyre_compound="Soft",
                     tyre_laps=5, pit_in_lap=False, pit_out_lap=False, ers_harvest_limit_j=4_000_000.0,
                     num_points=100, is_good=True)
-    assert lap_to_api(lap) == {
+    assert lap_to_api(lap, 5000.0) == {
         'lapNumber': 12, 'lapTime': 75340, 'valid': True, 'tyreCompound': "Soft",
         'tyreLaps': 5, 'pitInLap': False, 'pitOutLap': False, 'ersHarvestLimitJ': 4_000_000.0, 'isGood': True,
+        'sampleCount': 100, 'startDistanceM': None, 'endDistanceM': None, 'maxGapM': None,
+        'complete': False, 'incompleteReason': "not recorded past the line",
+        'sectorEndsMs': None,
     }
+
+
+def test_lap_to_api_reports_coverage_and_verdict():
+    lap = ParsedLap(lap_number=3, lap_time_ms=80000, valid=True, tyre_compound="Soft",
+                    tyre_laps=2, pit_in_lap=False, pit_out_lap=False, ers_harvest_limit_j=None,
+                    num_points=5000, is_good=False,
+                    start_distance_m=2.0, end_distance_m=4379.0, max_gap_m=9.0)
+    whole = lap_to_api(lap, 4381.0)
+    assert (whole['complete'], whole['incompleteReason']) == (True, None)
+    assert (whole['startDistanceM'], whole['endDistanceM'], whole['maxGapM']) == (2.0, 4379.0, 9.0)
+    assert lap_to_api(lap, 6000.0)['incompleteReason'] == "first 4380 m only"
+
+
+def test_track_length_is_the_recorded_value_or_zero():
+    entry = _entry()
+    assert session_to_api(entry)['trackLengthM'] == 0.0
+    entry = dataclasses.replace(entry, session=dataclasses.replace(entry.session, track_length_m=4381))
+    assert session_to_api(entry)['trackLengthM'] == 4381.0
+
+
+def test_session_to_api_reports_what_the_recording_knows_about_the_session():
+    entry = _entry()
+    session = dataclasses.replace(entry.session, player_index=21, sector_starts_m=(1897.5, 3726.9),
+                                  ers_max_capacity_j=4_000_000.0)
+    result = session_to_api(dataclasses.replace(entry, session=session))
+    assert (result['playerIndex'], result['ersMaxCapacityJ']) == (21, 4_000_000.0)
+    assert result['sectorStartsM'] == [1897.5, 3726.9]
+    unset = session_to_api(entry)
+    assert (unset['playerIndex'], unset['sectorStartsM'], unset['ersMaxCapacityJ']) == (None, None, None)
+
+
+def test_lap_to_api_reports_sector_ends():
+    lap = dataclasses.replace(_cov_lap(1, 98464, 1.0, 4998.0), sector_ends_ms=(35769, 68306))
+    assert lap_to_api(lap, 5000.0)['sectorEndsMs'] == [35769, 68306]
+    assert lap_to_api(_cov_lap(1, 98464, 1.0, 4998.0), 5000.0)['sectorEndsMs'] is None
 
 
 def test_lap_to_api_out_lap_no_time():
     lap = ParsedLap(lap_number=1, lap_time_ms=None, valid=False, tyre_compound="Medium",
                     tyre_laps=1, pit_in_lap=False, pit_out_lap=True, ers_harvest_limit_j=None,
                     num_points=50, is_good=False)
-    result = lap_to_api(lap)
+    result = lap_to_api(lap, 5000.0)
     assert result['lapTime'] is None
+    assert result['incompleteReason'] == "no lap time"
     assert result['valid'] is False
-
-
-def test_telemetry_points_maps_lap_distance_and_requested_sensors():
-    lap_distance = np.array([0.0, 1.7, 3.3], dtype=np.float32)
-    arrays = {
-        'lap_distance': lap_distance,
-        'speed': np.array([112.3, 114.1, 116.8], dtype=np.float32),
-        'gear': np.array([4, 4, 5], dtype=np.int8),
-    }
-    points = telemetry_points_to_api(lap_distance, arrays, ['speed', 'gear'])
-
-    assert len(points) == 3
-    assert points[0]['lapDistance'] == pytest.approx(0.0)
-    assert points[1]['speed'] == pytest.approx(114.1, rel=1e-4)
-    assert points[2]['gear'] == 5
-    # numpy scalars must not leak through -- Quart's default JSON provider can't
-    # serialize them.
-    assert isinstance(points[0]['lapDistance'], float)
-    assert isinstance(points[2]['gear'], int)
-
-
-def test_telemetry_points_only_includes_requested_sensors():
-    lap_distance = np.array([0.0, 1.0], dtype=np.float32)
-    arrays = {
-        'lap_distance': lap_distance,
-        'speed': np.array([100.0, 110.0], dtype=np.float32),
-        'throttle': np.array([0.5, 0.6], dtype=np.float32),
-    }
-    points = telemetry_points_to_api(lap_distance, arrays, ['speed'])
-
-    assert set(points[0].keys()) == {'lapDistance', 'speed'}
-
-
-def test_telemetry_points_omits_sensor_missing_from_this_laps_arrays():
-    """A sensor requested (valid per the session manifest) but absent from this
-    particular lap's own npz -- e.g. an older recording -- is omitted per point,
-    matching LocalFileProvider.ts's getTelemetry(), not set to null."""
-    lap_distance = np.array([0.0, 1.0], dtype=np.float32)
-    arrays = {'lap_distance': lap_distance}
-    points = telemetry_points_to_api(lap_distance, arrays, ['speed'])
-
-    assert points[0] == {'lapDistance': 0.0}
-    assert 'speed' not in points[0]
-
-
-def test_telemetry_points_float32_nan_becomes_null():
-    """float32's own missing-sample sentinel (NaN) must become JSON null -- literal
-    NaN has no representation in standard JSON and JS's JSON.parse rejects it."""
-    lap_distance = np.array([0.0, 100.0], dtype=np.float32)
-    arrays = {'lap_distance': lap_distance, 'speed': np.array([100.0, np.nan], dtype=np.float32)}
-    points = telemetry_points_to_api(lap_distance, arrays, ['speed'])
-
-    assert points[1]['speed'] is None
-
-
-def test_telemetry_points_int_missing_sentinel_passed_through():
-    """The integer dtypes' missing-sample sentinel (-1) is NOT converted to null --
-    it's indistinguishable from a genuine value (e.g. reverse gear) at this layer,
-    and LocalFileProvider.ts makes the same choice."""
-    lap_distance = np.array([0.0, 100.0], dtype=np.float32)
-    arrays = {'lap_distance': lap_distance, 'gear': np.array([1, -1], dtype=np.int8)}
-    points = telemetry_points_to_api(lap_distance, arrays, ['gear'])
-
-    assert points[1]['gear'] == -1
-
-
-def test_telemetry_points_includes_lap_time_ms_even_when_not_requested():
-    """lap_time_ms is mandatory, like lap_distance -- always in the point dict
-    regardless of `sensors`, since the chart area's delta trace needs it even when
-    the user hasn't selected any sensor that happens to be named that."""
-    lap_distance = np.array([0.0, 1.0], dtype=np.float32)
-    arrays = {
-        'lap_distance': lap_distance,
-        'lap_time_ms': np.array([1000.0, 1016.0], dtype=np.float32),
-        'speed': np.array([100.0, 110.0], dtype=np.float32),
-    }
-    points = telemetry_points_to_api(lap_distance, arrays, ['speed'])
-
-    assert points[0]['lap_time_ms'] == pytest.approx(1000.0)
-    assert points[1]['lap_time_ms'] == pytest.approx(1016.0)
-
-
-def test_telemetry_points_omits_lap_time_ms_when_absent_from_arrays():
-    """Older recordings predating the mandatory lap_time_ms array shouldn't raise --
-    just omit it, same as any other array missing from this lap's own npz."""
-    lap_distance = np.array([0.0, 1.0], dtype=np.float32)
-    arrays = {'lap_distance': lap_distance}
-    points = telemetry_points_to_api(lap_distance, arrays, [])
-
-    assert 'lap_time_ms' not in points[0]
 
 
 def test_track_section_straight():
@@ -289,3 +248,59 @@ def test_api_error_envelope_shape():
     assert result == {
         'error': {'code': 'SESSION_NOT_FOUND', 'message': 'Unknown session id: foo'},
     }
+
+
+def _cov_lap(number, time_ms, start, end, valid=True, pit_in=False, pit_out=False, compound="Soft"):
+    return ParsedLap(lap_number=number, lap_time_ms=time_ms, valid=valid, tyre_compound=compound,
+                     tyre_laps=number, pit_in_lap=pit_in, pit_out_lap=pit_out, ers_harvest_limit_j=None,
+                     num_points=100, is_good=False, start_distance_m=start, end_distance_m=end, max_gap_m=3.0)
+
+
+def _summary_entry(session_type="race"):
+    base = _entry()
+    session = dataclasses.replace(base.session, session_type=session_type, track_length_m=5000)
+    public = ParsedDriver(driver_index=1, name="A", team="T", car_number=1, nationality=None,
+                          platform=None, is_telemetry_public=True)
+    restricted = dataclasses.replace(public, driver_index=2, name="B", is_telemetry_public=False)
+    laps = [
+        _cov_lap(1, 95000, 240.0, 4998.0),          # standing start: incomplete (starts late)
+        _cov_lap(2, 90000, 1.0, 4998.0),            # eligible, best
+        _cov_lap(3, 89000, 1.0, 4998.0, valid=False),
+        _cov_lap(4, 88000, 1.0, 4998.0, pit_in=True),
+        _cov_lap(5, 85000, 2000.0, 4998.0),         # faster but incomplete (starts late)
+    ]
+    return dataclasses.replace(base, session=session, drivers=[public, restricted],
+                               laps_by_driver={1: laps, 2: []})
+
+
+def test_session_summary_picks_the_best_eligible_lap_and_the_faster_partial():
+    summary = session_summary_to_api(_summary_entry(), "race-save")
+    assert summary['sessionSlug'] == "race-save"
+    assert summary['trackLengthM'] == 5000.0
+    assert summary['completeLapCount'] == 3   # laps 2, 3 and 4 are whole, whatever their flags
+    [driver] = summary['drivers']             # restricted driver omitted
+    assert driver['best'] == {'lapNumber': 2, 'lapTime': 90000, 'tyreCompound': "Soft"}
+    assert driver['fasterIncomplete'] == {
+        'lapNumber': 5, 'lapTime': 85000, 'tyreCompound': "Soft", 'reason': "last 3000 m only"}
+
+
+def test_session_summary_race_lap_one_is_not_a_best_but_other_types_allow_it():
+    laps = [_cov_lap(1, 80000, 1.0, 4998.0), _cov_lap(2, 90000, 1.0, 4998.0)]
+    race = dataclasses.replace(_summary_entry(), laps_by_driver={1: laps})
+    quali = dataclasses.replace(_summary_entry("qualifying"), laps_by_driver={1: laps})
+    assert session_summary_to_api(race)['drivers'][0]['best']['lapNumber'] == 2
+    assert session_summary_to_api(quali)['drivers'][0]['best']['lapNumber'] == 1
+
+
+def test_laps_by_driver_to_api_keys_every_driver_by_index():
+    result = laps_by_driver_to_api(_summary_entry())
+    assert set(result) == {"1", "2"}
+    assert [lap['lapNumber'] for lap in result["1"]] == [1, 2, 3, 4, 5]
+    assert result["2"] == []
+    assert result["1"][0]['complete'] is False
+
+
+def test_session_summary_carries_the_player_index():
+    entry = _summary_entry()
+    entry = dataclasses.replace(entry, session=dataclasses.replace(entry.session, player_index=7))
+    assert session_summary_to_api(entry, "race-save")['playerIndex'] == 7

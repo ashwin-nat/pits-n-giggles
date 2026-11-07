@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import os
+import time
 from functools import wraps
 from pathlib import Path
 from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
@@ -162,6 +163,7 @@ class BaseWebServer:
                 route_key = f"{method} {path}"
                 self.m_stats.track_event("__HTTP__", "__TOTAL__")
                 self.m_stats.track_event("__HTTP__", route_key)
+                start = time.perf_counter()
                 try:
                     result = await func(*args, **inner_kwargs)
                     self.m_stats.track_event("__HTTP_OK__", route_key)
@@ -169,6 +171,11 @@ class BaseWebServer:
                 except Exception:
                     self.m_stats.track_event("__HTTP_EXCEPTION__", route_key)
                     raise
+                finally:
+                    # Args are passed as-is: logging only formats them when DEBUG is enabled.
+                    self.m_logger.debug("%s path=%s query=%s handled in %.1f ms", route_key, inner_kwargs,
+                                        quart_request.args if quart_request else {},
+                                        (time.perf_counter() - start) * 1000)
 
             self.m_app.route(path, **kwargs)(wrapped)
             return func

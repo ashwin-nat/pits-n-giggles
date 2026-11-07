@@ -44,13 +44,12 @@ request body this API takes.
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import math
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-import numpy as np
 from pydantic import BaseModel, Field, field_validator
 
-from lib.pngt import ParsedDriver, ParsedLap, SensorConfig
+from lib.pngt import (LapCoverage, LapVerdict, ParsedDriver, ParsedLap,
+                      SensorConfig, judge_lap_coverage)
 from lib.track_segments_classifier.types import BaseSegmentInfo
 
 from .pngt_discovery import PngtSessionEntry
@@ -93,7 +92,13 @@ def _sensor_to_api(sensor: SensorConfig) -> Dict[str, Any]:
     return d
 
 
-def session_to_api(entry: PngtSessionEntry) -> Dict[str, Any]:
+def _track_length_m(entry: PngtSessionEntry) -> float:
+    """The recorded track length; 0.0 when the game never sent one, which leaves only
+    the late-start and gap checks of the completeness rule in effect."""
+    return float(entry.session.track_length_m or 0)
+
+
+def session_to_api(entry: PngtSessionEntry, save_viewer_slug: Optional[str] = None) -> Dict[str, Any]:
     session = entry.session
     session_best = None if session.session_best is None else {
         'driverIndex': session.session_best.driver_index,
@@ -112,8 +117,75 @@ def session_to_api(entry: PngtSessionEntry) -> Dict[str, Any]:
         'formula': session.formula,
         'gameVersion': session.game_version,
         'sessionBest': session_best,
+        'trackLengthM': _track_length_m(entry),
+        'sessionSlug': save_viewer_slug,  # the save-viewer session this recording belongs to
+        'playerIndex': session.player_index,
+        'sectorStartsM': None if session.sector_starts_m is None else list(session.sector_starts_m),
+        'ersMaxCapacityJ': session.ers_max_capacity_j,
         'sensorManifest': [_sensor_to_api(s) for s in entry.sensors if s.should_display],
     }
+
+
+def driver_laps_to_api(entry: PngtSessionEntry, driver_index: int) -> List[Dict[str, Any]]:
+    track_length_m = _track_length_m(entry)
+    return [lap_to_api(lap, track_length_m) for lap in entry.laps_by_driver.get(driver_index, [])]
+
+
+def laps_by_driver_to_api(entry: PngtSessionEntry) -> Dict[str, List[Dict[str, Any]]]:
+    """Every driver's laps in one response, keyed by driver index (JSON keys are strings)."""
+    return {str(index): driver_laps_to_api(entry, index) for index in entry.laps_by_driver}
+
+
+def session_summary_to_api(entry: PngtSessionEntry, save_viewer_slug: Optional[str] = None) -> Dict[str, Any]:
+    """One row of the recording list: the session's identity plus, per driver, the best
+    eligible lap and any faster lap that was not captured whole. Eligible means complete,
+    valid, timed, not a pit lap, and not a race's standing-start lap 1."""
+    session_type = title_case_session_type(entry.session.session_type)
+    is_race = session_type.startswith('Race')
+    track_length_m = _track_length_m(entry)
+    complete_count = 0
+    drivers = []
+    for driver in entry.drivers:
+        if not driver.is_telemetry_public:
+            continue
+        best: Optional[ParsedLap] = None
+        partial: Optional[ParsedLap] = None
+        partial_reason = None
+        for lap in entry.laps_by_driver.get(driver.driver_index, []):
+            verdict = _lap_verdict(lap, track_length_m)
+            complete_count += verdict.complete
+            if (verdict.complete and lap.valid and lap.lap_time_ms and not lap.pit_in_lap
+                    and not lap.pit_out_lap and not (is_race and lap.lap_number == 1)):
+                if best is None or lap.lap_time_ms < best.lap_time_ms:
+                    best = lap
+            elif (not verdict.complete and lap.valid and lap.lap_time_ms
+                    and (partial is None or lap.lap_time_ms < partial.lap_time_ms)):
+                partial, partial_reason = lap, verdict.reason
+        drivers.append({
+            'index': driver.driver_index,
+            'name': driver.name,
+            'team': driver.team,
+            'best': None if best is None else _lap_summary(best),
+            'fasterIncomplete': None if partial is None or (best and partial.lap_time_ms >= best.lap_time_ms)
+            else {**_lap_summary(partial), 'reason': partial_reason or 'partial trace'},
+        })
+    return {
+        'id': entry.slug,
+        'type': session_type,
+        'trackName': entry.session.track.name,
+        'date': entry.session.timestamp,
+        'formula': entry.session.formula,
+        'gameYear': entry.session.game_year,
+        'trackLengthM': track_length_m,
+        'sessionSlug': save_viewer_slug,
+        'playerIndex': entry.session.player_index,
+        'completeLapCount': complete_count,
+        'drivers': drivers,
+    }
+
+
+def _lap_summary(lap: ParsedLap) -> Dict[str, Any]:
+    return {'lapNumber': lap.lap_number, 'lapTime': lap.lap_time_ms, 'tyreCompound': lap.tyre_compound}
 
 
 def driver_to_api(driver: ParsedDriver) -> Dict[str, Any]:
@@ -128,7 +200,14 @@ def driver_to_api(driver: ParsedDriver) -> Dict[str, Any]:
     }
 
 
-def lap_to_api(lap: ParsedLap) -> Dict[str, Any]:
+def _lap_verdict(lap: ParsedLap, track_length_m: float) -> LapVerdict:
+    return judge_lap_coverage(
+        lap.lap_time_ms, LapCoverage(lap.start_distance_m, lap.end_distance_m, lap.max_gap_m),
+        track_length_m)
+
+
+def lap_to_api(lap: ParsedLap, track_length_m: float) -> Dict[str, Any]:
+    verdict = _lap_verdict(lap, track_length_m)
     return {
         'lapNumber': lap.lap_number,
         'lapTime': lap.lap_time_ms,
@@ -139,53 +218,14 @@ def lap_to_api(lap: ParsedLap) -> Dict[str, Any]:
         'pitOutLap': lap.pit_out_lap,
         'ersHarvestLimitJ': lap.ers_harvest_limit_j,
         'isGood': lap.is_good,
+        'sampleCount': lap.num_points,
+        'startDistanceM': lap.start_distance_m,
+        'endDistanceM': lap.end_distance_m,
+        'maxGapM': lap.max_gap_m,
+        'complete': verdict.complete,
+        'incompleteReason': verdict.reason,
+        'sectorEndsMs': None if lap.sector_ends_ms is None else list(lap.sector_ends_ms),
     }
-
-
-def _to_json_value(value: Any) -> Any:
-    """One raw npz sample -> a JSON-safe Python value.
-
-    Every sensor array is float32; NaN is its only missing-sample marker, and it
-    becomes None here since literal NaN has no representation in standard JSON and
-    would fail to parse on the browser side (Quart's default JSON provider emits the
-    bare `NaN` token, which JS's own `JSON.parse` rejects). A real value that happens
-    to be -1 (e.g. gear == -1 for reverse) is passed through unchanged.
-    """
-    native = value.item() if hasattr(value, 'item') else value
-    if isinstance(native, float) and math.isnan(native):
-        return None
-    return native
-
-
-def telemetry_points_to_api(
-    lap_distance: np.ndarray,
-    sensor_arrays: Dict[str, np.ndarray],
-    sensors: List[str],
-) -> List[Dict[str, Any]]:
-    """Build the API's TelemetryPoint[] shape from one lap's raw npz arrays.
-
-    Mirrors LocalFileProvider.ts's getTelemetry(): a requested sensor key entirely
-    absent from `sensor_arrays` (an older or narrower recording than the session's
-    current manifest) is simply omitted from every point, not set to null -- null is
-    reserved for a *present* array's own missing-sample value (see _to_json_value).
-
-    lap_time_ms is included unconditionally, like lap_distance -- it's a mandatory
-    pngt array (lib/pngt/recorder.py's BaseTelemetrySnapshot), not something the
-    caller opts into via `sensors`. The chart area uses it to derive the delta trace
-    against a reference lap regardless of which sensors the user has selected.
-    """
-    points: List[Dict[str, Any]] = []
-    lap_time_ms = sensor_arrays.get('lap_time_ms')
-    for i, distance in enumerate(lap_distance):
-        point: Dict[str, Any] = {'lapDistance': _to_json_value(distance)}
-        if lap_time_ms is not None:
-            point['lap_time_ms'] = _to_json_value(lap_time_ms[i])
-        for sensor in sensors:
-            array = sensor_arrays.get(sensor)
-            if array is not None:
-                point[sensor] = _to_json_value(array[i])
-        points.append(point)
-    return points
 
 
 def track_section_to_api(segment: BaseSegmentInfo) -> Dict[str, Any]:

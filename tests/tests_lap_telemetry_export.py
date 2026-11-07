@@ -253,3 +253,48 @@ def test_flashback_in_time_trial_skips_the_delta():
     driver = _rewind(3, 3, time_trial=True)
     assert not driver.m_delta_mgr.handle_flashback.called
     driver.m_tel_rec.on_flashback.assert_called_once_with(3, 5749.6)
+
+
+# -------------------------------------- session facts stored with the recording ---------------------------------------
+
+from apps.backend.state_mgmt_layer.lap_telemetry_export import (
+    _sector_starts_m, build_lap_telemetry_write_args)
+from lib.f1_types import PacketSessionData
+from pathlib import Path
+
+
+def test_sector_starts_m():
+    packet = SimpleNamespace(m_sector2LapDistanceStart=1897.8, m_sector3LapDistanceStart=3726.9)
+    assert _sector_starts_m(packet) == (1897.8, 3726.9)
+
+
+def test_sector_starts_m_without_a_session_packet():
+    assert _sector_starts_m(None) is None
+
+
+@pytest.mark.parametrize("s1,s1_min,s2,s2_min,lap,expected", [
+    (35769, 0, 32537, 0, 98464, (35769, 68306)),
+    (5000, 1, 32537, 0, 140000, (65000, 97537)),   # a sector over a minute long
+    (0, 0, 32537, 0, 98464, None),                 # missing split
+    (55000, 0, 40000, 0, 60000, None),             # a partial lap copies a sector into its lap time
+])
+def test_sector_ends_ms(s1, s1_min, s2, s2_min, lap, expected):
+    hist_lap = SimpleNamespace(m_sector1TimeInMS=s1, m_sector1TimeMinutes=s1_min,
+                               m_sector2TimeInMS=s2, m_sector2TimeMinutes=s2_min, m_lapTimeInMS=lap)
+    assert DataPerDriver._sectorEndsMs(hist_lap) == expected
+
+
+@pytest.mark.parametrize("formula,expected", [
+    (PacketSessionData.FormulaType.F1_MODERN, 4_000_000.0),
+    (PacketSessionData.FormulaType.F2, None),     # F2 cars have no ERS
+    (None, None),                                  # formula not known yet
+])
+def test_ers_capacity_is_only_recorded_for_f1(formula, expected):
+    state = SimpleNamespace(
+        m_driver_data=[], m_player_index=3, m_png_version="1.0", m_game_version="1.0",
+        m_session_info=SimpleNamespace(
+            m_session_uid=1, m_session_type="Race", m_game_year=26, m_formula=formula, m_track=None,
+            m_track_len=5810, m_packet_session=None))
+    _, session, _, _, _ = build_lap_telemetry_write_args(state, Path("x.pngt"), LapAnalyzerSettings())
+    assert session.ers_max_capacity_j == expected
+    assert session.player_index == 3

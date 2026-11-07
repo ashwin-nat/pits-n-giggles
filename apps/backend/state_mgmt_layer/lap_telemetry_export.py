@@ -24,9 +24,10 @@
 
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Optional, Tuple
 
 from lib.config import LapAnalyzerSettings
+from lib.f1_types import CarStatusData, PacketSessionData
 from lib.pngt import (MANDATORY_TELEMETRY_KEYS, CompletedLap, DriverExportData,
                       DriverRecord, SensorConfig, SessionMetadata, TrackInfo)
 
@@ -58,6 +59,13 @@ def _filter_export(data: DriverExportData, sensor_keys: set[str]) -> DriverExpor
         in_progress_lap=_filter_lap(data.in_progress_lap, keep_keys) if data.in_progress_lap else None,
     )
 
+def _sector_starts_m(packet: Optional[PacketSessionData]) -> Optional[Tuple[float, float]]:
+    """Where sectors 2 and 3 start, or None before the first session packet."""
+    if packet is None:
+        return None
+    return (packet.m_sector2LapDistanceStart, packet.m_sector3LapDistanceStart)
+
+
 def build_lap_telemetry_write_args(
     session_state: "SessionState",
     dest_path: Path,
@@ -88,6 +96,9 @@ def build_lap_telemetry_write_args(
         driver_data[index] = _filter_export(driver_obj.exportTelemetry(), sensor_keys)
 
     session_info = session_state.m_session_info
+    packet = session_info.m_packet_session
+    formula = session_info.m_formula
+    is_f1 = formula and formula.is_f1()
     session = SessionMetadata(
         session_uid=session_info.m_session_uid or 0,
         session_name=str(session_info.m_session_type or ""),
@@ -101,6 +112,11 @@ def build_lap_telemetry_write_args(
             id=session_info.m_track.value if session_info.m_track else 0,
             name=str(session_info.m_track or ""),
         ),
+        track_length_m=session_info.m_track_len or None,
+        player_index=session_state.m_player_index,
+        sector_starts_m=_sector_starts_m(packet),
+        # Only F1 cars have an ERS
+        ers_max_capacity_j=CarStatusData.MAX_ERS_STORE_ENERGY if is_f1 else None,
     )
 
     drivers = [
