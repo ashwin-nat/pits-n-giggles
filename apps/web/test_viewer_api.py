@@ -250,64 +250,33 @@ def run_lap_analyzer(base_url: str) -> None:
     else:
         _check("Unknown driver index returns 404 with DRIVER_NOT_FOUND", False, "no session id available")
 
-    sensor_manifest = sessions[0].get("sensorManifest", []) if sessions else []
-    first_sensor = sensor_manifest[0]["key"] if sensor_manifest else None
     first_lap_number = laps[0].get("lapNumber") if laps else None
 
-    print(f"\n[LA-6] GET /telemetry/<id>/<index>/<lap> — expect 200 + points array "
-         f"(sensor={first_sensor!r}, lap={first_lap_number!r})")
-    if first_id and first_driver_index is not None and first_lap_number is not None and first_sensor:
-        try:
-            r = _get(session,
-                    f"{base_url}/telemetry/{first_id}/{first_driver_index}/{first_lap_number}"
-                    f"?sensors={first_sensor}")
-            ok = r.status_code == 200
-            body = r.json() if ok else {}
-            points = body.get("points") if ok else None
-            envelope_ok = ok and body.get("sessionId") == first_id \
-                and body.get("driverIndex") == first_driver_index \
-                and body.get("lapNumber") == first_lap_number
-            _check("GET /telemetry/... returns 200 with the right envelope + a non-empty points array",
-                  envelope_ok and isinstance(points, list) and len(points) > 0,
-                  f"got {r.status_code}" if not ok else f"envelope/points mismatch: {body!r}"[:300])
-            if points:
-                first_point = points[0]
-                _check("Each point has lapDistance and the requested sensor key",
-                      "lapDistance" in first_point and first_sensor in first_point,
-                      f"point keys: {sorted(first_point.keys())}")
-        except Exception as exc:  # pylint: disable=broad-exception-caught
-            _check("GET /telemetry/... returns 200 with points array", False, str(exc))
-    else:
-        _check("GET /telemetry/... returns 200 with points array", False,
-              "no session id / driver index / lap number / sensor available")
-
-    print("\n[LA-7] GET /telemetry/... with an unknown sensor key — expect 400 INVALID_SENSOR")
-    if first_id and first_driver_index is not None and first_lap_number is not None:
-        try:
-            r = _get(session,
-                    f"{base_url}/telemetry/{first_id}/{first_driver_index}/{first_lap_number}"
-                    f"?sensors=this_sensor_does_not_exist")
-            ok = r.status_code == 400
-            code = r.json().get("error", {}).get("code") if ok else None
-            _check("Unknown sensor key returns 400 with INVALID_SENSOR",
-                  ok and code == "INVALID_SENSOR", f"got {r.status_code}, code={code!r}")
-        except Exception as exc:  # pylint: disable=broad-exception-caught
-            _check("Unknown sensor key returns 400 with INVALID_SENSOR", False, str(exc))
-    else:
-        _check("Unknown sensor key returns 400 with INVALID_SENSOR", False, "no session/driver/lap available")
-
-    print("\n[LA-8] GET /telemetry/... with a missing sensors param — expect 400 INVALID_SENSOR")
+    print(f"\n[LA-6] GET /telemetry/<id>/<index>/<lap> — expect 200 + raw .npz bytes (lap={first_lap_number!r})")
     if first_id and first_driver_index is not None and first_lap_number is not None:
         try:
             r = _get(session, f"{base_url}/telemetry/{first_id}/{first_driver_index}/{first_lap_number}")
-            ok = r.status_code == 400
-            code = r.json().get("error", {}).get("code") if ok else None
-            _check("Missing sensors param returns 400 with INVALID_SENSOR",
-                  ok and code == "INVALID_SENSOR", f"got {r.status_code}, code={code!r}")
+            ok = r.status_code == 200
+            _check("GET /telemetry/... returns 200 with a zip (.npz) body",
+                  ok and r.content[:2] == b"PK", f"got {r.status_code}, first bytes {r.content[:4]!r}")
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            _check("Missing sensors param returns 400 with INVALID_SENSOR", False, str(exc))
+            _check("GET /telemetry/... returns 200 with a zip (.npz) body", False, str(exc))
     else:
-        _check("Missing sensors param returns 400 with INVALID_SENSOR", False, "no session/driver/lap available")
+        _check("GET /telemetry/... returns 200 with a zip (.npz) body", False,
+              "no session id / driver index / lap number available")
+
+    print("\n[LA-7] GET /telemetry/... for an unknown lap — expect 404 LAP_NOT_FOUND")
+    if first_id and first_driver_index is not None:
+        try:
+            r = _get(session, f"{base_url}/telemetry/{first_id}/{first_driver_index}/999999")
+            ok = r.status_code == 404
+            code = r.json().get("error", {}).get("code") if ok else None
+            _check("Unknown lap returns 404 with LAP_NOT_FOUND",
+                  ok and code == "LAP_NOT_FOUND", f"got {r.status_code}, code={code!r}")
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            _check("Unknown lap returns 404 with LAP_NOT_FOUND", False, str(exc))
+    else:
+        _check("Unknown lap returns 404 with LAP_NOT_FOUND", False, "no session/driver available")
 
     track_id = sessions[0].get("trackId") if sessions else None
     print(f"\n[LA-9] GET /tracks/<id>/sections — expect 200 + non-empty array (trackId={track_id!r})")

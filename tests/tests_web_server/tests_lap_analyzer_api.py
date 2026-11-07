@@ -29,14 +29,15 @@ equivalence is what Phase 6's exit criterion ("no behavioural difference between
 LocalFileProvider and RemoteApiProvider") actually depends on.
 """
 
-import numpy as np
+import dataclasses
+
 import pytest
 from pydantic import ValidationError
 
 from apps.web.lap_analyzer_api import (RenameSessionRequest, api_error,
-                                       driver_to_api, lap_to_api,
+                                       driver_to_api, resolve_track_length_m,
+                                       lap_to_api,
                                        session_to_api,
-                                       telemetry_points_to_api,
                                        title_case_session_type,
                                        track_section_to_api)
 from apps.web.pngt_discovery import PngtSessionEntry
@@ -86,8 +87,14 @@ def test_session_to_api_maps_all_fields():
         'formula': "F1",
         'gameVersion': "1.05",
         'sessionBest': {'driverIndex': 1, 'lapNumber': 2, 'lapTimeMs': 90000},
+        'trackLengthM': 0.0,
+        'sessionSlug': None,
         'sensorManifest': [{'key': "speed", 'label': "Speed", 'unit': "km/h", 'type': "continuous"}],
     }
+
+
+def test_session_to_api_reports_the_save_viewer_slug():
+    assert session_to_api(_entry(), "race-monza")['sessionSlug'] == "race-monza"
 
 
 def test_session_to_api_null_session_best():
@@ -117,109 +124,52 @@ def test_lap_to_api_completed_lap():
     lap = ParsedLap(lap_number=12, lap_time_ms=75340, valid=True, tyre_compound="Soft",
                     tyre_laps=5, pit_in_lap=False, pit_out_lap=False, ers_harvest_limit_j=4_000_000.0,
                     num_points=100, is_good=True)
-    assert lap_to_api(lap) == {
+    assert lap_to_api(lap, 5000.0) == {
         'lapNumber': 12, 'lapTime': 75340, 'valid': True, 'tyreCompound': "Soft",
         'tyreLaps': 5, 'pitInLap': False, 'pitOutLap': False, 'ersHarvestLimitJ': 4_000_000.0, 'isGood': True,
+        'sampleCount': 100, 'startDistanceM': None, 'endDistanceM': None, 'maxGapM': None,
+        'complete': False, 'incompleteReason': "not recorded past the line",
     }
+
+
+def test_lap_to_api_reports_coverage_and_verdict():
+    lap = ParsedLap(lap_number=3, lap_time_ms=80000, valid=True, tyre_compound="Soft",
+                    tyre_laps=2, pit_in_lap=False, pit_out_lap=False, ers_harvest_limit_j=None,
+                    num_points=5000, is_good=False,
+                    start_distance_m=2.0, end_distance_m=4379.0, max_gap_m=9.0)
+    whole = lap_to_api(lap, 4381.0)
+    assert (whole['complete'], whole['incompleteReason']) == (True, None)
+    assert (whole['startDistanceM'], whole['endDistanceM'], whole['maxGapM']) == (2.0, 4379.0, 9.0)
+    assert lap_to_api(lap, 6000.0)['incompleteReason'] == "first 4380 m only"
+
+
+def test_track_length_falls_back_to_farthest_timed_lap():
+    def _lap(number, time_ms, end):
+        return ParsedLap(lap_number=number, lap_time_ms=time_ms, valid=True, tyre_compound="Soft",
+                         tyre_laps=1, pit_in_lap=False, pit_out_lap=False, ers_harvest_limit_j=None,
+                         num_points=10, is_good=False, start_distance_m=0.0, end_distance_m=end,
+                         max_gap_m=1.0)
+    entry = dataclasses.replace(_entry(), laps_by_driver={
+        0: [_lap(1, 80000, 4380.0), _lap(2, None, 9000.0)], 1: [_lap(1, 81000, 4378.0)]})
+    assert resolve_track_length_m(entry) == 4380.0
+    assert session_to_api(entry)['trackLengthM'] == 4380.0
+
+
+def test_track_length_prefers_the_recorded_value():
+    entry = _entry()
+    entry = dataclasses.replace(entry, session=dataclasses.replace(entry.session, track_length_m=4381))
+    assert resolve_track_length_m(entry) == 4381.0
+    assert session_to_api(entry)['trackLengthM'] == 4381.0
 
 
 def test_lap_to_api_out_lap_no_time():
     lap = ParsedLap(lap_number=1, lap_time_ms=None, valid=False, tyre_compound="Medium",
                     tyre_laps=1, pit_in_lap=False, pit_out_lap=True, ers_harvest_limit_j=None,
                     num_points=50, is_good=False)
-    result = lap_to_api(lap)
+    result = lap_to_api(lap, 5000.0)
     assert result['lapTime'] is None
+    assert result['incompleteReason'] == "no lap time"
     assert result['valid'] is False
-
-
-def test_telemetry_points_maps_lap_distance_and_requested_sensors():
-    lap_distance = np.array([0.0, 1.7, 3.3], dtype=np.float32)
-    arrays = {
-        'lap_distance': lap_distance,
-        'speed': np.array([112.3, 114.1, 116.8], dtype=np.float32),
-        'gear': np.array([4, 4, 5], dtype=np.int8),
-    }
-    points = telemetry_points_to_api(lap_distance, arrays, ['speed', 'gear'])
-
-    assert len(points) == 3
-    assert points[0]['lapDistance'] == pytest.approx(0.0)
-    assert points[1]['speed'] == pytest.approx(114.1, rel=1e-4)
-    assert points[2]['gear'] == 5
-    # numpy scalars must not leak through -- Quart's default JSON provider can't
-    # serialize them.
-    assert isinstance(points[0]['lapDistance'], float)
-    assert isinstance(points[2]['gear'], int)
-
-
-def test_telemetry_points_only_includes_requested_sensors():
-    lap_distance = np.array([0.0, 1.0], dtype=np.float32)
-    arrays = {
-        'lap_distance': lap_distance,
-        'speed': np.array([100.0, 110.0], dtype=np.float32),
-        'throttle': np.array([0.5, 0.6], dtype=np.float32),
-    }
-    points = telemetry_points_to_api(lap_distance, arrays, ['speed'])
-
-    assert set(points[0].keys()) == {'lapDistance', 'speed'}
-
-
-def test_telemetry_points_omits_sensor_missing_from_this_laps_arrays():
-    """A sensor requested (valid per the session manifest) but absent from this
-    particular lap's own npz -- e.g. an older recording -- is omitted per point,
-    matching LocalFileProvider.ts's getTelemetry(), not set to null."""
-    lap_distance = np.array([0.0, 1.0], dtype=np.float32)
-    arrays = {'lap_distance': lap_distance}
-    points = telemetry_points_to_api(lap_distance, arrays, ['speed'])
-
-    assert points[0] == {'lapDistance': 0.0}
-    assert 'speed' not in points[0]
-
-
-def test_telemetry_points_float32_nan_becomes_null():
-    """float32's own missing-sample sentinel (NaN) must become JSON null -- literal
-    NaN has no representation in standard JSON and JS's JSON.parse rejects it."""
-    lap_distance = np.array([0.0, 100.0], dtype=np.float32)
-    arrays = {'lap_distance': lap_distance, 'speed': np.array([100.0, np.nan], dtype=np.float32)}
-    points = telemetry_points_to_api(lap_distance, arrays, ['speed'])
-
-    assert points[1]['speed'] is None
-
-
-def test_telemetry_points_int_missing_sentinel_passed_through():
-    """The integer dtypes' missing-sample sentinel (-1) is NOT converted to null --
-    it's indistinguishable from a genuine value (e.g. reverse gear) at this layer,
-    and LocalFileProvider.ts makes the same choice."""
-    lap_distance = np.array([0.0, 100.0], dtype=np.float32)
-    arrays = {'lap_distance': lap_distance, 'gear': np.array([1, -1], dtype=np.int8)}
-    points = telemetry_points_to_api(lap_distance, arrays, ['gear'])
-
-    assert points[1]['gear'] == -1
-
-
-def test_telemetry_points_includes_lap_time_ms_even_when_not_requested():
-    """lap_time_ms is mandatory, like lap_distance -- always in the point dict
-    regardless of `sensors`, since the chart area's delta trace needs it even when
-    the user hasn't selected any sensor that happens to be named that."""
-    lap_distance = np.array([0.0, 1.0], dtype=np.float32)
-    arrays = {
-        'lap_distance': lap_distance,
-        'lap_time_ms': np.array([1000.0, 1016.0], dtype=np.float32),
-        'speed': np.array([100.0, 110.0], dtype=np.float32),
-    }
-    points = telemetry_points_to_api(lap_distance, arrays, ['speed'])
-
-    assert points[0]['lap_time_ms'] == pytest.approx(1000.0)
-    assert points[1]['lap_time_ms'] == pytest.approx(1016.0)
-
-
-def test_telemetry_points_omits_lap_time_ms_when_absent_from_arrays():
-    """Older recordings predating the mandatory lap_time_ms array shouldn't raise --
-    just omit it, same as any other array missing from this lap's own npz."""
-    lap_distance = np.array([0.0, 1.0], dtype=np.float32)
-    arrays = {'lap_distance': lap_distance}
-    points = telemetry_points_to_api(lap_distance, arrays, [])
-
-    assert 'lap_time_ms' not in points[0]
 
 
 def test_track_section_straight():

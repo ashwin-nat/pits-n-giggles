@@ -44,13 +44,12 @@ request body this API takes.
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import math
-from typing import Any, Dict, List
+from typing import Any, Dict, Optional
 
-import numpy as np
 from pydantic import BaseModel, Field, field_validator
 
-from lib.pngt import ParsedDriver, ParsedLap, SensorConfig
+from lib.pngt import (LapCoverage, ParsedDriver, ParsedLap, SensorConfig,
+                      judge_lap_coverage)
 from lib.track_segments_classifier.types import BaseSegmentInfo
 
 from .pngt_discovery import PngtSessionEntry
@@ -93,7 +92,18 @@ def _sensor_to_api(sensor: SensorConfig) -> Dict[str, Any]:
     return d
 
 
-def session_to_api(entry: PngtSessionEntry) -> Dict[str, Any]:
+def resolve_track_length_m(entry: PngtSessionEntry) -> float:
+    """The recorded track length. Files written before it was stored fall back to the
+    farthest distance any timed lap reached; 0.0 when no timed lap has coverage."""
+    if entry.session.track_length_m:
+        return float(entry.session.track_length_m)
+    return max(
+        (lap.end_distance_m for laps in entry.laps_by_driver.values() for lap in laps
+         if lap.lap_time_ms and lap.end_distance_m is not None),
+        default=0.0)
+
+
+def session_to_api(entry: PngtSessionEntry, save_viewer_slug: Optional[str] = None) -> Dict[str, Any]:
     session = entry.session
     session_best = None if session.session_best is None else {
         'driverIndex': session.session_best.driver_index,
@@ -112,6 +122,8 @@ def session_to_api(entry: PngtSessionEntry) -> Dict[str, Any]:
         'formula': session.formula,
         'gameVersion': session.game_version,
         'sessionBest': session_best,
+        'trackLengthM': resolve_track_length_m(entry),
+        'sessionSlug': save_viewer_slug,  # the save-viewer session in the same container
         'sensorManifest': [_sensor_to_api(s) for s in entry.sensors if s.should_display],
     }
 
@@ -128,7 +140,10 @@ def driver_to_api(driver: ParsedDriver) -> Dict[str, Any]:
     }
 
 
-def lap_to_api(lap: ParsedLap) -> Dict[str, Any]:
+def lap_to_api(lap: ParsedLap, track_length_m: float) -> Dict[str, Any]:
+    verdict = judge_lap_coverage(
+        lap.lap_time_ms, LapCoverage(lap.start_distance_m, lap.end_distance_m, lap.max_gap_m),
+        track_length_m)
     return {
         'lapNumber': lap.lap_number,
         'lapTime': lap.lap_time_ms,
@@ -139,53 +154,13 @@ def lap_to_api(lap: ParsedLap) -> Dict[str, Any]:
         'pitOutLap': lap.pit_out_lap,
         'ersHarvestLimitJ': lap.ers_harvest_limit_j,
         'isGood': lap.is_good,
+        'sampleCount': lap.num_points,
+        'startDistanceM': lap.start_distance_m,
+        'endDistanceM': lap.end_distance_m,
+        'maxGapM': lap.max_gap_m,
+        'complete': verdict.complete,
+        'incompleteReason': verdict.reason,
     }
-
-
-def _to_json_value(value: Any) -> Any:
-    """One raw npz sample -> a JSON-safe Python value.
-
-    Every sensor array is float32; NaN is its only missing-sample marker, and it
-    becomes None here since literal NaN has no representation in standard JSON and
-    would fail to parse on the browser side (Quart's default JSON provider emits the
-    bare `NaN` token, which JS's own `JSON.parse` rejects). A real value that happens
-    to be -1 (e.g. gear == -1 for reverse) is passed through unchanged.
-    """
-    native = value.item() if hasattr(value, 'item') else value
-    if isinstance(native, float) and math.isnan(native):
-        return None
-    return native
-
-
-def telemetry_points_to_api(
-    lap_distance: np.ndarray,
-    sensor_arrays: Dict[str, np.ndarray],
-    sensors: List[str],
-) -> List[Dict[str, Any]]:
-    """Build the API's TelemetryPoint[] shape from one lap's raw npz arrays.
-
-    Mirrors LocalFileProvider.ts's getTelemetry(): a requested sensor key entirely
-    absent from `sensor_arrays` (an older or narrower recording than the session's
-    current manifest) is simply omitted from every point, not set to null -- null is
-    reserved for a *present* array's own missing-sample value (see _to_json_value).
-
-    lap_time_ms is included unconditionally, like lap_distance -- it's a mandatory
-    pngt array (lib/pngt/recorder.py's BaseTelemetrySnapshot), not something the
-    caller opts into via `sensors`. The chart area uses it to derive the delta trace
-    against a reference lap regardless of which sensors the user has selected.
-    """
-    points: List[Dict[str, Any]] = []
-    lap_time_ms = sensor_arrays.get('lap_time_ms')
-    for i, distance in enumerate(lap_distance):
-        point: Dict[str, Any] = {'lapDistance': _to_json_value(distance)}
-        if lap_time_ms is not None:
-            point['lap_time_ms'] = _to_json_value(lap_time_ms[i])
-        for sensor in sensors:
-            array = sensor_arrays.get(sensor)
-            if array is not None:
-                point[sensor] = _to_json_value(array[i])
-        points.append(point)
-    return points
 
 
 def track_section_to_api(segment: BaseSegmentInfo) -> Dict[str, Any]:

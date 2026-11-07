@@ -27,9 +27,19 @@ covered by the manual smoke script per this repo's convention -- see
 apps/web/test_viewer_api.py).
 """
 
+import logging
+from http import HTTPStatus
+from io import BytesIO
+from types import SimpleNamespace
+
+import numpy as np
+import pytest
+
 import apps.web.lap_analyzer_routes as routes
 from apps.web.pngt_discovery import PngtSessionEntry
-from lib.pngt import ParsedSessionMetadata, TrackInfo
+from lib.pngt import (CompletedLap, DriverExportData, DriverRecord,
+                      LapMetadata, ParsedSessionMetadata, SensorConfig,
+                      SensorType, SessionMetadata, TrackInfo, write_session)
 
 
 def _entry(slug: str, name: str) -> PngtSessionEntry:
@@ -117,3 +127,40 @@ def test_save_viewer_slug_for_path_never_links_a_loose_json(monkeypatch):
     monkeypatch.setattr(viewer_routes, "_slug_map", {"race-spa-2026": "2026_11_03/Race_Spa_2026.json"})
 
     assert viewer_routes.save_viewer_slug_for_path("2026_11_03/Race_Spa_2026.json") is None
+
+
+def _write_recording(path):
+    lap = CompletedLap(
+        metadata=LapMetadata(lap_number=1, lap_time_ms=90000, valid=True, tyre_compound="Soft",
+                             tyre_laps=1, pit_in_lap=False, pit_out_lap=False, ers_harvest_limit_j=None),
+        telemetry={"lap_distance": [0.0, 100.0, 200.0], "speed": [100.0, float("nan"), 120.0]},
+    )
+    write_session(
+        path,
+        SessionMetadata(session_uid=1, session_name="S", session_type="race", app_version="1.0",
+                        game_year=2026, formula="F1", game_version="1.0",
+                        timestamp="2024-01-01T00:00:00Z", track=TrackInfo(id=1, name="T")),
+        [SensorConfig(key="speed", label="Speed", unit="km/h", type=SensorType.CONTINUOUS)],
+        [DriverRecord(driver_index=0, name="D", team="T", car_number=1, nationality=None, platform=None)],
+        {0: DriverExportData(driver_index=0, completed_laps=[lap])},
+    )
+
+
+def test_read_lap_npz_returns_the_stored_arrays_with_nan_intact(tmp_path):
+    _write_recording(tmp_path / "s.pngt")
+    server = SimpleNamespace(m_session_dir=tmp_path, m_logger=logging.getLogger("t"))
+
+    raw = routes._read_lap_npz(server, _entry("s", "S"), 0, 1)
+
+    with np.load(BytesIO(raw)) as npz:
+        assert npz["lap_distance"].tolist() == [0.0, 100.0, 200.0]
+        assert np.isnan(npz["speed"][1])
+
+
+def test_read_lap_npz_unknown_lap_is_lap_not_found(tmp_path):
+    _write_recording(tmp_path / "s.pngt")
+    server = SimpleNamespace(m_session_dir=tmp_path, m_logger=logging.getLogger("t"))
+
+    with pytest.raises(routes._TelemetryRequestError) as exc:
+        routes._read_lap_npz(server, _entry("s", "S"), 0, 9)
+    assert (exc.value.code, exc.value.status) == ("LAP_NOT_FOUND", HTTPStatus.NOT_FOUND)
