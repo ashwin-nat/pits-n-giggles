@@ -186,6 +186,7 @@ def main():
         "VITE_EXTERNAL_LINK_LABEL": "Legacy View",
         "VITE_DISABLE_ANALYTICS": "true",
         "VITE_APP_NAME": "Pits n' Giggles",
+        "VITE_HIDE_IMPORT_HINT": "true",
         # Prevent MSYS2/Git Bash from converting POSIX paths (e.g. /legacy/{slug})
         # to Windows paths (e.g. C:/Program Files/Git/legacy/{slug}).
         "MSYS_NO_PATHCONV": "1",
