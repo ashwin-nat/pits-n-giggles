@@ -141,6 +141,19 @@ def read_lap_telemetry(path: Union[Path, str], driver_index: int, lap_number: in
         zf.close()
 
 
+def read_lap_npz_bytes(path: Union[Path, str], driver_index: int, lap_number: int) -> bytes:
+    """Returns one lap's `.npz` exactly as stored, for clients that decode it themselves.
+    Raises DriverNotFoundError when that driver/lap entry does not exist."""
+    zf = validate_pngt_zip(path)
+    try:
+        try:
+            return zf.read(f"drivers/{driver_index:02d}/lap_{lap_number:03d}.npz")
+        except KeyError as exc:
+            raise DriverNotFoundError(path, driver_index) from exc
+    finally:
+        zf.close()
+
+
 def _read_sensor_manifest(zf: zipfile.ZipFile, path) -> list[SensorConfig]:
     try:
         raw_bytes = zf.read(SENSOR_MANIFEST_ENTRY)
@@ -183,6 +196,7 @@ def _dict_to_session(raw: dict, path) -> ParsedSessionMetadata:
             game_version=raw["game_version"],
             timestamp=raw["timestamp"],
             track=TrackInfo(id=track_raw["id"], name=track_raw["name"]),
+            track_length_m=raw.get("track_length_m"),
             laps_count=laps_raw["count"],
             session_best=None if session_best_raw is None else SessionBest(
                 driver_index=session_best_raw["driver_index"],
@@ -222,6 +236,9 @@ def _dict_to_lap_metadata(raw: dict, path) -> ParsedLap:
             ers_harvest_limit_j=raw.get("ers_harvest_limit_j"),
             num_points=raw["num_points"],
             is_good=raw["is_good"],
+            start_distance_m=raw.get("start_distance_m"),
+            end_distance_m=raw.get("end_distance_m"),
+            max_gap_m=raw.get("max_gap_m"),
         )
     except KeyError as exc:
         raise MalformedSessionError(path, f"laps.json entry missing required field {exc}") from exc

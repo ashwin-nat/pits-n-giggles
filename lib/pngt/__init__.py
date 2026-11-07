@@ -22,6 +22,8 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from .completeness import (COMPLETE_LAP_TOLERANCE_M, LapCoverage, LapVerdict,
+                           judge_lap_coverage, measure_lap_coverage)
 from .dto import (
     CompletedLap,
     DeleteLapsResult,
@@ -55,13 +57,15 @@ from .exceptions import (
 )
 from .mutate import delete_laps, mark_lap_good, rename_session
 from .reader import (ParsedSession, read_contents, read_driver_laps,
-                     read_lap_telemetry, read_session, read_session_data)
+                     read_lap_npz_bytes, read_lap_telemetry, read_session,
+                     read_session_data)
 from .recorder import BaseTelemetrySnapshot, DriverTelemetryRecorder, RecordedSensor
 from .writer import write_container, write_session, write_session_data_only
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
+    'COMPLETE_LAP_TOLERANCE_M',
     'BaseTelemetrySnapshot',
     'CompletedLap',
     'CorruptedTelemetryError',
@@ -72,7 +76,9 @@ __all__ = [
     'DriverTelemetryRecorder',
     'InvalidHeaderError',
     'InvalidManifestError',
+    'LapCoverage',
     'LapMetadata',
+    'LapVerdict',
     'MANDATORY_TELEMETRY_KEYS',
     'MalformedSessionError',
     'MarkLapGoodResult',
@@ -94,9 +100,12 @@ __all__ = [
     'UnsupportedFormatError',
     'UnsupportedVersionError',
     'delete_laps',
+    'judge_lap_coverage',
     'mark_lap_good',
+    'measure_lap_coverage',
     'read_contents',
     'read_driver_laps',
+    'read_lap_npz_bytes',
     'read_lap_telemetry',
     'read_session',
     'read_session_data',

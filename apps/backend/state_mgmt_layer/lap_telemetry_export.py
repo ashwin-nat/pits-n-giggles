@@ -101,6 +101,7 @@ def build_lap_telemetry_write_args(
             id=session_info.m_track.value if session_info.m_track else 0,
             name=str(session_info.m_track or ""),
         ),
+        track_length_m=session_info.m_track_len or None,
     )
 
     drivers = [

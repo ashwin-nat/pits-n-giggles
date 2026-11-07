@@ -32,6 +32,7 @@ import numpy as np
 
 from .archive import (build_header, recompute_totals, session_best_to_dict,
                       write_json)
+from .completeness import measure_lap_coverage
 from .dto import (MANDATORY_TELEMETRY_KEYS, CompletedLap, DriverExportData,
                   DriverRecord, LapTelemetryPaths, SensorConfig,
                   SessionDataEntry, SessionMetadata)
@@ -231,6 +232,7 @@ def _session_to_dict(session: SessionMetadata, laps_count: int, session_best) ->
             "id": session.track.id,
             "name": session.track.name,
         },
+        "track_length_m": session.track_length_m,
         "laps": {
             "count": laps_count,
             "session_best": session_best_to_dict(session_best),
@@ -252,6 +254,7 @@ def _driver_to_dict(driver: DriverRecord, is_telemetry_public: bool) -> dict:
 
 def _lap_dict(lap: CompletedLap, is_good: bool) -> dict:
     metadata = lap.metadata
+    coverage = measure_lap_coverage(lap.telemetry["lap_distance"])
     return {
         "lap_number": metadata.lap_number,
         "lap_time_ms": metadata.lap_time_ms,
@@ -263,6 +266,9 @@ def _lap_dict(lap: CompletedLap, is_good: bool) -> dict:
         "ers_harvest_limit_j": metadata.ers_harvest_limit_j,
         "num_points": len(lap.telemetry["lap_distance"]),
         "is_good": is_good,
+        "start_distance_m": coverage.start_distance_m,
+        "end_distance_m": coverage.end_distance_m,
+        "max_gap_m": coverage.max_gap_m,
     }
 
 
