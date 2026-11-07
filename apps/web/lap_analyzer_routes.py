@@ -49,7 +49,8 @@ from lib.pngt import (DriverNotFoundError, PngtError, read_lap_npz_bytes,
 from lib.track_segments_classifier import TrackSegmentsDatabase
 
 from .lap_analyzer_api import (RenameSessionRequest, api_error, driver_to_api,
-                               resolve_track_length_m, lap_to_api, session_to_api,
+                               laps_by_driver_to_api, resolve_track_length_m, lap_to_api,
+                               session_summary_to_api, session_to_api,
                                track_section_to_api)
 from .pngt_discovery import PngtSessionEntry, build_pngt_session_list
 from .save_viewer_routes import (get_slug_map, save_viewer_slug_for_path,
@@ -227,6 +228,36 @@ def define_lap_analyzer_routes(server: "WebServer") -> None:
             if entry.session.laps_count > 0
         ]
         return server.jsonify(sessions), HTTPStatus.OK
+
+    # Registered before /sessions/<session_id> so "summaries" is never read as an id.
+    @server.http_route('/lap-analyzer/api/v1/sessions/summaries')
+    async def apiLapAnalyzerSessionSummaries():
+        await _cache_ready.wait()
+        await wait_for_session_cache()
+        summaries = [
+            session_summary_to_api(entry, save_viewer_slug_for_path(entry.rel_path))
+            for entry in _sessions_cache if entry.session.laps_count > 0
+        ]
+        return server.jsonify(summaries), HTTPStatus.OK
+
+    @server.http_route('/lap-analyzer/api/v1/sessions/<session_id>')
+    async def apiLapAnalyzerSession(session_id: str):
+        await _cache_ready.wait()
+        await wait_for_session_cache()
+        entry = _by_slug.get(session_id)
+        if entry is None:
+            return api_error('SESSION_NOT_FOUND',
+                             f'Unknown session id: {session_id}'), HTTPStatus.NOT_FOUND
+        return server.jsonify(session_to_api(entry, save_viewer_slug_for_path(entry.rel_path))), HTTPStatus.OK
+
+    @server.http_route('/lap-analyzer/api/v1/sessions/<session_id>/laps')
+    async def apiLapAnalyzerSessionLaps(session_id: str):
+        await _cache_ready.wait()
+        entry = _by_slug.get(session_id)
+        if entry is None:
+            return api_error('SESSION_NOT_FOUND',
+                             f'Unknown session id: {session_id}'), HTTPStatus.NOT_FOUND
+        return server.jsonify(laps_by_driver_to_api(entry)), HTTPStatus.OK
 
     # Lives here, not in save_viewer_routes.py, because it reads this module's cache and this
     # module already imports save_viewer_routes (the reverse import would be circular).

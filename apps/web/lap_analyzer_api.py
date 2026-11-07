@@ -44,12 +44,12 @@ request body this API takes.
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-from lib.pngt import (LapCoverage, ParsedDriver, ParsedLap, SensorConfig,
-                      judge_lap_coverage)
+from lib.pngt import (LapCoverage, LapVerdict, ParsedDriver, ParsedLap,
+                      SensorConfig, judge_lap_coverage)
 from lib.track_segments_classifier.types import BaseSegmentInfo
 
 from .pngt_discovery import PngtSessionEntry
@@ -128,6 +128,66 @@ def session_to_api(entry: PngtSessionEntry, save_viewer_slug: Optional[str] = No
     }
 
 
+def laps_by_driver_to_api(entry: PngtSessionEntry) -> Dict[str, List[Dict[str, Any]]]:
+    """Every driver's laps in one response, keyed by driver index (JSON keys are strings)."""
+    track_length_m = resolve_track_length_m(entry)
+    return {
+        str(index): [lap_to_api(lap, track_length_m) for lap in laps]
+        for index, laps in entry.laps_by_driver.items()
+    }
+
+
+def session_summary_to_api(entry: PngtSessionEntry, save_viewer_slug: Optional[str] = None) -> Dict[str, Any]:
+    """One row of the recording list: the session's identity plus, per driver, the best
+    eligible lap and any faster lap that was not captured whole. Eligible means complete,
+    valid, timed, not a pit lap, and not a race's standing-start lap 1."""
+    session_type = title_case_session_type(entry.session.session_type)
+    is_race = session_type.startswith('Race')
+    track_length_m = resolve_track_length_m(entry)
+    complete_count = 0
+    drivers = []
+    for driver in entry.drivers:
+        if not driver.is_telemetry_public:
+            continue
+        best: Optional[ParsedLap] = None
+        partial: Optional[ParsedLap] = None
+        partial_reason = None
+        for lap in entry.laps_by_driver.get(driver.driver_index, []):
+            verdict = _lap_verdict(lap, track_length_m)
+            complete_count += verdict.complete
+            if (verdict.complete and lap.valid and lap.lap_time_ms and not lap.pit_in_lap
+                    and not lap.pit_out_lap and not (is_race and lap.lap_number == 1)):
+                if best is None or lap.lap_time_ms < best.lap_time_ms:
+                    best = lap
+            elif (not verdict.complete and lap.valid and lap.lap_time_ms
+                    and (partial is None or lap.lap_time_ms < partial.lap_time_ms)):
+                partial, partial_reason = lap, verdict.reason
+        drivers.append({
+            'index': driver.driver_index,
+            'name': driver.name,
+            'team': driver.team,
+            'best': None if best is None else _lap_summary(best),
+            'fasterIncomplete': None if partial is None or (best and partial.lap_time_ms >= best.lap_time_ms)
+            else {**_lap_summary(partial), 'reason': partial_reason or 'partial trace'},
+        })
+    return {
+        'id': entry.slug,
+        'type': session_type,
+        'trackName': entry.session.track.name,
+        'date': entry.session.timestamp,
+        'formula': entry.session.formula,
+        'gameYear': entry.session.game_year,
+        'trackLengthM': track_length_m,
+        'sessionSlug': save_viewer_slug,
+        'completeLapCount': complete_count,
+        'drivers': drivers,
+    }
+
+
+def _lap_summary(lap: ParsedLap) -> Dict[str, Any]:
+    return {'lapNumber': lap.lap_number, 'lapTime': lap.lap_time_ms, 'tyreCompound': lap.tyre_compound}
+
+
 def driver_to_api(driver: ParsedDriver) -> Dict[str, Any]:
     return {
         'index': driver.driver_index,
@@ -140,10 +200,14 @@ def driver_to_api(driver: ParsedDriver) -> Dict[str, Any]:
     }
 
 
-def lap_to_api(lap: ParsedLap, track_length_m: float) -> Dict[str, Any]:
-    verdict = judge_lap_coverage(
+def _lap_verdict(lap: ParsedLap, track_length_m: float) -> LapVerdict:
+    return judge_lap_coverage(
         lap.lap_time_ms, LapCoverage(lap.start_distance_m, lap.end_distance_m, lap.max_gap_m),
         track_length_m)
+
+
+def lap_to_api(lap: ParsedLap, track_length_m: float) -> Dict[str, Any]:
+    verdict = _lap_verdict(lap, track_length_m)
     return {
         'lapNumber': lap.lap_number,
         'lapTime': lap.lap_time_ms,

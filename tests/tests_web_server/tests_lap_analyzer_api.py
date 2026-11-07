@@ -35,8 +35,9 @@ import pytest
 from pydantic import ValidationError
 
 from apps.web.lap_analyzer_api import (RenameSessionRequest, api_error,
-                                       driver_to_api, resolve_track_length_m,
-                                       lap_to_api,
+                                       driver_to_api, laps_by_driver_to_api,
+                                       resolve_track_length_m, lap_to_api,
+                                       session_summary_to_api,
                                        session_to_api,
                                        title_case_session_type,
                                        track_section_to_api)
@@ -239,3 +240,53 @@ def test_api_error_envelope_shape():
     assert result == {
         'error': {'code': 'SESSION_NOT_FOUND', 'message': 'Unknown session id: foo'},
     }
+
+
+def _cov_lap(number, time_ms, start, end, valid=True, pit_in=False, pit_out=False, compound="Soft"):
+    return ParsedLap(lap_number=number, lap_time_ms=time_ms, valid=valid, tyre_compound=compound,
+                     tyre_laps=number, pit_in_lap=pit_in, pit_out_lap=pit_out, ers_harvest_limit_j=None,
+                     num_points=100, is_good=False, start_distance_m=start, end_distance_m=end, max_gap_m=3.0)
+
+
+def _summary_entry(session_type="race"):
+    base = _entry()
+    session = dataclasses.replace(base.session, session_type=session_type, track_length_m=5000)
+    public = ParsedDriver(driver_index=1, name="A", team="T", car_number=1, nationality=None,
+                          platform=None, is_telemetry_public=True)
+    restricted = dataclasses.replace(public, driver_index=2, name="B", is_telemetry_public=False)
+    laps = [
+        _cov_lap(1, 95000, 240.0, 4998.0),          # standing start: incomplete (starts late)
+        _cov_lap(2, 90000, 1.0, 4998.0),            # eligible, best
+        _cov_lap(3, 89000, 1.0, 4998.0, valid=False),
+        _cov_lap(4, 88000, 1.0, 4998.0, pit_in=True),
+        _cov_lap(5, 85000, 2000.0, 4998.0),         # faster but incomplete (starts late)
+    ]
+    return dataclasses.replace(base, session=session, drivers=[public, restricted],
+                               laps_by_driver={1: laps, 2: []})
+
+
+def test_session_summary_picks_the_best_eligible_lap_and_the_faster_partial():
+    summary = session_summary_to_api(_summary_entry(), "race-save")
+    assert summary['sessionSlug'] == "race-save"
+    assert summary['trackLengthM'] == 5000.0
+    assert summary['completeLapCount'] == 3   # laps 2, 3 and 4 are whole, whatever their flags
+    [driver] = summary['drivers']             # restricted driver omitted
+    assert driver['best'] == {'lapNumber': 2, 'lapTime': 90000, 'tyreCompound': "Soft"}
+    assert driver['fasterIncomplete'] == {
+        'lapNumber': 5, 'lapTime': 85000, 'tyreCompound': "Soft", 'reason': "last 3000 m only"}
+
+
+def test_session_summary_race_lap_one_is_not_a_best_but_other_types_allow_it():
+    laps = [_cov_lap(1, 80000, 1.0, 4998.0), _cov_lap(2, 90000, 1.0, 4998.0)]
+    race = dataclasses.replace(_summary_entry(), laps_by_driver={1: laps})
+    quali = dataclasses.replace(_summary_entry("qualifying"), laps_by_driver={1: laps})
+    assert session_summary_to_api(race)['drivers'][0]['best']['lapNumber'] == 2
+    assert session_summary_to_api(quali)['drivers'][0]['best']['lapNumber'] == 1
+
+
+def test_laps_by_driver_to_api_keys_every_driver_by_index():
+    result = laps_by_driver_to_api(_summary_entry())
+    assert set(result) == {"1", "2"}
+    assert [lap['lapNumber'] for lap in result["1"]] == [1, 2, 3, 4, 5]
+    assert result["2"] == []
+    assert result["1"][0]['complete'] is False
