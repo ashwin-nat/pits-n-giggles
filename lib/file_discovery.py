@@ -175,15 +175,14 @@ async def _parse_one(
             mtime = 0.0
 
         cached = cache.get(cache_key)
-        if cached and cached.get('mtime') == mtime and 'data' in cached:
-            return rel_path, config.from_cache_dict(cache_key, cached['data'])
-
         previous_entry: Optional[T] = None
         if cached and 'data' in cached:
             try:
                 previous_entry = config.from_cache_dict(cache_key, cached['data'])
             except config.catch:
-                previous_entry = None
+                previous_entry = None  # stale/incompatible entry -- reparsed below
+        if previous_entry is not None and cached.get('mtime') == mtime:
+            return rel_path, previous_entry
 
         try:
             start = time.perf_counter()

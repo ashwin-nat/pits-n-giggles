@@ -33,6 +33,7 @@ the archive on every GET /telemetry/... call instead.
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import dataclasses
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -41,8 +42,8 @@ from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
 from lib.logger import PngLogger
 from lib.pngt import (ParsedDriver, ParsedLap, ParsedSessionMetadata,
                       PngtError, SensorConfig, SensorType, SessionBest,
-                      TrackInfo, read_contents, read_driver_laps,
-                      read_session)
+                      TrackInfo, measure_lap_coverage, read_contents,
+                      read_driver_laps, read_lap_telemetry, read_session)
 
 from lib.file_discovery import (DiscoveryConfig, SkipFile, discover_all,
                                 find_files)
@@ -118,6 +119,7 @@ def _session_to_dict(session: ParsedSessionMetadata) -> Dict[str, Any]:
         'game_version': session.game_version,
         'timestamp': session.timestamp,
         'track': {'id': session.track.id, 'name': session.track.name},
+        'track_length_m': session.track_length_m,
         'laps_count': session.laps_count,
         'session_best': None if session.session_best is None else {
             'driver_index': session.session_best.driver_index,
@@ -139,6 +141,7 @@ def _dict_to_session(raw: Dict[str, Any]) -> ParsedSessionMetadata:
         game_version=raw['game_version'],
         timestamp=raw['timestamp'],
         track=TrackInfo(id=raw['track']['id'], name=raw['track']['name']),
+        track_length_m=raw.get('track_length_m'),
         laps_count=raw['laps_count'],
         session_best=None if session_best_raw is None else SessionBest(
             driver_index=session_best_raw['driver_index'],
@@ -184,6 +187,9 @@ def _lap_to_dict(lap: ParsedLap) -> Dict[str, Any]:
         'ers_harvest_limit_j': lap.ers_harvest_limit_j,
         'num_points': lap.num_points,
         'is_good': lap.is_good,
+        'start_distance_m': lap.start_distance_m,
+        'end_distance_m': lap.end_distance_m,
+        'max_gap_m': lap.max_gap_m,
     }
 
 
@@ -199,6 +205,11 @@ def _dict_to_lap(raw: Dict[str, Any]) -> ParsedLap:
         ers_harvest_limit_j=raw.get('ers_harvest_limit_j'),
         num_points=raw.get('num_points', 0),
         is_good=raw['is_good'],
+        # Strict on purpose: a cache entry from before these existed raises KeyError,
+        # which the engine treats as stale and reparses (backfilling them).
+        start_distance_m=raw['start_distance_m'],
+        end_distance_m=raw['end_distance_m'],
+        max_gap_m=raw['max_gap_m'],
     )
 
 
@@ -220,6 +231,25 @@ def _dict_to_sensor(raw: Dict[str, Any]) -> SensorConfig:
 
 # ---- DiscoveryConfig plumbing ----
 
+def _with_coverage(full_path: Path, driver_index: int, laps: List[ParsedLap]) -> List[ParsedLap]:
+    """Fills in distance coverage for laps written before laps.json carried it, by
+    measuring each lap's own lap_distance array. A no-op for current files."""
+    filled = []
+    for lap in laps:
+        if lap.start_distance_m is None and lap.end_distance_m is None and lap.num_points > 0:
+            try:
+                cov = measure_lap_coverage(
+                    read_lap_telemetry(full_path, driver_index, lap.lap_number)['lap_distance'])
+            except (PngtError, KeyError):
+                filled.append(lap)
+                continue
+            lap = dataclasses.replace(
+                lap, start_distance_m=cov.start_distance_m,
+                end_distance_m=cov.end_distance_m, max_gap_m=cov.max_gap_m)
+        filled.append(lap)
+    return filled
+
+
 def _parse(full_path: Path) -> _ParsedPngtFile:
     """Reads one .pngt file's session/drivers/sensors/laps in full via lib.pngt.reader.
     Runs inside asyncio.to_thread via the generic engine -- must not touch shared
@@ -230,7 +260,8 @@ def _parse(full_path: Path) -> _ParsedPngtFile:
         raise SkipFile(full_path)
     parsed = read_session(full_path)
     laps_by_driver = {
-        driver.driver_index: read_driver_laps(full_path, driver.driver_index)
+        driver.driver_index: _with_coverage(
+            full_path, driver.driver_index, read_driver_laps(full_path, driver.driver_index))
         for driver in parsed.drivers
     }
     return _ParsedPngtFile(
