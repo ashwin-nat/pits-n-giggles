@@ -27,6 +27,7 @@ import os
 import sys
 import zipfile
 from io import BytesIO
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -1180,19 +1181,14 @@ def test_measure_lap_coverage_nothing_past_the_line():
     assert measure_lap_coverage([]) == LapCoverage(None, None, None)
 
 
-@pytest.mark.parametrize("lap_time,cov,expected", [
-    (80000, LapCoverage(2.0, 4379.0, 9.0), (True, None)),
-    (None, LapCoverage(2.0, 4379.0, 9.0), (False, "no lap time")),
-    (80000, LapCoverage(None, None, None), (False, "not recorded past the line")),
-    (80000, LapCoverage(3811.0, 4379.0, 9.0), (False, "last 570 m only")),
-    (80000, LapCoverage(0.0, 1500.0, 9.0), (False, "first 1500 m only")),
-    (80000, LapCoverage(1000.0, 3000.0, 9.0), (False, "2000 m mid-lap only")),
-    (80000, LapCoverage(0.0, 4381.0, 45.0), (False, "50 m gap in the trace")),
-    (80000, LapCoverage(3995.0, 4381.0, 9.0), (False, "last 390 m only")),
-])
-def test_judge_lap_coverage(lap_time, cov, expected):
-    verdict = judge_lap_coverage(lap_time, cov, 4381.0)
-    assert (verdict.complete, verdict.reason) == expected
+_COMPLETENESS_CASES = Path(__file__).parent.parent / "apps/external/f1-save-viewer/tests/fixtures/lap-completeness-cases.json"
+
+@pytest.mark.skipif(not _COMPLETENESS_CASES.exists(), reason="f1-save-viewer submodule not checked out")
+def test_judge_lap_coverage_matches_the_viewer_cases():
+    for case in json.loads(_COMPLETENESS_CASES.read_text(encoding="utf-8"))["cases"]:
+        cov = LapCoverage(case["start"], case["end"], case["gap"])
+        verdict = judge_lap_coverage(case["lapTimeMs"], cov, case["trackLengthM"])
+        assert (verdict.complete, verdict.reason) == (case["complete"], case["reason"]), case
 
 
 def test_write_persists_coverage_and_old_files_read_as_none(tmp_path):
