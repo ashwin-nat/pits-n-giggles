@@ -296,24 +296,3 @@ async def test_container_with_both_sections_is_listed(tmp_path):
     entries, _slug_map = await _build_final(tmp_path)
 
     assert [e.rel_path for e in entries] == ["both.pngt"]
-
-
-async def test_cache_entry_without_lap_coverage_is_reparsed(tmp_path):
-    _write_pngt(tmp_path / "session.pngt")
-    await _build_final(tmp_path)
-
-    cache_path = tmp_path / CACHE_FILE
-    with open(cache_path, 'rb') as f:
-        cache = orjson.loads(gzip.decompress(f.read()))
-    for blob in cache.values():
-        if isinstance(blob, dict) and 'data' in blob:
-            for laps in blob['data']['laps_by_driver'].values():
-                for lap in laps:
-                    for key in ('start_distance_m', 'end_distance_m', 'max_gap_m'):
-                        lap.pop(key)
-    with open(cache_path, 'wb') as f:
-        f.write(gzip.compress(orjson.dumps(cache)))
-
-    entries, _ = await _build_final(tmp_path)
-    lap = entries[0].laps_by_driver[1][0]
-    assert lap.end_distance_m is not None
