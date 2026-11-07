@@ -19,8 +19,8 @@ import type { SensorDefinition } from "../../types/api";
 
 // Synthetic sensor -- not part of any session's manifest. lap_time_ms is a
 // mandatory pngt array (like lap_distance), always present in TelemetryPoint
-// regardless of the user's sensor selection (see LocalFileProvider.ts and
-// lap_analyzer_api.py's telemetry_points_to_api()), so it can always be
+// regardless of the user's sensor selection (see npzToTelemetryPoints in
+// lib/parseNpy.ts), so it can always be
 // interpolated to build the delta trace below once a reference lap exists.
 const DELTA_SENSOR: SensorDefinition = {
   key: "lap_time_ms",
