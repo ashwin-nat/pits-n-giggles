@@ -5,6 +5,9 @@ version they landed in; see the versioning policy in [README.md](README.md).
 
 ## Version 1
 
+- `session.json`: added `player_index`, `sector_starts_m` (`[sector 2 start, sector 3 start]`, metres) and
+  `ers_max_capacity_j`; `laps.json`: added `sector_ends_ms` (`[sector 1 end, sector 2 end]`, ms). All nullable, absent in older files.
+
 - `session.json`: added `track_length_m` (metres, `null` when unknown). Absent in older
   files and read as `None`.
 

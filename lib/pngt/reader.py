@@ -197,6 +197,9 @@ def _dict_to_session(raw: dict, path) -> ParsedSessionMetadata:
             timestamp=raw["timestamp"],
             track=TrackInfo(id=track_raw["id"], name=track_raw["name"]),
             track_length_m=raw.get("track_length_m"),
+            player_index=raw.get("player_index"),
+            sector_starts_m=None if raw.get("sector_starts_m") is None else tuple(raw["sector_starts_m"]),
+            ers_max_capacity_j=raw.get("ers_max_capacity_j"),
             laps_count=laps_raw["count"],
             session_best=None if session_best_raw is None else SessionBest(
                 driver_index=session_best_raw["driver_index"],
@@ -234,6 +237,7 @@ def _dict_to_lap_metadata(raw: dict, path) -> ParsedLap:
             pit_in_lap=raw["pit_in_lap"],
             pit_out_lap=raw["pit_out_lap"],
             ers_harvest_limit_j=raw.get("ers_harvest_limit_j"),
+            sector_ends_ms=None if raw.get("sector_ends_ms") is None else tuple(raw["sector_ends_ms"]),
             num_points=raw["num_points"],
             is_good=raw["is_good"],
             start_distance_m=raw.get("start_distance_m"),

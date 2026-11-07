@@ -233,6 +233,9 @@ def _session_to_dict(session: SessionMetadata, laps_count: int, session_best) ->
             "name": session.track.name,
         },
         "track_length_m": session.track_length_m,
+        "player_index": session.player_index,
+        "sector_starts_m": None if session.sector_starts_m is None else list(session.sector_starts_m),
+        "ers_max_capacity_j": session.ers_max_capacity_j,
         "laps": {
             "count": laps_count,
             "session_best": session_best_to_dict(session_best),
@@ -266,6 +269,7 @@ def _lap_dict(lap: CompletedLap, is_good: bool) -> dict:
         "ers_harvest_limit_j": metadata.ers_harvest_limit_j,
         "num_points": len(lap.telemetry["lap_distance"]),
         "is_good": is_good,
+        "sector_ends_ms": None if metadata.sector_ends_ms is None else list(metadata.sector_ends_ms),
         "start_distance_m": coverage.start_distance_m,
         "end_distance_m": coverage.end_distance_m,
         "max_gap_m": coverage.max_gap_m,

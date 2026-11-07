@@ -1227,6 +1227,28 @@ def test_track_length_round_trips_and_defaults_to_none(tmp_path):
     assert read_session(path).session.track_length_m is None
 
 
+def test_session_and_lap_facts_round_trip_and_default_to_none(tmp_path):
+    path = tmp_path / "s.pngt"
+    session = dataclasses.replace(sample_session(), player_index=21, sector_starts_m=(1897.5, 3726.9),
+                                  ers_max_capacity_j=4_000_000.0)
+    data = sample_driver_data()
+    lap = data[1].completed_laps[0]
+    data[1].completed_laps[0] = dataclasses.replace(
+        lap, metadata=dataclasses.replace(lap.metadata, sector_ends_ms=(35769, 68306)))
+    write_session(path, session, sample_sensors(), sample_drivers(), data)
+
+    read = read_session(path).session
+    assert (read.player_index, read.sector_starts_m, read.ers_max_capacity_j) == (
+        21, (1897.5, 3726.9), 4_000_000.0)
+    laps = read_driver_laps(path, 1)
+    assert laps[0].sector_ends_ms == (35769, 68306)
+    assert laps[1].sector_ends_ms is None
+
+    write_session(path, sample_session(), sample_sensors(), sample_drivers(), sample_driver_data())
+    bare = read_session(path).session
+    assert (bare.player_index, bare.sector_starts_m, bare.ers_max_capacity_j) == (None,) * 3
+
+
 def test_read_lap_npz_bytes_matches_stored_arrays(tmp_path):
     path = tmp_path / "s.pngt"
     write_session(path, sample_session(), sample_sensors(), sample_drivers(), sample_driver_data())
