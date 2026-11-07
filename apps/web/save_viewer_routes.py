@@ -36,10 +36,12 @@ once, during WebServer construction, before any route can fire.
 
 import asyncio
 import json
+import re
 import time
+from datetime import datetime, timedelta
 from http import HTTPStatus
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from pathlib import Path, PurePosixPath
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional
 
 from quart import send_file, url_for
 from watchfiles import awatch
@@ -90,13 +92,58 @@ def get_slug_map() -> Dict[str, str]:
     return _slug_map
 
 
-def save_viewer_slug_for_path(rel_path: str) -> Optional[str]:
-    """The slug of the session whose data lives in the container at rel_path (relative to the
-    session dir), or None. Only containers link: a loose JSON is never the same file as a
-    lap recording."""
-    if not is_container(Path(rel_path)):
+_PAIR_TOKEN = re.compile(r'_(?:just_in_case|manual)(?=_\d{4}_\d{2}_\d{2}_)', re.IGNORECASE)
+_PAIR_STAMP = re.compile(r'^(.*)_(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})$')
+# The recording starts a few seconds before the JSON is stamped (3 s in real data).
+_PAIR_TOLERANCE_S = 5
+
+
+def _pair_key(rel_path: str) -> str:
+    """Name shared by a loose recording and its session JSON: file stem, lowercased,
+    with the just-in-case / manual marker (which only the JSON carries) removed."""
+    stem = re.sub(r'\.(pngt|json)$', '', PurePosixPath(rel_path.replace('\\', '/')).name, flags=re.IGNORECASE)
+    return _PAIR_TOKEN.sub('', stem).lower()
+
+
+def _shift_key(key: str, seconds: int) -> Optional[str]:
+    match = _PAIR_STAMP.match(key)
+    if not match:
         return None
-    return next((slug for slug, rel in _slug_map.items() if rel == rel_path), None)
+    prefix, *stamp = match.groups()
+    year, month, day, hour, minute, second = (int(part) for part in stamp)
+    moved = datetime(year, month, day, hour, minute, second) + timedelta(seconds=seconds)
+    return f"{prefix}_{moved:%Y_%m_%d_%H_%M_%S}"
+
+
+def link_recordings_to_sessions(recording_paths: Iterable[str], slug_map: Dict[str, str]) -> Dict[str, str]:
+    """Maps each lap recording (relative path) to the slug of its save-viewer session.
+
+    A recording that also holds the session data (a unified-save container, indexed under
+    its own slug) is its own session. Any other pairs with the loose session JSON
+    of the same name; failing that, one stamped within a couple of seconds that no other
+    recording claims exactly."""
+    containers = {rel: slug for slug, rel in slug_map.items() if is_container(Path(rel))}
+    sessions = {_pair_key(rel): slug for slug, rel in slug_map.items() if not is_container(Path(rel))}
+    paths = list(recording_paths)
+    loose_keys = {_pair_key(p) for p in paths if p not in containers}
+    links: Dict[str, str] = {}
+    for path in paths:
+        if path in containers:
+            links[path] = containers[path]
+            continue
+        own = _pair_key(path)
+        slug = sessions.get(own)
+        for offset in range(1, _PAIR_TOLERANCE_S + 1):
+            if slug:
+                break
+            for signed in (offset, -offset):
+                shifted = _shift_key(own, signed)
+                if shifted in sessions and shifted not in loose_keys:
+                    slug = sessions[shifted]
+                    break
+        if slug:
+            links[path] = slug
+    return links
 
 
 def _best(sessions: List[Dict[str, Any]], key: str) -> float:

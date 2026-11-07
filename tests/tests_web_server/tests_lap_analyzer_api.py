@@ -36,8 +36,7 @@ from pydantic import ValidationError
 
 from apps.web.lap_analyzer_api import (RenameSessionRequest, api_error,
                                        driver_to_api, laps_by_driver_to_api,
-                                       resolve_track_length_m, lap_to_api,
-                                       session_summary_to_api,
+                                       lap_to_api, session_summary_to_api,
                                        session_to_api,
                                        title_case_session_type,
                                        track_section_to_api)
@@ -90,6 +89,9 @@ def test_session_to_api_maps_all_fields():
         'sessionBest': {'driverIndex': 1, 'lapNumber': 2, 'lapTimeMs': 90000},
         'trackLengthM': 0.0,
         'sessionSlug': None,
+        'playerIndex': None,
+        'sectorStartsM': None,
+        'ersMaxCapacityJ': None,
         'sensorManifest': [{'key': "speed", 'label': "Speed", 'unit': "km/h", 'type': "continuous"}],
     }
 
@@ -130,6 +132,7 @@ def test_lap_to_api_completed_lap():
         'tyreLaps': 5, 'pitInLap': False, 'pitOutLap': False, 'ersHarvestLimitJ': 4_000_000.0, 'isGood': True,
         'sampleCount': 100, 'startDistanceM': None, 'endDistanceM': None, 'maxGapM': None,
         'complete': False, 'incompleteReason': "not recorded past the line",
+        'sectorEndsMs': None,
     }
 
 
@@ -144,23 +147,28 @@ def test_lap_to_api_reports_coverage_and_verdict():
     assert lap_to_api(lap, 6000.0)['incompleteReason'] == "first 4380 m only"
 
 
-def test_track_length_falls_back_to_farthest_timed_lap():
-    def _lap(number, time_ms, end):
-        return ParsedLap(lap_number=number, lap_time_ms=time_ms, valid=True, tyre_compound="Soft",
-                         tyre_laps=1, pit_in_lap=False, pit_out_lap=False, ers_harvest_limit_j=None,
-                         num_points=10, is_good=False, start_distance_m=0.0, end_distance_m=end,
-                         max_gap_m=1.0)
-    entry = dataclasses.replace(_entry(), laps_by_driver={
-        0: [_lap(1, 80000, 4380.0), _lap(2, None, 9000.0)], 1: [_lap(1, 81000, 4378.0)]})
-    assert resolve_track_length_m(entry) == 4380.0
-    assert session_to_api(entry)['trackLengthM'] == 4380.0
-
-
-def test_track_length_prefers_the_recorded_value():
+def test_track_length_is_the_recorded_value_or_zero():
     entry = _entry()
+    assert session_to_api(entry)['trackLengthM'] == 0.0
     entry = dataclasses.replace(entry, session=dataclasses.replace(entry.session, track_length_m=4381))
-    assert resolve_track_length_m(entry) == 4381.0
     assert session_to_api(entry)['trackLengthM'] == 4381.0
+
+
+def test_session_to_api_reports_what_the_recording_knows_about_the_session():
+    entry = _entry()
+    session = dataclasses.replace(entry.session, player_index=21, sector_starts_m=(1897.5, 3726.9),
+                                  ers_max_capacity_j=4_000_000.0)
+    result = session_to_api(dataclasses.replace(entry, session=session))
+    assert (result['playerIndex'], result['ersMaxCapacityJ']) == (21, 4_000_000.0)
+    assert result['sectorStartsM'] == [1897.5, 3726.9]
+    unset = session_to_api(entry)
+    assert (unset['playerIndex'], unset['sectorStartsM'], unset['ersMaxCapacityJ']) == (None, None, None)
+
+
+def test_lap_to_api_reports_sector_ends():
+    lap = dataclasses.replace(_cov_lap(1, 98464, 1.0, 4998.0), sector_ends_ms=(35769, 68306))
+    assert lap_to_api(lap, 5000.0)['sectorEndsMs'] == [35769, 68306]
+    assert lap_to_api(_cov_lap(1, 98464, 1.0, 4998.0), 5000.0)['sectorEndsMs'] is None
 
 
 def test_lap_to_api_out_lap_no_time():
@@ -290,3 +298,9 @@ def test_laps_by_driver_to_api_keys_every_driver_by_index():
     assert [lap['lapNumber'] for lap in result["1"]] == [1, 2, 3, 4, 5]
     assert result["2"] == []
     assert result["1"][0]['complete'] is False
+
+
+def test_session_summary_carries_the_player_index():
+    entry = _summary_entry()
+    entry = dataclasses.replace(entry, session=dataclasses.replace(entry.session, player_index=7))
+    assert session_summary_to_api(entry, "race-save")['playerIndex'] == 7

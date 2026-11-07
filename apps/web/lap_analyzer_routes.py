@@ -37,7 +37,7 @@ import dataclasses
 import time
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List
 
 from pydantic import ValidationError
 from quart import url_for
@@ -48,12 +48,13 @@ from lib.pngt import (DriverNotFoundError, PngtError, read_lap_npz_bytes,
                       rename_session)
 from lib.track_segments_classifier import TrackSegmentsDatabase
 
-from .lap_analyzer_api import (RenameSessionRequest, api_error, driver_to_api,
-                               laps_by_driver_to_api, resolve_track_length_m, lap_to_api,
+from .lap_analyzer_api import (RenameSessionRequest, api_error,
+                               driver_laps_to_api, driver_to_api,
+                               laps_by_driver_to_api,
                                session_summary_to_api, session_to_api,
                                track_section_to_api)
 from .pngt_discovery import PngtSessionEntry, build_pngt_session_list
-from .save_viewer_routes import (get_slug_map, save_viewer_slug_for_path,
+from .save_viewer_routes import (get_slug_map, link_recordings_to_sessions,
                                  wait_for_session_cache)
 
 if TYPE_CHECKING:
@@ -110,9 +111,9 @@ async def wait_for_lap_analyzer_cache() -> None:
     await _cache_ready.wait()
 
 
-def lap_analyzer_slug_for_path(rel_path: str) -> Optional[str]:
-    """The slug of the recording at rel_path (relative to the session dir), or None."""
-    return next((slug for slug, entry in _by_slug.items() if entry.rel_path == rel_path), None)
+def _recording_links() -> Dict[str, str]:
+    """Each cached recording's relative path -> the slug of its save-viewer session."""
+    return link_recordings_to_sessions([e.rel_path for e in _sessions_cache], get_slug_map())
 
 
 def _resolve_telemetry_session(session_id: str) -> PngtSessionEntry:
@@ -223,8 +224,9 @@ def define_lap_analyzer_routes(server: "WebServer") -> None:
         await wait_for_session_cache()
         # "Sessions with no recorded laps are excluded" (API spec) -- laps_count is
         # the file's own authoritative total across all drivers, not recomputed here.
+        links = _recording_links()
         sessions = [
-            session_to_api(entry, save_viewer_slug_for_path(entry.rel_path)) for entry in _sessions_cache
+            session_to_api(entry, links.get(entry.rel_path)) for entry in _sessions_cache
             if entry.session.laps_count > 0
         ]
         return server.jsonify(sessions), HTTPStatus.OK
@@ -234,8 +236,9 @@ def define_lap_analyzer_routes(server: "WebServer") -> None:
     async def apiLapAnalyzerSessionSummaries():
         await _cache_ready.wait()
         await wait_for_session_cache()
+        links = _recording_links()
         summaries = [
-            session_summary_to_api(entry, save_viewer_slug_for_path(entry.rel_path))
+            session_summary_to_api(entry, links.get(entry.rel_path))
             for entry in _sessions_cache if entry.session.laps_count > 0
         ]
         return server.jsonify(summaries), HTTPStatus.OK
@@ -248,7 +251,7 @@ def define_lap_analyzer_routes(server: "WebServer") -> None:
         if entry is None:
             return api_error('SESSION_NOT_FOUND',
                              f'Unknown session id: {session_id}'), HTTPStatus.NOT_FOUND
-        return server.jsonify(session_to_api(entry, save_viewer_slug_for_path(entry.rel_path))), HTTPStatus.OK
+        return server.jsonify(session_to_api(entry, _recording_links().get(entry.rel_path))), HTTPStatus.OK
 
     @server.http_route('/lap-analyzer/api/v1/sessions/<session_id>/laps')
     async def apiLapAnalyzerSessionLaps(session_id: str):
@@ -263,24 +266,25 @@ def define_lap_analyzer_routes(server: "WebServer") -> None:
     # module already imports save_viewer_routes (the reverse import would be circular).
     @server.http_route('/save-viewer/api/sessions/<slug>/lap-analyzer-slug')
     async def apiSaveViewerLapAnalyzerSlug(slug: str):
-        """The lap-analyzer slug for the same container, or null if there is none."""
+        """The lap-analyzer slug of the recording that belongs to this session, or null."""
         await wait_for_session_cache()
         await _cache_ready.wait()
-        relative = get_slug_map().get(slug)
-        if not relative:
+        if slug not in get_slug_map():
             return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
-        return server.jsonify({'slug': lap_analyzer_slug_for_path(relative)}), HTTPStatus.OK
+        by_path = {entry.rel_path: analyzer_slug for analyzer_slug, entry in _by_slug.items()}
+        recording = next((path for path, linked in _recording_links().items() if linked == slug), None)
+        return server.jsonify({'slug': by_path.get(recording)}), HTTPStatus.OK
 
     @server.http_route('/lap-analyzer/api/v1/sessions/<session_id>/save-viewer-slug')
     async def apiLapAnalyzerSaveViewerSlug(session_id: str):
-        """The save-viewer slug for the same container, or null if there is none."""
+        """The save-viewer slug this recording belongs to, or null if there is none."""
         await _cache_ready.wait()
         await wait_for_session_cache()
         entry = _by_slug.get(session_id)
         if entry is None:
             return api_error('SESSION_NOT_FOUND',
                              f'Unknown session id: {session_id}'), HTTPStatus.NOT_FOUND
-        return server.jsonify({'slug': save_viewer_slug_for_path(entry.rel_path)}), HTTPStatus.OK
+        return server.jsonify({'slug': _recording_links().get(entry.rel_path)}), HTTPStatus.OK
 
     @server.http_route('/lap-analyzer/api/v1/sessions/<session_id>/drivers')
     async def apiLapAnalyzerDrivers(session_id: str):
@@ -305,9 +309,7 @@ def define_lap_analyzer_routes(server: "WebServer") -> None:
         # Restricted/scope-excluded drivers legitimately have no laps.json at all
         # (see file format spec) -- an empty list here is a normal response, not
         # an error, matching LocalFileProvider's getLaps() behaviour.
-        laps = entry.laps_by_driver.get(driver_index, [])
-        track_length_m = resolve_track_length_m(entry)
-        return server.jsonify([lap_to_api(lap, track_length_m) for lap in laps]), HTTPStatus.OK
+        return server.jsonify(driver_laps_to_api(entry, driver_index)), HTTPStatus.OK
 
     @server.http_route('/lap-analyzer/api/v1/telemetry/<session_id>/<int:driver_index>/<int:lap_number>')
     async def apiLapAnalyzerTelemetry(session_id: str, driver_index: int, lap_number: int):

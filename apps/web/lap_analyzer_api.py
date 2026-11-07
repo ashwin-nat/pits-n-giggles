@@ -92,15 +92,10 @@ def _sensor_to_api(sensor: SensorConfig) -> Dict[str, Any]:
     return d
 
 
-def resolve_track_length_m(entry: PngtSessionEntry) -> float:
-    """The recorded track length. Files written before it was stored fall back to the
-    farthest distance any timed lap reached; 0.0 when no timed lap has coverage."""
-    if entry.session.track_length_m:
-        return float(entry.session.track_length_m)
-    return max(
-        (lap.end_distance_m for laps in entry.laps_by_driver.values() for lap in laps
-         if lap.lap_time_ms and lap.end_distance_m is not None),
-        default=0.0)
+def _track_length_m(entry: PngtSessionEntry) -> float:
+    """The recorded track length; 0.0 when the game never sent one, which leaves only
+    the late-start and gap checks of the completeness rule in effect."""
+    return float(entry.session.track_length_m or 0)
 
 
 def session_to_api(entry: PngtSessionEntry, save_viewer_slug: Optional[str] = None) -> Dict[str, Any]:
@@ -122,19 +117,23 @@ def session_to_api(entry: PngtSessionEntry, save_viewer_slug: Optional[str] = No
         'formula': session.formula,
         'gameVersion': session.game_version,
         'sessionBest': session_best,
-        'trackLengthM': resolve_track_length_m(entry),
-        'sessionSlug': save_viewer_slug,  # the save-viewer session in the same container
+        'trackLengthM': _track_length_m(entry),
+        'sessionSlug': save_viewer_slug,  # the save-viewer session this recording belongs to
+        'playerIndex': session.player_index,
+        'sectorStartsM': None if session.sector_starts_m is None else list(session.sector_starts_m),
+        'ersMaxCapacityJ': session.ers_max_capacity_j,
         'sensorManifest': [_sensor_to_api(s) for s in entry.sensors if s.should_display],
     }
 
 
+def driver_laps_to_api(entry: PngtSessionEntry, driver_index: int) -> List[Dict[str, Any]]:
+    track_length_m = _track_length_m(entry)
+    return [lap_to_api(lap, track_length_m) for lap in entry.laps_by_driver.get(driver_index, [])]
+
+
 def laps_by_driver_to_api(entry: PngtSessionEntry) -> Dict[str, List[Dict[str, Any]]]:
     """Every driver's laps in one response, keyed by driver index (JSON keys are strings)."""
-    track_length_m = resolve_track_length_m(entry)
-    return {
-        str(index): [lap_to_api(lap, track_length_m) for lap in laps]
-        for index, laps in entry.laps_by_driver.items()
-    }
+    return {str(index): driver_laps_to_api(entry, index) for index in entry.laps_by_driver}
 
 
 def session_summary_to_api(entry: PngtSessionEntry, save_viewer_slug: Optional[str] = None) -> Dict[str, Any]:
@@ -143,7 +142,7 @@ def session_summary_to_api(entry: PngtSessionEntry, save_viewer_slug: Optional[s
     valid, timed, not a pit lap, and not a race's standing-start lap 1."""
     session_type = title_case_session_type(entry.session.session_type)
     is_race = session_type.startswith('Race')
-    track_length_m = resolve_track_length_m(entry)
+    track_length_m = _track_length_m(entry)
     complete_count = 0
     drivers = []
     for driver in entry.drivers:
@@ -179,6 +178,7 @@ def session_summary_to_api(entry: PngtSessionEntry, save_viewer_slug: Optional[s
         'gameYear': entry.session.game_year,
         'trackLengthM': track_length_m,
         'sessionSlug': save_viewer_slug,
+        'playerIndex': entry.session.player_index,
         'completeLapCount': complete_count,
         'drivers': drivers,
     }
@@ -224,6 +224,7 @@ def lap_to_api(lap: ParsedLap, track_length_m: float) -> Dict[str, Any]:
         'maxGapM': lap.max_gap_m,
         'complete': verdict.complete,
         'incompleteReason': verdict.reason,
+        'sectorEndsMs': None if lap.sector_ends_ms is None else list(lap.sector_ends_ms),
     }
 
 
