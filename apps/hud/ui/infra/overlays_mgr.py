@@ -40,7 +40,8 @@ from ..overlays.mfd.pages import (FuelInfoPage, LapTimesPage,
                                   PitRejoinPredictionPage, RivalsStatusPage,
                                   StandalonePageHost,
                                   TrafficMonitorPage, TyreInfoPage,
-                                  TyreSetsPage, WeatherForecastPage)
+                                  TyreSetsPage, TyresStatusPage,
+                                  WeatherForecastPage)
 from .window_mgr import WindowManager
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -54,7 +55,7 @@ class OverlaysMgr:
     STANDALONE_PAGE_CLASSES: List[Type[MfdPageBase]] = [
         FuelInfoPage, TyreInfoPage, LapTimesPage, WeatherForecastPage,
         PitRejoinPredictionPage, TyreSetsPage, PaceCompPage, TrafficMonitorPage,
-        LastCornerStatsPage, RivalsStatusPage,
+        LastCornerStatsPage, RivalsStatusPage, TyresStatusPage,
     ]
 
     def __init__(self,

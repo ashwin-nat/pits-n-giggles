@@ -420,6 +420,7 @@ class TestHudSettings(TestF1ConfigBase):
             MfdPageId.PACE_COMP,
             MfdPageId.TRAFFIC_MONITOR,
             MfdPageId.RIVALS_STATUS,
+            MfdPageId.TYRES_STATUS,
         }
 
         for page in expected_pages:
@@ -1330,3 +1331,15 @@ class TestTimingTowerColConfig(TestF1ConfigBase):
         for col_id in TimingTowerColId:
             if col_id.value not in stored:
                 self.assertFalse(opts.cols[col_id.value].enabled)
+
+
+def test_tyres_status_defaults():
+    hud = HudSettings()
+    assert hud.show_tyres_status is False
+    assert hud.tyres_status_show_title is True
+    assert OverlayId.TYRES_STATUS not in hud.enabled_overlays_by_id()
+
+
+def test_tyres_status_enabled_overlay():
+    hud = HudSettings(show_tyres_status=True)
+    assert OverlayId.TYRES_STATUS in hud.enabled_overlays_by_id()

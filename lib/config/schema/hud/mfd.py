@@ -43,6 +43,7 @@ class MfdPageId(str, Enum):
     PACE_COMP        = "pace_comp"
     TRAFFIC_MONITOR  = "traffic_monitor"
     RIVALS_STATUS    = "rivals_status"
+    TYRES_STATUS     = "tyres_status"
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -78,6 +79,7 @@ DEFAULT_PAGES = {
     MfdPageId.PACE_COMP:        MfdPageSettings(enabled=True,  position=7, description="Pace Comparison"),
     MfdPageId.TRAFFIC_MONITOR:  MfdPageSettings(enabled=False, position=8, description="Traffic Monitor"),
     MfdPageId.RIVALS_STATUS:    MfdPageSettings(enabled=False, position=9, description="Rivals Status"),
+    MfdPageId.TYRES_STATUS:     MfdPageSettings(enabled=False, position=10, description="Tyres Status"),
 }
 
 
