@@ -155,7 +155,7 @@ DEFAULT_OVERLAY_LAYOUT: Dict[str, OverlayPosition] = {
     OverlayId.TRAFFIC_MONITOR: OverlayPosition(x=1240, y=840),
     OverlayId.LAST_CORNER_STATS: OverlayPosition(x=10,   y=1070),
     OverlayId.RIVALS_STATUS:   OverlayPosition(x=420,  y=1070),
-    OverlayId.TYRES_STATUS:    OverlayPosition(x=830,  y=1070),
+    OverlayId.TYRES_STATUS:    OverlayPosition(x=10,   y=330),
 }
 
 # -------------------------------------- HELPERS -----------------------------------------------------------------------

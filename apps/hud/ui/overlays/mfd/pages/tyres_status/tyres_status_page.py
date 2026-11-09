@@ -42,6 +42,7 @@ class TyresStatusPage(MfdPageBase):
 
     WEAR_DECIMALS = 1
     NO_DATA = float("-inf")  # sentinel for "no data"; QML checks isFinite()
+    NO_AGE = -1              # tyreAge sentinel; QML hides the label when negative
 
     # (wear key, temp key, QML property prefix)
     TYRES = (
@@ -74,7 +75,7 @@ class TyresStatusPage(MfdPageBase):
             # Subscript, not .get(): unmapped compounds need the defaultdict __missing__.
             self.set_qml_property("compoundIcon", self.tyre_icon_uris[tyre_info.get("visual-tyre-compound", "UNKNOWN")])
 
-            self.set_qml_property("tyreAge", tyre_info.get("tyre-age") or 0)
+            self.set_qml_property("tyreAge", tyre_info.get("tyre-age") or 0)  # 0 is a fresh set
 
             telemetry_public = ref_row["driver-info"]["telemetry-setting"] == "Public"
             self.set_qml_property("telemetryDisabled", not telemetry_public)
@@ -104,4 +105,6 @@ class TyresStatusPage(MfdPageBase):
 
     def _clear(self) -> None:
         self.set_qml_property("compoundIcon", "")
+        self.set_qml_property("tyreAge", self.NO_AGE)
+        self.set_qml_property("telemetryDisabled", False)
         self._clear_tyres()

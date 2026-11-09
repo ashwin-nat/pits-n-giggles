@@ -13,7 +13,7 @@ Rectangle {
 
     readonly property real noData: -Infinity
     property string compoundIcon: ""
-    property int tyreAge: 0
+    property int tyreAge: -1
     property bool telemetryDisabled: false
 
     property real flWear: root.noData
@@ -229,7 +229,7 @@ Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.verticalCenter
         anchors.topMargin: 24
-        visible: !root.telemetryDisabled
+        visible: !root.telemetryDisabled && root.tyreAge >= 0
         text: root.tyreAge + "L"
         color: root.brightColor
         font.pixelSize: 18
