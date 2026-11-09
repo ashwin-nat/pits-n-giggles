@@ -149,6 +149,14 @@
                 "traffic_monitor": {
                     "enabled": true,
                     "position": 8
+                },
+                "rivals_status": {
+                    "enabled": false,
+                    "position": 9
+                },
+                "tyres_status": {
+                    "enabled": false,
+                    "position": 10
                 }
             }
         },
@@ -193,6 +201,11 @@
         "pace_comp_show_title": true,
         "show_traffic_monitor": true,
         "traffic_monitor_show_title": true,
+        "show_last_corner_stats": false,
+        "show_rivals_status": false,
+        "rivals_status_show_title": true,
+        "show_tyres_status": false,
+        "tyres_status_show_title": true,
         "auto_hide_in_menu": true,
         "menu_silence_threshold_sec": 3.0,
         "overlays_opacity": 100,
@@ -275,6 +288,21 @@
             "traffic_monitor_standalone": {
                 "x": -684,
                 "y": 810,
+                "scale_factor": 1.0
+            },
+            "last_corner_stats_standalone": {
+                "x": 10,
+                "y": 1070,
+                "scale_factor": 1.0
+            },
+            "rivals_status_standalone": {
+                "x": 420,
+                "y": 1070,
+                "scale_factor": 1.0
+            },
+            "tyres_status_standalone": {
+                "x": 10,
+                "y": 330,
                 "scale_factor": 1.0
             }
         }
