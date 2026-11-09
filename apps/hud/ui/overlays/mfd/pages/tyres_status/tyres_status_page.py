@@ -25,7 +25,7 @@
 import logging
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, final
+from typing import Any, Dict, final
 
 from apps.hud.common import get_ref_row
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
@@ -35,17 +35,20 @@ from lib.config import MfdPageId, OverlayId, PngSettings
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class TyresStatusPage(MfdPageBase):
-    """Per-tyre compound, wear, core temperature and surface temperature of the reference driver."""
+    """Per-tyre wear, core temperature and surface temperature, plus the fitted compound, of the reference driver."""
     OVERLAY_ID = OverlayId.TYRES_STATUS
     KEY = MfdPageId.TYRES_STATUS
     PAGE_QML_FILE: Path = Path(__file__).parent / "tyres_status_page.qml"
 
-    # (wear key, temp key, QML position key); order is the on-screen order FL, FR, RL, RR
+    WEAR_DECIMALS = 1
+    NO_DATA = float("-inf")  # sentinel for "no data"; QML checks isFinite()
+
+    # (wear key, temp key, QML property prefix)
     TYRES = (
-        ("front-left", "fl", "FL"),
-        ("front-right", "fr", "FR"),
-        ("rear-left", "rl", "RL"),
-        ("rear-right", "rr", "RR"),
+        ("front-left-wear", "fl", "fl"),
+        ("front-right-wear", "fr", "fr"),
+        ("rear-left-wear", "rl", "rl"),
+        ("rear-right-wear", "rr", "rr"),
     )
 
     @classmethod
@@ -64,28 +67,41 @@ class TyresStatusPage(MfdPageBase):
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             ref_row = get_ref_row(data)
             if not ref_row:
-                self.set_qml_property("tyres", [])
+                self._clear()
                 return
+
+            tyre_info: Dict[str, Any] = ref_row["tyre-info"]
+            # Subscript, not .get(): unmapped compounds need the defaultdict __missing__.
+            self.set_qml_property("compoundIcon", self.tyre_icon_uris[tyre_info.get("visual-tyre-compound", "UNKNOWN")])
+
+            self.set_qml_property("tyreAge", tyre_info.get("tyre-age") or 0)
 
             telemetry_public = ref_row["driver-info"]["telemetry-setting"] == "Public"
             self.set_qml_property("telemetryDisabled", not telemetry_public)
-            self.set_qml_property("tyres", self._build_tyres(ref_row["tyre-info"]) if telemetry_public else [])
+            if not telemetry_public:
+                self._clear_tyres()
+                return
 
-    def _build_tyres(self, tyre_info: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """One dict per tyre in FL, FR, RL, RR order; a missing value is None."""
-        wear = tyre_info.get("current-wear") or {}
-        core_temps = tyre_info.get("inner-temps") or {}
-        surface_temps = tyre_info.get("surface-temps") or {}
-        # Subscript, not .get(): unmapped compounds need the defaultdict __missing__.
-        icon = self.tyre_icon_uris[tyre_info.get("visual-tyre-compound", "UNKNOWN")]
+            wear = tyre_info.get("current-wear") or {}
+            core_temps = tyre_info.get("inner-temps") or {}
+            surface_temps = tyre_info.get("surface-temps") or {}
+            for wear_key, temp_key, prefix in self.TYRES:
+                self.set_qml_property(f"{prefix}Wear", self._round_wear(wear.get(wear_key)))
+                self.set_qml_property(f"{prefix}CoreTemp", self._temp(core_temps.get(temp_key)))
+                self.set_qml_property(f"{prefix}SurfaceTemp", self._temp(surface_temps.get(temp_key)))
 
-        return [
-            {
-                "position": position,
-                "compoundIcon": icon,
-                "wear": wear.get(wear_key),
-                "coreTemp": core_temps.get(temp_key),
-                "surfaceTemp": surface_temps.get(temp_key),
-            }
-            for wear_key, temp_key, position in self.TYRES
-        ]
+    def _round_wear(self, value: Any) -> float:
+        # Rounded here so sub-display changes hit the property cache instead of QML.
+        return self.NO_DATA if value is None else round(float(value), self.WEAR_DECIMALS)
+
+    def _temp(self, value: Any) -> float:
+        return self.NO_DATA if value is None else float(value)
+
+    def _clear_tyres(self) -> None:
+        for _, _, prefix in self.TYRES:
+            for suffix in ("Wear", "CoreTemp", "SurfaceTemp"):
+                self.set_qml_property(f"{prefix}{suffix}", self.NO_DATA)
+
+    def _clear(self) -> None:
+        self.set_qml_property("compoundIcon", "")
+        self._clear_tyres()
