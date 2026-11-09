@@ -172,6 +172,21 @@ def test_recorder_lap_distance_decrease_dropped():
     }
 
 
+@pytest.mark.parametrize("distance", [41.0, 40.0], ids=["moving", "stationary"])
+def test_recorder_lap_time_decrease_dropped(distance):
+    # The race end zeroes the AI cars' lap timers while lap_distance still creeps forward
+    recorder = _recorder()
+    _drive(recorder, [0.0, 20.0, 40.0], lap=5, t0=1000)
+    recorder.update(_FakeSnapshot(lap_distance=distance, lap_time_ms=16, speed=999.0, gear=9),
+                    frame_id=next(_FRAME_IDS), lap_number=5)
+
+    telemetry = recorder.export().in_progress_lap.telemetry
+
+    assert telemetry["lap_distance"] == [0.0, 20.0, 40.0]
+    assert telemetry["lap_time_ms"] == [1000, 1100, 1200]
+
+
+
 def test_recorder_missing_sample_value_is_nan():
     # Every sensor is stored float32 now -- NaN is the only missing-value marker,
     # for continuous and discrete sensors alike.

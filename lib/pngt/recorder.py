@@ -85,18 +85,23 @@ class DriverTelemetryRecorder(Generic[S]):
     def update(self, snapshot: S, frame_id: int, lap_number: int) -> None:
         """Called on every lap data packet, with the sim's current lap number."""
         lap_distance_buffer = self._current_buffers["lap_distance"]
-
         if not lap_distance_buffer:
             self._append_sample(snapshot, frame_id)
             if self._current_lap_number is None:
                 self._current_lap_number = lap_number
-        else:
-            last_distance = lap_distance_buffer[-1]
-            if snapshot.lap_distance > last_distance:
-                self._append_sample(snapshot, frame_id)
-            elif snapshot.lap_distance == last_distance:
-                self._overwrite_last_sample(snapshot, frame_id)
-            # else: lap_distance < last_distance -- drop, a sim reporting edge case.
+            return
+
+        # Lap timer went back -- drop. F1 zeroes the AI cars' lap timers mid-lap when the player
+        # finishes the race. A flashback landing that rewinds the timer is dropped too; accepted.
+        if snapshot.lap_time_ms < self._current_buffers["lap_time_ms"][-1]:
+            return
+
+        last_distance = lap_distance_buffer[-1]
+        if snapshot.lap_distance > last_distance:
+            self._append_sample(snapshot, frame_id)
+        elif snapshot.lap_distance == last_distance:
+            self._overwrite_last_sample(snapshot, frame_id)
+        # else: lap_distance went back -- drop, a sim reporting edge case.
 
     def on_lap_change(self, metadata: LapMetadata) -> None:
         """Called when the sim's lap number increments by 1."""
