@@ -34,6 +34,7 @@ from .standalone_host import StandalonePageHost
 from .traffic_monitor.traffic_monitor_page import TrafficMonitorPage
 from .tyre_sets.tyre_sets_page import TyreSetsPage
 from .tyre_wear.tyre_wear_page import TyreInfoPage
+from .tyres_status.tyres_status_page import TyresStatusPage
 from .weather.weather import WeatherForecastPage
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -52,4 +53,5 @@ __all__ = [
     "TrafficMonitorPage",
     "LastCornerStatsPage",
     "RivalsStatusPage",
+    "TyresStatusPage",
 ]
