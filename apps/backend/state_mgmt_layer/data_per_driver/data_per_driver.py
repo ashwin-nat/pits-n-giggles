@@ -698,7 +698,7 @@ class DataPerDriver:
                 lap_time_ms=None,
                 valid=False,
                 tyre_compound=self._getCurrentTyreCompoundStr(),
-                tyre_laps=69, # TODO
+                tyre_laps=self._getCurrentTyreAgeLaps(),
                 pit_in_lap=False,
                 pit_out_lap=False,
                 ers_harvest_limit_j=self._getMgukHarvLimitPerLapJ(),
@@ -1086,6 +1086,16 @@ class DataPerDriver:
         """
         compound = self.m_tyre_info.tyre_vis_compound
         return str(compound) if compound is not None else ""
+
+    def _getCurrentTyreAgeLaps(self) -> int:
+        """Get the current tyre set's age in laps for pngt export. 0 if not yet known (e.g. no
+        car status packet received yet).
+
+        Returns:
+            int: The tyre age in laps, or 0 if unknown
+        """
+        age = self.m_tyre_info.tyre_age
+        return age if age is not None else 0
 
     def _getCurrentTyreSetKey(self) -> Optional[str]:
         """Get the unique ID key for the currently equipped tyre set
@@ -1577,7 +1587,8 @@ class DataPerDriver:
         raw_lap_distance = self.m_lap_info.m_lap_dist_raw
 
         snapshot = TelemetrySnapshot(
-            # TODO: re-evaluate if normalized can be used
+            # Raw, not wrapped: the recorder and flashback rollback need distance rising through
+            # the lap, and pngt treats negative samples as before the line (out lap).
             lap_distance=raw_lap_distance,
             lap_time_ms=self.m_lap_info.m_curr_lap_ms,
 
@@ -1669,7 +1680,7 @@ class DataPerDriver:
                 metadata=replace(
                     in_progress_lap.metadata,
                     tyre_compound=self._getCurrentTyreCompoundStr(),
-                    tyre_laps=69, # TODO
+                    tyre_laps=self._getCurrentTyreAgeLaps(),
                     pit_in_lap=False,
                     pit_out_lap=False,
                     ers_harvest_limit_j=self._getMgukHarvLimitPerLapJ(),
