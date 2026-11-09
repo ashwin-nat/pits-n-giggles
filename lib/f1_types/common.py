@@ -33,7 +33,7 @@ import math
 from abc import abstractmethod
 from typing import Any, Dict, List, Set
 
-from .base_pkt import F1BaseEnum, F1CompareableEnum
+from .base_pkt import F1BaseEnum, F1CompareableEnum, F1RawValueEnum
 
 # -------------------- CAR COUNT HELPERS -------------------------------------------------------------------------------
 
@@ -715,9 +715,12 @@ class GearboxAssistMode(F1BaseEnum):
         """
         return self.name.replace('_', ' ').title()
 
-class TrackID(F1BaseEnum):
+class TrackID(F1RawValueEnum):
     """
     Enum class representing F1 track IDs and their corresponding names.
+
+    Undeclared values from the game behave exactly like UNKNOWN, but retain the
+    original wire value via `raw_value`.
     """
     Melbourne = 0
     Paul_Ricard = 1
@@ -756,6 +759,12 @@ class TrackID(F1BaseEnum):
     Austria_Reverse = 40
     Zandvoort_Reverse = 41
     Madrid = 42
+    UNKNOWN = 255
+
+    @classmethod
+    def safeCast(cls, value: int) -> "TrackID":
+        """Safely cast an integer to a TrackID enum, returning UNKNOWN for invalid values."""
+        return super().safeCast(value, cls.UNKNOWN)
 
     def __str__(self):
         """
