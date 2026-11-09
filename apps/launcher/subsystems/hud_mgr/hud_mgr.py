@@ -581,6 +581,8 @@ class HudAppMgr(PngAppMgrBase):
                 "show_last_corner_stats",
                 "show_rivals_status",
                 "rivals_status_show_title",
+                "show_tyres_status",
+                "tyres_status_show_title",
             ],
             "Network": [
                 "broker_xpub_port",
