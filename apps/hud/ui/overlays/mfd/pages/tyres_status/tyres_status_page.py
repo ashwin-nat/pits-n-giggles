@@ -67,17 +67,18 @@ class TyresStatusPage(MfdPageBase):
         @self.on_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             ref_row = get_ref_row(data)
-            if not ref_row:
+            tyre_info: Dict[str, Any] = ref_row.get("tyre-info") if ref_row else None
+            telemetry_setting = ref_row.get("driver-info", {}).get("telemetry-setting") if ref_row else None
+            if not tyre_info or telemetry_setting is None:
                 self._clear()
                 return
 
-            tyre_info: Dict[str, Any] = ref_row["tyre-info"]
             # Subscript, not .get(): unmapped compounds need the defaultdict __missing__.
             self.set_qml_property("compoundIcon", self.tyre_icon_uris[tyre_info.get("visual-tyre-compound", "UNKNOWN")])
 
-            self.set_qml_property("tyreAge", tyre_info.get("tyre-age") or 0)  # 0 is a fresh set
+            self.set_qml_property("tyreAge", tyre_info["tyre-age"])
 
-            telemetry_public = ref_row["driver-info"]["telemetry-setting"] == "Public"
+            telemetry_public = telemetry_setting == "Public"
             self.set_qml_property("telemetryDisabled", not telemetry_public)
             if not telemetry_public:
                 self._clear_tyres()
