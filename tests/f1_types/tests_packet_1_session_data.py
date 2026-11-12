@@ -26,7 +26,7 @@ import pytest
 
 from lib.f1_types import (F1PacketType, PacketSessionData, SessionType23,
                           SessionType24, TrackID)
-from .tests_parser_base import F1TypesTest
+from .tests_parser_base import F1TypesTest, assert_all_slots_set
 
 class TestPacketSessionData(F1TypesTest):
     """
@@ -484,9 +484,6 @@ class TestPacketSessionData(F1TypesTest):
 
 # ------------------------- from_values ------------------------------------------------------------------------------
 
-def _all_slots(obj):
-    return [slot for klass in type(obj).__mro__ for slot in getattr(klass, "__slots__", ())]
-
 @pytest.mark.parametrize("game_year", [23, 24, 25, 26])
 def test_from_values_sets_the_given_fields_and_every_slot(game_year):
     session_type = SessionType23.RACE if game_year == 23 else SessionType24.RACE
@@ -501,6 +498,5 @@ def test_from_values_sets_the_given_fields_and_every_slot(game_year):
     assert packet.m_trackLength == 5807
     assert packet.m_sessionDuration != 0
     assert packet.m_spectatorCarIndex == 255
-    for slot in _all_slots(packet):
-        getattr(packet, slot)
+    assert_all_slots_set(packet)
     packet.toJSON(include_header=True)

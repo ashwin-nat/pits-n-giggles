@@ -24,7 +24,7 @@ import pytest
 
 from lib.f1_types import (F1PacketType, LapHistoryData, PacketCountValidationError,
                           PacketSessionHistoryData)
-from .tests_parser_base import F1TypesTest
+from .tests_parser_base import F1TypesTest, assert_all_slots_set
 
 class TestPacketSessionHistoryData(F1TypesTest):
     """
@@ -159,9 +159,6 @@ class TestPacketSessionHistoryData(F1TypesTest):
 
 # ------------------------- from_values ------------------------------------------------------------------------------
 
-def _all_slots(obj):
-    return [slot for klass in type(obj).__mro__ for slot in getattr(klass, "__slots__", ())]
-
 @pytest.mark.parametrize("valid", [True, False])
 def test_lap_history_from_values_sets_time_and_validity(valid):
     lap = LapHistoryData.from_values(92_000, valid=valid)
@@ -183,6 +180,5 @@ def test_session_history_from_values_sets_the_given_fields_and_every_slot():
     assert packet.m_lapHistoryData == laps
     assert packet.m_tyreStintsHistoryData == []
     assert not packet.is_valid
-    for slot in _all_slots(packet):
-        getattr(packet, slot)
+    assert_all_slots_set(packet)
     packet.toJSON(include_header=True)

@@ -321,6 +321,22 @@ class PacketEventData(F1PacketBase):
             """
             return not self.__eq__(other)
 
+        @classmethod
+        def from_values(cls, vehicle_idx: int) -> "PacketEventData.Retirement":
+            """Create a Retirement object from values. The reason is INVALID, as parsing gives for
+            formats before 2025.
+
+            Args:
+                vehicle_idx (int): Index of the vehicle that retired
+
+            Returns:
+                PacketEventData.Retirement: The created object
+            """
+            obj = cls.__new__(cls)
+            obj.vehicleIdx = vehicle_idx
+            obj.m_reason = PacketEventData.Retirement.Reason.INVALID
+            return obj
+
     class DrsDisabled(EventType):
         """
         The class representing the DRSEVENT disabled event. This is sent when DRS is disabled
@@ -808,6 +824,27 @@ class PacketEventData(F1PacketBase):
 
             return not self.__eq__(other)
 
+        @classmethod
+        def from_values(cls, vehicle_idx: int, speed: float) -> "PacketEventData.SpeedTrap":
+            """Create a SpeedTrap object from values. Neither fastest flag is set, the session
+            fastest vehicle index is 255 (none) and the session fastest speed is 0.0.
+
+            Args:
+                vehicle_idx (int): Index of the vehicle through the speed trap
+                speed (float): Speed through the trap
+
+            Returns:
+                PacketEventData.SpeedTrap: The created object
+            """
+            obj = cls.__new__(cls)
+            obj.vehicleIdx = vehicle_idx
+            obj.speed = speed
+            obj.isOverallFastestInSession = False
+            obj.isDriverFastestInSession = False
+            obj.fastestVehicleIdxInSession = 255
+            obj.fastestSpeedInSession = 0.0
+            return obj
+
     class StartLights(EventType):
         """
         The class representing the START LIGHTS event. This is sent when the start lights sequence begins.
@@ -1111,6 +1148,21 @@ class PacketEventData(F1PacketBase):
             """
             return not self.__eq__(other)
 
+        @classmethod
+        def from_values(cls, frame_identifier: int) -> "PacketEventData.Flashback":
+            """Create a Flashback object from values. The session time is 0.0.
+
+            Args:
+                frame_identifier (int): Frame identifier flashed back to
+
+            Returns:
+                PacketEventData.Flashback: The created object
+            """
+            obj = cls.__new__(cls)
+            obj.flashbackFrameIdentifier = frame_identifier
+            obj.flashbackSessionTime = 0.0
+            return obj
+
     class Buttons(EventType):
         """
         Represents a packet containing button press information.
@@ -1356,6 +1408,24 @@ class PacketEventData(F1PacketBase):
 
             return self.overtakingVehicleIdx != other.overtakingVehicleIdx or \
                 self.beingOvertakenVehicleIdx != other.beingOvertakenVehicleIdx
+
+        @classmethod
+        def from_values(cls,
+                        overtaking_vehicle_idx: int,
+                        being_overtaken_vehicle_idx: int) -> "PacketEventData.Overtake":
+            """Create an Overtake object from values.
+
+            Args:
+                overtaking_vehicle_idx (int): Index of the overtaking vehicle
+                being_overtaken_vehicle_idx (int): Index of the vehicle being overtaken
+
+            Returns:
+                PacketEventData.Overtake: The created object
+            """
+            obj = cls.__new__(cls)
+            obj.overtakingVehicleIdx = overtaking_vehicle_idx
+            obj.beingOvertakenVehicleIdx = being_overtaken_vehicle_idx
+            return obj
 
     class SafetyCarEvent(EventType):
         """

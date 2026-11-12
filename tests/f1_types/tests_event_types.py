@@ -22,12 +22,15 @@
 
 import logging
 import random
+from typing import Union
+
 import pytest
 
-from lib.f1_types import (F1PacketType, PacketEventData, PacketHeader,
-                          UnsupportedValueError)
+from lib.f1_types import (F1PacketBase, F1PacketType, PacketEventData,
+                          PacketHeader, UnsupportedValueError)
+from lib.f1_types.base_pkt import F1SubPacketBase
 from lib.telemetry_manager.factory import PacketParserFactory
-from tests.f1_types.tests_parser_base import F1TypesTest
+from tests.f1_types.tests_parser_base import F1TypesTest, assert_all_slots_set
 
 Collision = PacketEventData.Collision
 CollisionSeverity = PacketEventData.Collision.CollisionSeverity
@@ -212,3 +215,58 @@ def test_new_no_payload_events_parse(code, event_type):
     assert not parsed.m_eventCode.is_unknown()
     assert parsed.mEventDetails is None
     assert parsed.toJSON() == {"event-string-code": code, "event-details": None}
+
+
+# -------------------------------------- from_values -------------------------------------------------------------------
+
+def _assert_fully_built(obj: Union[F1SubPacketBase, F1PacketBase]):
+    assert_all_slots_set(obj)
+    obj.toJSON()
+
+
+def test_flashback_from_values():
+    flashback = PacketEventData.Flashback.from_values(frame_identifier=4321)
+
+    assert flashback.flashbackFrameIdentifier == 4321
+    assert flashback.flashbackSessionTime == 0.0
+    _assert_fully_built(flashback)
+
+
+def test_overtake_from_values():
+    overtake = PacketEventData.Overtake.from_values(overtaking_vehicle_idx=3, being_overtaken_vehicle_idx=7)
+
+    assert (overtake.overtakingVehicleIdx, overtake.beingOvertakenVehicleIdx) == (3, 7)
+    _assert_fully_built(overtake)
+
+
+def test_speed_trap_from_values():
+    speed_trap = PacketEventData.SpeedTrap.from_values(vehicle_idx=5, speed=321.5)
+
+    assert (speed_trap.vehicleIdx, speed_trap.speed) == (5, 321.5)
+    assert speed_trap.isOverallFastestInSession is False
+    assert speed_trap.isDriverFastestInSession is False
+    assert speed_trap.fastestVehicleIdxInSession == 255
+    _assert_fully_built(speed_trap)
+
+
+def test_retirement_from_values():
+    retirement = PacketEventData.Retirement.from_values(vehicle_idx=9)
+
+    assert retirement.vehicleIdx == 9
+    assert retirement.m_reason == PacketEventData.Retirement.Reason.INVALID
+    _assert_fully_built(retirement)
+
+
+@pytest.mark.parametrize("game_year", [23, 24, 25, 26])
+def test_buttons_from_status_roundtrip(game_year):
+    header = _make_event_header(game_year)
+    status = PacketEventData.Buttons.udp_action_flag(5) | PacketEventData.Buttons.CROSS_A
+    generated = PacketEventData.from_values(header, PacketEventData.EventPacketType.BUTTON_STATUS,
+                                            PacketEventData.Buttons.from_status(status))
+
+    raw = generated.to_bytes(include_header=True)
+    parsed = PacketEventData(PacketHeader(raw[:PacketHeader.PACKET_LEN]), raw[PacketHeader.PACKET_LEN:])
+
+    assert parsed.m_eventCode == PacketEventData.EventPacketType.BUTTON_STATUS
+    assert parsed.mEventDetails == generated.mEventDetails
+    assert parsed.mEventDetails.isUDPActionPressed(5)
