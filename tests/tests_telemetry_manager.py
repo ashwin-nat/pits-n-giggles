@@ -22,7 +22,9 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
+import json
 import logging
+import os
 from types import SimpleNamespace
 from typing import List
 
@@ -30,6 +32,7 @@ import pytest
 
 from lib.f1_types import F1PacketType
 from lib.telemetry_manager import AsyncF1TelemetryManager, F1TelemetryManagerBase
+from lib.telemetry_manager.exceptions import UnsupportedPacketType
 
 # ------------------------- HELPERS ------------------------------------------------------------------------------------
 
@@ -40,7 +43,10 @@ def _packet(packet_id: F1PacketType, overall_frame: int, session_uid: int = 1) -
         m_overallFrameIdentifier=overall_frame,
         m_sessionUID=session_uid,
     )
-    return SimpleNamespace(m_header=header)
+    return SimpleNamespace(
+        m_header=header,
+        toJSON=lambda include_header=False: {"header": {"frame": overall_frame}, "body": 1},
+    )
 
 def _manager(frame_gate_enabled: bool = False) -> F1TelemetryManagerBase:
     return F1TelemetryManagerBase(logging.getLogger("tests_telemetry_manager"), frame_gate_enabled)
@@ -125,3 +131,38 @@ def test_async_manager_stats_add_the_transport_entry():
 def test_registering_an_invalid_packet_type_raises():
     with pytest.raises(ValueError):
         _manager().on_packet(999)
+
+async def test_unregistered_packet_type_raises_and_leaves_the_gate_alone():
+    manager = _manager(frame_gate_enabled=True)
+
+    @manager.on_packet(F1PacketType.LAP_DATA)
+    async def _typed(_packet):
+        pass
+
+    with pytest.raises(UnsupportedPacketType):
+        await manager._dispatch(_packet(F1PacketType.EVENT, 10))
+
+    # The gate never saw the EVENT packet, so the same frame still accepts it once registered
+    @manager.on_packet(F1PacketType.EVENT)
+    async def _event(_packet):
+        pass
+
+    await manager._dispatch(_packet(F1PacketType.EVENT, 10))
+    assert str(F1PacketType.EVENT) in manager.getStats()["packets"]["__PROCESSED__"]
+
+async def test_raising_callback_logs_single_line_json_and_writes_no_file(caplog, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    manager = _manager()
+
+    @manager.on_packet(F1PacketType.LAP_DATA)
+    async def _typed(_packet):
+        raise RuntimeError("boom")
+
+    with caplog.at_level(logging.ERROR, logger="tests_telemetry_manager"):
+        with pytest.raises(RuntimeError):
+            await manager._dispatch(_packet(F1PacketType.LAP_DATA, 1))
+
+    packet_line = next(l for l in caplog.messages[0].splitlines() if l.startswith("Packet: "))
+    assert json.loads(packet_line.removeprefix("Packet: ")) == {"header": {"frame": 1}, "body": 1}
+    assert "__EXCEPTION_CB__" in manager.getStats()["packets"]
+    assert not os.listdir(tmp_path)

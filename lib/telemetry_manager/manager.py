@@ -24,8 +24,6 @@
 
 import asyncio
 import json
-import os
-from datetime import datetime
 from logging import Logger
 from typing import Awaitable, Callable, Dict, Optional
 
@@ -123,6 +121,11 @@ class F1TelemetryManagerBase:
             size (int): Raw packet size in bytes, used only for stats
         """
 
+        packet_id = parsed_obj.m_header.m_packetId
+        callback = self.m_callbacks.get(packet_id)
+        if callback is None:
+            raise UnsupportedPacketType(packet_id)
+
         if self.m_frame_gate.should_drop(parsed_obj):
             self.m_stats.track_packet(
                 "__DROPPED_PACKETS_FRAME_GATE__",
@@ -139,54 +142,26 @@ class F1TelemetryManagerBase:
 
         # Perform the registered callback
         try:
-            await self.m_callbacks[parsed_obj.m_header.m_packetId](parsed_obj)
+            await callback(parsed_obj)
             self.m_stats.track_packet(
                 "__PROCESSED__",
-                str(parsed_obj.m_header.m_packetId),
+                str(packet_id),
                 size,
             )
         except Exception as e:
-            packet_file = self._dumpPacketToFile(parsed_obj)
             self.m_stats.track_packet(
                 "__EXCEPTION_CB__",
-                str(parsed_obj.m_header.m_packetId),
+                str(packet_id),
                 size)
             self.m_logger.exception(
                 "Exception while handling packet callback.\n"
-                "Packet type: %s\nException type: %s\nMessage: %s\n"
-                "Header: %s\nPacket dumped to: %s",
-                str(parsed_obj.m_header.m_packetId),
+                "Packet type: %s\nException type: %s\nMessage: %s\nPacket: %s",
+                str(packet_id),
                 type(e).__name__,
                 str(e),
-                json.dumps(parsed_obj.m_header.toJSON(), indent=2),
-                packet_file,
+                json.dumps(parsed_obj.toJSON(include_header=True)),
             )
             raise
-
-    def _dumpPacketToFile(self, packet_obj: object, directory: str = "crash_packet_dumps") -> str:
-        """Dump packet JSON to a timestamped file and return the file path.
-
-        Args:
-            packet_obj (object): The packet object to dump.
-            directory (str, optional): The directory to dump the packet to. Defaults to "crash_packet_dumps".
-
-        Returns:
-            str: The file path of the dumped packet.
-
-        """
-        os.makedirs(directory, exist_ok=True)
-
-        timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
-        filename = f"{timestamp}.json"
-        filepath = os.path.join(directory, filename)
-
-        try:
-            with open(filepath, "w", encoding="utf-8") as f:
-                json.dump(packet_obj.toJSON(), f, ensure_ascii=False, indent=2)
-            return filepath
-        except Exception as e: # pylint: disable=broad-exception-caught
-            return f"<Failed to write packet to file: {e}>"
-
 
 class AsyncF1TelemetryManager(F1TelemetryManagerBase):
     """
