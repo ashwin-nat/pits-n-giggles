@@ -1732,3 +1732,54 @@ class PacketSessionData(F1PacketBase):
             self.m_dynamicRacingLineColourBlind == other.m_dynamicRacingLineColourBlind and
             self.m_recurringRewindPrompt == other.m_recurringRewindPrompt
         )
+
+    @classmethod
+    def from_values(cls,
+                    header: PacketHeader,
+                    session_type: Union[SessionType23, SessionType24],
+                    track_id: TrackID,
+                    total_laps: int,
+                    track_length: int) -> "PacketSessionData":
+        """Create a PacketSessionData object from values. Every other field is what the parser
+        produces from zero bytes for header.m_packetFormat, except the ones noted inline.
+
+        Args:
+            header (PacketHeader): Packet header. Its packet format decides which sections exist.
+            session_type (Union[SessionType23, SessionType24]): SessionType23 for format 2023, else SessionType24
+            track_id (TrackID): Track
+            total_laps (int): Total laps in the session
+            track_length (int): Track length in metres
+
+        Returns:
+            PacketSessionData: The created object
+        """
+
+        fmt = header.m_packetFormat
+        data = cls.COMPILED_PACKET_STRUCT_SECTION_0.pack(
+            0, 0, 0,        # weather, track temp, air temp
+            total_laps,
+            track_length,
+            session_type.value,
+            track_id.value,
+            0,              # formula
+            # Non-zero: a zero duration is the game's menu packet, which the handler clears on
+            3600, 3600,     # time left, duration
+            0, 0, 0,        # pit speed limit, game paused, spectating
+            255,            # spectator car index - 255 is the game's "none"
+            0, 0,           # SLI Pro support, num marshal zones
+        )
+        # Fixed-size arrays are always on the wire at their max length, whatever the count
+        max_forecast_samples = (cls.F1_23_MAX_NUM_WEATHER_FORECAST_SAMPLES if fmt == 2023
+                                else cls.F1_24_MAX_NUM_WEATHER_FORECAST_SAMPLES)
+        zeros_len = (cls.F1_23_MAX_NUM_MARSHAL_ZONES * MarshalZone.PACKET_LEN +
+                     cls.PACKET_LEN_SECTION_2 +
+                     max_forecast_samples * WeatherForecastSample.PACKET_LEN +
+                     cls.PACKET_LEN_SECTION_4)
+        if fmt >= 2024:
+            zeros_len += cls.PACKET_LEN_SECTION_5
+        if fmt == 2026:
+            zeros_len += (cls.PACKET_LEN_SECTION_6_A + cls.PACKET_LEN_SECTION_6_B +
+                          cls.PACKET_LEN_SECTION_6_C + cls.PACKET_LEN_SECTION_6_D +
+                          2 * cls.F1_26_MAX_NUM_ACTIVE_AERO_ZONES * ActiveAeroZone.PACKET_LEN +
+                          cls.F1_26_MAX_NUM_DRS_ZONES * DRSZone.PACKET_LEN)
+        return cls(header, data + bytes(zeros_len))

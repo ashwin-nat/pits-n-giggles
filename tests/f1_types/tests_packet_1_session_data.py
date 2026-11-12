@@ -21,7 +21,11 @@
 # SOFTWARE.
 
 import random
-from lib.f1_types import PacketSessionData, F1PacketType
+
+import pytest
+
+from lib.f1_types import (F1PacketType, PacketSessionData, SessionType23,
+                          SessionType24, TrackID)
 from .tests_parser_base import F1TypesTest
 
 class TestPacketSessionData(F1TypesTest):
@@ -477,3 +481,26 @@ class TestPacketSessionData(F1TypesTest):
         self.jsonComparisionUtil(expected_json, parsed_json)
         self.assertFalse(hasattr(parsed_packet, '__dict__'))
         self.assertEqual(parsed_packet, PacketSessionData(random_header, packet))
+
+# ------------------------- from_values ------------------------------------------------------------------------------
+
+def _all_slots(obj):
+    return [slot for klass in type(obj).__mro__ for slot in getattr(klass, "__slots__", ())]
+
+@pytest.mark.parametrize("game_year", [23, 24, 25, 26])
+def test_from_values_sets_the_given_fields_and_every_slot(game_year):
+    session_type = SessionType23.RACE if game_year == 23 else SessionType24.RACE
+    header = F1TypesTest.getRandomHeader(F1PacketType.SESSION, game_year)
+
+    packet = PacketSessionData.from_values(header, session_type, TrackID.Suzuka, total_laps=5, track_length=5807)
+
+    assert packet.m_header is header
+    assert packet.m_sessionType == session_type
+    assert packet.m_trackId == TrackID.Suzuka
+    assert packet.m_totalLaps == 5
+    assert packet.m_trackLength == 5807
+    assert packet.m_sessionDuration != 0
+    assert packet.m_spectatorCarIndex == 255
+    for slot in _all_slots(packet):
+        getattr(packet, slot)
+    packet.toJSON(include_header=True)

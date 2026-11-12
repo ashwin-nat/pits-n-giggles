@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Optional
 
 from .base_pkt import F1PacketBase, F1SubPacketBase
 from .common import ActualTyreCompound, F1Utils, VisualTyreCompound
+from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -233,6 +234,22 @@ class LapHistoryData(F1SubPacketBase):
             int: The total time in milliseconds.
         """
         return (min_part * 60 * 1000) + ms_part
+
+    @classmethod
+    def from_values(cls, lap_time_ms: int, valid: bool) -> "LapHistoryData":
+        """Create a LapHistoryData object from values. Sector times are zero.
+
+        Args:
+            lap_time_ms (int): Lap time in milliseconds
+            valid (bool): Sets (True) or clears (False) the lap and all three sector valid flags
+
+        Returns:
+            LapHistoryData: The created object
+        """
+
+        flags = (cls.FULL_LAP_VALID_BIT_MASK | cls.SECTOR_1_VALID_BIT_MASK |
+                 cls.SECTOR_2_VALID_BIT_MASK | cls.SECTOR_3_VALID_BIT_MASK) if valid else 0
+        return cls(cls.COMPILED_PACKET_STRUCT.pack(lap_time_ms, 0, 0, 0, 0, 0, 0, flags))
 
     def __eq__(self, other: "LapHistoryData") -> bool:
         """Check if two LapHistoryData objects are equal
@@ -555,6 +572,36 @@ class PacketSessionHistoryData(F1PacketBase):
             and self.m_bestSector2LapNum > 0
             and self.m_bestSector3LapNum > 0
         )
+
+    @classmethod
+    def from_values(cls,
+                    header: PacketHeader,
+                    car_idx: int,
+                    lap_history: List[LapHistoryData]) -> "PacketSessionHistoryData":
+        """Create a PacketSessionHistoryData object from values. There are no tyre stints, and the
+        best lap and sector lap numbers are 0 (none yet).
+
+        Args:
+            header (PacketHeader): Packet header
+            car_idx (int): Index of the car this history belongs to
+            lap_history (List[LapHistoryData]): One entry per lap, including the current partial lap
+
+        Returns:
+            PacketSessionHistoryData: The created object
+        """
+
+        obj = cls.__new__(cls)
+        super(PacketSessionHistoryData, obj).__init__(header)
+        obj.m_carIdx = car_idx
+        obj.m_numLaps = len(lap_history)
+        obj.m_numTyreStints = 0
+        obj.m_bestLapTimeLapNum = 0
+        obj.m_bestSector1LapNum = 0
+        obj.m_bestSector2LapNum = 0
+        obj.m_bestSector3LapNum = 0
+        obj.m_lapHistoryData = list(lap_history)
+        obj.m_tyreStintsHistoryData = []
+        return obj
 
     def __eq__(self, other: "PacketSessionHistoryData") -> bool:
         """
