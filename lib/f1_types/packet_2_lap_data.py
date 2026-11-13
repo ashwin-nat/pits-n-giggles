@@ -27,7 +27,7 @@ from typing import Any, Dict, List, final
 from .base_pkt import (F1BaseEnum, F1CompareableEnum, F1PacketBase,
                        F1SubPacketBase)
 from .common import F1Utils, ResultStatus, get_num_cars
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -514,13 +514,29 @@ class LapData(F1SubPacketBase):
         """
         return not self.__eq__(other)
 
-    def to_bytes(self) -> bytes:
-        """Serialize LapData to bytes using the F1 24+ struct (same for F1 25/26).
+    @classmethod
+    def _pack(cls, packet_format: int, fields: tuple) -> bytes:
+        """Pack fields given in F1 24+ struct order into the wire layout for packet_format.
+
+        Args:
+            packet_format (int): The packet format
+            fields (tuple): Every field, in COMPILED_PACKET_STRUCT_24 order
 
         Returns:
             bytes: The serialized bytes.
         """
-        return self.COMPILED_PACKET_STRUCT_24.pack(
+        if packet_format == 2023:
+            # 2023 has no delta minute parts (indices 7 and 9) and no speed trap fields (the last two)
+            return cls.COMPILED_PACKET_STRUCT_23.pack(*(fields[:7] + fields[8:9] + fields[10:-2]))
+        return cls.COMPILED_PACKET_STRUCT_24.pack(*fields)
+
+    def to_bytes(self) -> bytes:
+        """Serialize LapData to bytes in the wire layout for its packet format.
+
+        Returns:
+            bytes: The serialized bytes.
+        """
+        return self._pack(self.m_packetFormat, (
             self.m_lastLapTimeInMS,
             self.m_currentLapTimeInMS,
             self.m_sector1TimeInMS,
@@ -554,7 +570,7 @@ class LapData(F1SubPacketBase):
             self.m_pitStopShouldServePen,
             self.m_speedTrapFastestSpeed,
             self.m_speedTrapFastestLap,
-        )
+        ))
 
     @classmethod
     def from_values(cls,
@@ -592,12 +608,13 @@ class LapData(F1SubPacketBase):
                     speed_trap_fastest_speed: float,
                     speed_trap_fastest_lap: int,
                     packet_format: int = 2024) -> 'LapData':
-        """Create a LapData object from individual field values (F1 24+ format).
+        """Create a LapData object from individual field values. For packet_format 2023 the delta
+        minute parts and speed trap fields are not on the wire and read back as 0.
 
         Returns:
             LapData: A LapData object initialized with the provided values.
         """
-        data = cls.COMPILED_PACKET_STRUCT_24.pack(
+        data = cls._pack(packet_format, (
             last_lap_time_ms, current_lap_time_ms,
             sector1_time_ms, sector1_time_minutes,
             sector2_time_ms, sector2_time_minutes,
@@ -611,7 +628,7 @@ class LapData(F1SubPacketBase):
             result_status, pit_lane_timer_active, pit_lane_time_ms,
             pit_stop_timer_ms, pit_stop_should_serve_pen,
             speed_trap_fastest_speed, speed_trap_fastest_lap,
-        )
+        ))
         return cls(data, packet_format)
 
     @property
@@ -691,6 +708,8 @@ class PacketLapData(F1PacketBase):
         - m_timeTrialPBCarIdx (int) - Index of Personal Best car in time trial (255 if invalid)
         - m_timeTrialRivalCarIdx (int) - Index of Rival car in time trial (255 if invalid)
     """
+
+    PACKET_ID = F1PacketType.LAP_DATA
 
     MAX_CARS = 22
     MAX_CARS_2026 = 24

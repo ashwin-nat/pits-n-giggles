@@ -25,7 +25,7 @@ import struct
 from typing import Any, Dict, List, Union
 
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -191,6 +191,8 @@ class PacketCarTelemetry2Data(F1PacketBase):
         m_header (PacketHeader): Packet header.
         m_carTelemetry2Data (List[CarTelemetry2Data]): Per-car telemetry2 data, 24 entries.
     """
+
+    PACKET_ID = F1PacketType.CAR_TELEMETRY_2
 
     NUM_CARS = 24
 

@@ -208,18 +208,22 @@ TOKENS = [
      "HUD exited unexpectedly (code: 3221225477) | exiting with code -1073741819"),
 ]
 
-TOKEN_IDS = [p.strip("<:") for p, _, _, _ in TOKENS]
+# Parametrized by tag name: a function param shows in Allure as its repr, whose address changes every run
+TOKENS_BY_ID = {token[0].strip("<:"): token for token in TOKENS}
+TOKEN_IDS = list(TOKENS_BY_ID)
 
 
-@pytest.mark.parametrize("prefix, report_fn, extract_fn, payload", TOKENS, ids=TOKEN_IDS)
-def test_token_round_trip(prefix, report_fn, extract_fn, payload):
+@pytest.mark.parametrize("token_id", TOKEN_IDS)
+def test_token_round_trip(token_id):
     """What the child prints is what the parent parses back out."""
+    prefix, _, extract_fn, payload = TOKENS_BY_ID[token_id]
     assert extract_fn(f"{prefix}{payload}>>") == payload
 
 
-@pytest.mark.parametrize("prefix, report_fn, extract_fn, payload", TOKENS, ids=TOKEN_IDS)
-def test_token_extraction_ignores_unrelated_lines(prefix, report_fn, extract_fn, payload):
+@pytest.mark.parametrize("token_id", TOKEN_IDS)
+def test_token_extraction_ignores_unrelated_lines(token_id):
     """Noise, and the other tokens - the runner dispatches on these separately."""
+    prefix, _, extract_fn, _ = TOKENS_BY_ID[token_id]
     assert extract_fn("just a normal log line") is None
     assert extract_fn("") is None
 
@@ -228,23 +232,23 @@ def test_token_extraction_ignores_unrelated_lines(prefix, report_fn, extract_fn,
             assert extract_fn(f"{other_prefix}{other_payload}>>") is None
 
 
-@pytest.mark.parametrize("prefix, report_fn, extract_fn, payload", TOKENS, ids=TOKEN_IDS)
-def test_reporters_are_silent_outside_integration_mode(monkeypatch, capsys, prefix, report_fn,
-                                                       extract_fn, payload):
+@pytest.mark.parametrize("token_id", TOKEN_IDS)
+def test_reporters_are_silent_outside_integration_mode(monkeypatch, capsys, token_id):
     """A normal build must print nothing: report_integration_fail runs on the crash path."""
+    _, report_fn, _, payload = TOKENS_BY_ID[token_id]
     monkeypatch.delenv(_INTEGRATION_TEST_ENV_VAR, raising=False)
     report_fn(payload)
     assert capsys.readouterr().out == ""
 
 
-@pytest.mark.parametrize("prefix, report_fn, extract_fn, payload", TOKENS, ids=TOKEN_IDS)
-def test_reporters_emit_inside_integration_mode(monkeypatch, capsys, prefix, report_fn,
-                                                extract_fn, payload):
+@pytest.mark.parametrize("token_id", TOKEN_IDS)
+def test_reporters_emit_inside_integration_mode(monkeypatch, capsys, token_id):
     """The emit half of the round trip - what the runner's output pump actually reads.
 
     The silence test above only pins the early return, so without this the print itself is
     never executed and a broken token would ship green.
     """
+    prefix, report_fn, extract_fn, payload = TOKENS_BY_ID[token_id]
     monkeypatch.setenv(_INTEGRATION_TEST_ENV_VAR, "1")
     report_fn(payload)
     line = capsys.readouterr().out.strip()

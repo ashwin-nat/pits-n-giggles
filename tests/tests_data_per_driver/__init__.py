@@ -23,7 +23,6 @@
 from .tests_tyre_info import (
     TestTyreSetInfo,
     TestTyreSetHistoryEntry,
-    TestTyreSetHistoryManager,
 )
 
 
@@ -31,6 +30,5 @@ from .tests_tyre_info import (
 __all__ = [
     'TestTyreSetInfo',
     'TestTyreSetHistoryEntry',
-    'TestTyreSetHistoryManager',
 
 ]

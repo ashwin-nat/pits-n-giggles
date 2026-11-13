@@ -24,7 +24,7 @@
 import struct
 from typing import Any, Dict, List
 
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 from .base_pkt import F1PacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -41,6 +41,8 @@ class PacketLapPositionsData(F1PacketBase):
             Outer index = lap, inner index = car position entry (22 cars for pre-2026, 24 for 2026+).
         m_numCars (int): Number of cars in the array (22 for pre-2026, 24 for F1 26+).
     """
+
+    PACKET_ID = F1PacketType.LAP_POSITIONS
 
     MAX_CARS = 22
     MAX_CARS_2026 = 24

@@ -29,15 +29,14 @@ If any of these are missing, ask before proceeding.
      - `__init__(self, data: bytes)` that unpacks and assigns all fields
      - `__str__` and `toJSON()` methods matching the style of existing packets
    - Define the top-level `Packet<Name>` extending `F1PacketBase` with `from_bytes(cls, header, data)` classmethod
-   - Add `F1PacketType.<ENUM_NAME>` reference (check `lib/f1_types/base_pkt.py` for the enum)
+   - Add the `F1PacketType.<ENUM_NAME>` member in `lib/f1_types/header.py`, and set
+     `PACKET_ID = F1PacketType.<ENUM_NAME>` on the class. That registers it as the parser for that type;
+     `PacketParserFactory` looks it up from there, so the factory needs no edit
 
 3. **Register in `lib/f1_types/__init__.py`**:
    - Import the new class
    - Add it to `__all__` following the alphabetical/numeric order of existing exports
 
-4. **Register in `lib/telemetry_manager/factory.py`**:
-   - Read the file first
-   - Import the new packet class at the top
-   - Add it to the packet type → class mapping (the dispatch dict/match block)
+4. **Add the new type to the expected map** in `tests/f1_types/tests_base.py::test_parsers_match_the_packet_classes`
 
 5. **Summarise** what was created and which files were modified, including the struct format used and packet size in bytes.

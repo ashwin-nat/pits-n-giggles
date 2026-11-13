@@ -27,7 +27,7 @@ from typing import Any, Dict, List, Union
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
 from .common import (MAX_CARS_2026, ActualTyreCompound, TractionControlAssistMode,
                      VisualTyreCompound, get_num_cars)
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -702,6 +702,8 @@ class PacketCarStatusData(F1PacketBase):
         - m_header(PacketHeader) - packet header info
         - m_carStatusData(List[CarStatusData]) - List of statuses of every car
     """
+
+    PACKET_ID = F1PacketType.CAR_STATUS
 
     MAX_CARS = 24
 

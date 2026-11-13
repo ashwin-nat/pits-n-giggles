@@ -22,12 +22,15 @@
 
 import logging
 import random
+from typing import Union
+
 import pytest
 
-from lib.f1_types import (F1PacketType, PacketEventData, PacketHeader,
-                          UnsupportedValueError)
+from lib.f1_types import (F1PacketBase, F1PacketType, PacketEventData,
+                          PacketHeader, UnsupportedValueError)
+from lib.f1_types.base_pkt import F1SubPacketBase
 from lib.telemetry_manager.factory import PacketParserFactory
-from tests.f1_types.tests_parser_base import F1TypesTest
+from tests.f1_types.tests_parser_base import F1TypesTest, assert_all_slots_set
 
 Collision = PacketEventData.Collision
 CollisionSeverity = PacketEventData.Collision.CollisionSeverity
@@ -107,23 +110,24 @@ def _parse_event_code(code: bytes, game_year: int = 25) -> PacketEventData:
     return PacketEventData(header, code + b"\x00" * 32)
 
 
-@pytest.mark.parametrize("code", [b"ZZZZ", b"XYZW", b"1234"])
+# str params: allure-pytest shows every bytes value as "<class 'bytes'>", so Allure 3 merges the cases as retries
+@pytest.mark.parametrize("code", ["ZZZZ", "XYZW", "1234"])
 def test_unknown_event_code_is_rejected(code):
     # A PacketEventData is only meaningful if it identifies an event. An undeclared code
     # leaves nothing to act on, so the object must not be constructed at all
     with pytest.raises(UnsupportedValueError):
-        _parse_event_code(code)
+        _parse_event_code(code.encode("ascii"))
 
 
-@pytest.mark.parametrize("code", [b"ZZZZ", b"XYZW"])
+@pytest.mark.parametrize("code", ["ZZZZ", "XYZW"])
 def test_unknown_event_code_is_named_in_the_error(code):
     # The offending code has to reach the log, otherwise a newly added game event is
     # indistinguishable from silence
     with pytest.raises(UnsupportedValueError) as exc_info:
-        _parse_event_code(code)
+        _parse_event_code(code.encode("ascii"))
 
-    assert exc_info.value.m_value == code.decode("ascii")
-    assert code.decode("ascii") in str(exc_info.value)
+    assert exc_info.value.m_value == code
+    assert code in str(exc_info.value)
 
 
 def test_non_ascii_event_code_is_rejected():
@@ -212,3 +216,68 @@ def test_new_no_payload_events_parse(code, event_type):
     assert not parsed.m_eventCode.is_unknown()
     assert parsed.mEventDetails is None
     assert parsed.toJSON() == {"event-string-code": code, "event-details": None}
+
+
+# -------------------------------------- from_values -------------------------------------------------------------------
+
+def _assert_fully_built(obj: Union[F1SubPacketBase, F1PacketBase]):
+    assert_all_slots_set(obj)
+    obj.toJSON()
+
+
+def test_flashback_from_values():
+    flashback = PacketEventData.Flashback.from_values(frame_identifier=4321)
+
+    assert flashback.flashbackFrameIdentifier == 4321
+    assert flashback.flashbackSessionTime == 0.0
+    _assert_fully_built(flashback)
+
+
+def test_overtake_from_values():
+    overtake = PacketEventData.Overtake.from_values(overtaking_vehicle_idx=3, being_overtaken_vehicle_idx=7)
+
+    assert (overtake.overtakingVehicleIdx, overtake.beingOvertakenVehicleIdx) == (3, 7)
+    _assert_fully_built(overtake)
+
+
+def test_speed_trap_from_values():
+    speed_trap = PacketEventData.SpeedTrap.from_values(vehicle_idx=5, speed=321.5)
+
+    assert (speed_trap.vehicleIdx, speed_trap.speed) == (5, 321.5)
+    assert speed_trap.isOverallFastestInSession is False
+    assert speed_trap.isDriverFastestInSession is False
+    assert speed_trap.fastestVehicleIdxInSession == 255
+    _assert_fully_built(speed_trap)
+
+
+def test_speed_trap_from_values_reads_speed_back_as_float32():
+    # The same value a parsed packet carries, so from_values objects compare equal to parsed ones
+    speed_trap = PacketEventData.SpeedTrap.from_values(vehicle_idx=5, speed=321.7)
+
+    wire = PacketEventData.SpeedTrap.COMPILED_PACKET_STRUCT.pack(5, 321.7, 0, 0, 255, 0.0)
+    assert speed_trap == PacketEventData.SpeedTrap(wire, 2025)
+    assert speed_trap.speed != 321.7
+
+
+@pytest.mark.parametrize("packet_format", [2024, 2025])
+def test_retirement_from_values(packet_format):
+    retirement = PacketEventData.Retirement.from_values(vehicle_idx=9, packet_format=packet_format)
+
+    assert retirement.vehicleIdx == 9
+    assert retirement.m_reason == PacketEventData.Retirement.Reason.INVALID
+    _assert_fully_built(retirement)
+
+
+@pytest.mark.parametrize("game_year", [23, 24, 25, 26])
+def test_buttons_from_status_roundtrip(game_year):
+    header = _make_event_header(game_year)
+    status = PacketEventData.Buttons.udp_action_flag(5) | PacketEventData.Buttons.CROSS_A
+    generated = PacketEventData.from_values(header, PacketEventData.EventPacketType.BUTTON_STATUS,
+                                            PacketEventData.Buttons.from_status(status))
+
+    raw = generated.to_bytes(include_header=True)
+    parsed = PacketEventData(PacketHeader(raw[:PacketHeader.PACKET_LEN]), raw[PacketHeader.PACKET_LEN:])
+
+    assert parsed.m_eventCode == PacketEventData.EventPacketType.BUTTON_STATUS
+    assert parsed.mEventDetails == generated.mEventDetails
+    assert parsed.mEventDetails.isUDPActionPressed(5)

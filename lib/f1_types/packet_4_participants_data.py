@@ -29,7 +29,7 @@ from .common import (MAX_CARS_2026, Nationality, Platform, TelemetrySetting,
                      get_num_cars)
 from .team_id import (TeamID, TeamID23, TeamID24, TeamID25, TeamID26,
                       get_team_id)
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -680,6 +680,8 @@ class PacketParticipantsData(F1PacketBase):
             Note:
                 The length of m_participants should not exceed max_participants.
     """
+
+    PACKET_ID = F1PacketType.PARTICIPANTS
 
     MAX_PARTICIPANTS = 24
 

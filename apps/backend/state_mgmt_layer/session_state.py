@@ -665,8 +665,11 @@ class SessionState:
 
         # --- Handle speed trap records
         if is_speed_trap_supported:
+            # A driver with no LAP_DATA yet has no speed trap reading (None) - those sort last
             final_json["speed-trap-records"] = sorted(
-                speed_trap_records, key=lambda x: x["speed-trap-record-kmph"], reverse=True
+                speed_trap_records,
+                key=lambda x: (x["speed-trap-record-kmph"] is not None, x["speed-trap-record-kmph"] or 0.0),
+                reverse=True
             )
         else:
             final_json["speed-trap-records"] = []
@@ -1443,6 +1446,11 @@ class SessionState:
                 # UNKNOWN everywhere, but log the raw value so it can be added to the enum
                 self.m_logger.warning("Unrecognised formula type from game: %d. "
                                       "Treating as UNKNOWN", packet.m_formula.raw_value)
+            if packet.m_trackId.is_unknown():
+                # Same for the track. Track-specific logic (e.g. pit garage before the finish line) falls back to
+                # the default path for an unknown track
+                self.m_logger.warning("Unrecognised track ID from game: %d. "
+                                      "Treating as UNKNOWN", packet.m_trackId.raw_value)
 
         self.m_ideal_pit_stop_window = packet.m_pitStopWindowIdealLap
 

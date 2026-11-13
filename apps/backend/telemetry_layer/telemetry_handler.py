@@ -51,6 +51,7 @@ from lib.packet_forwarder import AsyncUDPForwarder
 from lib.save_to_disk import save_json_to_file
 from lib.subsystem import AsyncSubsystem, PngSubsysId, SubsystemTask
 from lib.telemetry_manager import (AsyncF1TelemetryManager,
+                                   F1TelemetryManagerBase,
                                    telemetry_transport_factory)
 from lib.wdt import WatchDogTimerAsync
 
@@ -122,10 +123,19 @@ def setupTelemetryTask(
         F1TelemetryHandler: Telemetry handler server
     """
 
+    settings = ctx.settings
+    transport = telemetry_transport_factory(
+        settings.Network.telemetry_port, replay_server, ctx.logger
+    )
+    manager = AsyncF1TelemetryManager(
+        transport=transport,
+        logger=ctx.logger,
+        frame_gate_enabled=settings.Network.enable_pkt_ordering
+    )
     telemetry_server = F1TelemetryHandler(
         ctx=ctx,
         session_state=session_state,
-        replay_server=replay_server,
+        manager=manager,
         packet_forward_queue=packet_forward_queue,
     )
     telemetry_server.register_tasks(ctx.subsystem)
@@ -144,29 +154,23 @@ class F1TelemetryHandler:
     def __init__(self,
         ctx: AppCtx,
         session_state: SessionState,
-        packet_forward_queue: asyncio.Queue,
-        replay_server: bool = False) -> None:
+        manager: F1TelemetryManagerBase,
+        packet_forward_queue: asyncio.Queue) -> None:
         """
-        Initialize F1TelemetryHandler.
+        Initialize F1TelemetryHandler. Registers the any-packet and typed callbacks on manager.
+        register_tasks() wires handleRawPacket and the receive loop, which only the async manager has.
 
         Parameters:
             - ctx (AppCtx): Backend app context (logger, settings, subsystem). The subsystem
                 is used for fire_and_forget (frontend/HUD notification dispatch) and its dealer.
             - session_state (SessionState): Handle to the session state
+            - manager (F1TelemetryManagerBase): Telemetry manager to register callbacks on
             - packet_forward_queue (asyncio.Queue): Queue the forwarding task drains
-            - replay_server: bool: If true, init in replay mode (TCP). Else init in live mode (UDP)
         """
         settings = ctx.settings
         logger = ctx.logger
 
-        transport = telemetry_transport_factory(
-            settings.Network.telemetry_port, replay_server, logger
-        )
-        self.m_manager = AsyncF1TelemetryManager(
-            transport=transport,
-            logger=logger,
-            frame_gate_enabled=settings.Network.enable_pkt_ordering
-        )
+        self.m_manager: F1TelemetryManagerBase = manager
         self.m_logger: PngLogger = logger
         self.m_session_state_ref: SessionState = session_state
         self.m_subsystem: AsyncSubsystem = ctx.subsystem
@@ -215,15 +219,23 @@ class F1TelemetryHandler:
         self.registerCallbacks()
 
     def register_tasks(self, subsys: AsyncSubsystem) -> None:
-        """Register this layer's three long-lived tasks with the subsystem.
+        """Wire handleRawPacket and register this layer's three long-lived tasks with the subsystem.
+        Needs the handler to have been built with an AsyncF1TelemetryManager, whose run() is the receive loop.
 
         The receive loop's handle is kept because stop() cancels it - run() is a socket receive
         loop with no cooperative exit.
 
         Args:
             subsys: Async subsystem handle
+
+        Raises:
+            TypeError: If the handler's manager has no transport
         """
-        self.m_manager_task = subsys.add_task(self.run(), name="Game Telemetry Listener Task")
+        manager = self.m_manager
+        if not isinstance(manager, AsyncF1TelemetryManager):
+            raise TypeError(f"register_tasks needs an AsyncF1TelemetryManager, got {type(manager).__name__}")
+        manager.on_raw_packet()(self.handleRawPacket)
+        self.m_manager_task = subsys.add_task(manager.run(), name="Game Telemetry Listener Task")
         subsys.add_task(self.getWatchdogTask(), name="Watchdog Timer Task")
         subsys.add_task(self.getMenuWatchdogTask(), name="Menu Silence WDT Task")
 
@@ -276,14 +288,16 @@ class F1TelemetryHandler:
             self.m_udp_forwarder.update_targets(targets)
         self.m_logger.info("Updated forwarding targets: %s", targets)
 
-    async def run(self):
-        """
-        Run the telemetry handler.
+    async def handleRawPacket(self, packet: bytes) -> None:
+        """Handle a raw telemetry packet, before parsing.
 
-        Returns:
-        None
+        Args:
+            packet (bytes): The raw telemetry packet.
         """
-        await self.m_manager.run()
+        self.m_wdt.kick()
+        self.m_session_state_ref.m_pkt_count += 1
+        if self.m_should_forward:
+            await self.m_packet_forward_queue.put(packet)
 
     def _kick_periodic_packet_timer(self) -> None:
         """Kick the menu-detection watchdog. Called on every periodic (non-EVENT) packet."""
@@ -335,18 +349,6 @@ class F1TelemetryHandler:
         """
         Register callback functions for different types of telemetry packets.
         """
-
-        @self.m_manager.on_raw_packet()
-        async def handleRawPacket(packet: List[bytes]) -> None:
-            """
-            Handle raw telemetry packet.
-            Parameters:
-                packet (List[bytes]): The raw telemetry packet.
-            """
-            self.m_wdt.kick()
-            self.m_session_state_ref.m_pkt_count += 1
-            if self.m_should_forward:
-                await self.m_packet_forward_queue.put(packet)
 
         @self.m_manager.on_any_packet()
         async def handleSessionUidGate(packet: F1PacketBase) -> None:

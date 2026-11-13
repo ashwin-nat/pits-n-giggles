@@ -33,6 +33,12 @@ from lib.f1_types import PacketHeader, F1PacketType
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+def assert_all_slots_set(obj: object) -> None:
+    """Raise AttributeError if any slot declared anywhere in obj's class hierarchy is unset."""
+    for base in type(obj).__mro__:
+        for slot in getattr(base, "__slots__", ()):
+            getattr(obj, slot)
+
 
 class F1TypesTest(F1TelemetryUnitTestsBase):
     """
