@@ -127,19 +127,23 @@ async def test_motion_sets_position_and_yaw(manager: InjectingTelemetryManager, 
         (1.5, 2.5, 3.5, 0.75)
 
 
+# Looked up by event type: a details object shows in Allure as its repr, whose address changes every run
+EVENT_DETAILS = {
+    PacketEventData.EventPacketType.FLASHBACK: PacketEventData.Flashback.from_values(frame_identifier=7),
+    PacketEventData.EventPacketType.BUTTON_STATUS:
+        PacketEventData.Buttons.from_status(PacketEventData.Buttons.udp_action_flag(5)),
+    PacketEventData.EventPacketType.OVERTAKE: PacketEventData.Overtake.from_values(1, 0),
+    PacketEventData.EventPacketType.SESSION_ENDED: None,
+    PacketEventData.EventPacketType.SESSION_STARTED: None,
+    PacketEventData.EventPacketType.SPEED_TRAP_TRIGGERED: PacketEventData.SpeedTrap.from_values(0, 321.5),
+}
+
+
 @FORMAT_SWEEP
-@pytest.mark.parametrize("event_type, details", [
-    (PacketEventData.EventPacketType.FLASHBACK, PacketEventData.Flashback.from_values(frame_identifier=7)),
-    (PacketEventData.EventPacketType.BUTTON_STATUS,
-     PacketEventData.Buttons.from_status(PacketEventData.Buttons.udp_action_flag(5))),
-    (PacketEventData.EventPacketType.OVERTAKE, PacketEventData.Overtake.from_values(1, 0)),
-    (PacketEventData.EventPacketType.SESSION_ENDED, None),
-    (PacketEventData.EventPacketType.SESSION_STARTED, None),
-    (PacketEventData.EventPacketType.SPEED_TRAP_TRIGGERED, PacketEventData.SpeedTrap.from_values(0, 321.5)),
-], ids=["FLBK", "BUTN", "OVTK", "SEND", "SSTA", "SPTP"])
+@pytest.mark.parametrize("event_type", list(EVENT_DETAILS), ids=["FLBK", "BUTN", "OVTK", "SEND", "SSTA", "SPTP"])
 async def test_event_carries_its_details(manager: InjectingTelemetryManager, packets: Packets,
-                                         event_type: PacketEventData.EventPacketType,
-                                         details: Optional[object]) -> None:
+                                         event_type: PacketEventData.EventPacketType) -> None:
+    details: Optional[object] = EVENT_DETAILS[event_type]
     await _start(manager, packets)
     packet = packets.event(event_type, details, session_uid=UID)
     await manager.inject(packet)

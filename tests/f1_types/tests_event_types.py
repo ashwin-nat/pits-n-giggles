@@ -110,23 +110,24 @@ def _parse_event_code(code: bytes, game_year: int = 25) -> PacketEventData:
     return PacketEventData(header, code + b"\x00" * 32)
 
 
-@pytest.mark.parametrize("code", [b"ZZZZ", b"XYZW", b"1234"])
+# str params: allure-pytest shows every bytes value as "<class 'bytes'>", so Allure 3 merges the cases as retries
+@pytest.mark.parametrize("code", ["ZZZZ", "XYZW", "1234"])
 def test_unknown_event_code_is_rejected(code):
     # A PacketEventData is only meaningful if it identifies an event. An undeclared code
     # leaves nothing to act on, so the object must not be constructed at all
     with pytest.raises(UnsupportedValueError):
-        _parse_event_code(code)
+        _parse_event_code(code.encode("ascii"))
 
 
-@pytest.mark.parametrize("code", [b"ZZZZ", b"XYZW"])
+@pytest.mark.parametrize("code", ["ZZZZ", "XYZW"])
 def test_unknown_event_code_is_named_in_the_error(code):
     # The offending code has to reach the log, otherwise a newly added game event is
     # indistinguishable from silence
     with pytest.raises(UnsupportedValueError) as exc_info:
-        _parse_event_code(code)
+        _parse_event_code(code.encode("ascii"))
 
-    assert exc_info.value.m_value == code.decode("ascii")
-    assert code.decode("ascii") in str(exc_info.value)
+    assert exc_info.value.m_value == code
+    assert code in str(exc_info.value)
 
 
 def test_non_ascii_event_code_is_rejected():
