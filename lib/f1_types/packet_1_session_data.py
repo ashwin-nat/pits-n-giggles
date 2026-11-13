@@ -616,7 +616,7 @@ class PacketSessionData(F1PacketBase):
             #                                         // 3 = light rain, 4 = heavy rain, 5 = storm
         "b" # int8                m_trackTemperature;        // Track temp. in degrees celsius
         "b" # int8                m_airTemperature;          // Air temp. in degrees celsius
-        "b" # uint8           m_totalLaps;               // Total number of laps in this race
+        "B" # uint8           m_totalLaps;               // Total number of laps in this race
         "H" # uint16          m_trackLength;               // Track length in metres
         "B" # uint8           m_sessionType;             // 0 = unknown, 1 = P1, 2 = P2, 3 = P3, 4 = Short P
             #                                             // 5 = Q1, 6 = Q2, 7 = Q3, 8 = Short Q, 9 = OSQ

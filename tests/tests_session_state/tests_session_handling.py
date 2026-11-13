@@ -29,7 +29,7 @@ from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.telemetry_layer.telemetry_handler import F1TelemetryHandler
 from lib.f1_types import TrackID
 
-from .harness import (InjectingTelemetryManager, SaveRecorder,
+from .harness import (FakeSubsystem, InjectingTelemetryManager, SaveRecorder,
                       SaveRequestRecord, TokenRecorder)
 from .packet_helpers import (ALL_FORMATS, Packets, ai, car, classified,
                              lap_time, player)
@@ -91,6 +91,14 @@ async def test_uid_change_after_final_classification_skips_just_in_case(manager:
     assert tokens.records == []
     assert handler.m_last_session_uid == 200
     assert all(driver is None for driver in state.m_driver_data)
+
+
+@allure.story("Handler wiring")
+async def test_register_tasks_needs_an_async_manager(handler: F1TelemetryHandler,
+                                                     fake_subsystem: FakeSubsystem) -> None:
+    """The receive loop and raw-packet wiring only exist on AsyncF1TelemetryManager."""
+    with pytest.raises(TypeError, match="needs an AsyncF1TelemetryManager, got InjectingTelemetryManager"):
+        handler.register_tasks(fake_subsystem)
 
 
 @allure.story("Final classification")

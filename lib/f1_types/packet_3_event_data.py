@@ -325,20 +325,21 @@ class PacketEventData(F1PacketBase):
             return not self.__eq__(other)
 
         @classmethod
-        def from_values(cls, vehicle_idx: int) -> "PacketEventData.Retirement":
-            """Create a Retirement object from values. The reason is INVALID, as parsing gives for
-            formats before 2025.
+        def from_values(cls, vehicle_idx: int, packet_format: int) -> "PacketEventData.Retirement":
+            """Create a Retirement object from values, through the parser. The reason is INVALID.
 
             Args:
                 vehicle_idx (int): Index of the vehicle that retired
+                packet_format (int): The packet format. 2025 onward also carries the reason
 
             Returns:
                 PacketEventData.Retirement: The created object
             """
-            obj = cls.__new__(cls)
-            obj.vehicleIdx = vehicle_idx
-            obj.m_reason = PacketEventData.Retirement.Reason.INVALID
-            return obj
+            if packet_format >= 2025:
+                data = cls.COMPILED_PACKET_STRUCT_25.pack(vehicle_idx, PacketEventData.Retirement.Reason.INVALID.value)
+            else:
+                data = cls.COMPILED_PACKET_STRUCT_23_24.pack(vehicle_idx)
+            return cls(data, packet_format)
 
     class DrsDisabled(EventType):
         """
@@ -829,24 +830,18 @@ class PacketEventData(F1PacketBase):
 
         @classmethod
         def from_values(cls, vehicle_idx: int, speed: float) -> "PacketEventData.SpeedTrap":
-            """Create a SpeedTrap object from values. Neither fastest flag is set, the session
-            fastest vehicle index is 255 (none) and the session fastest speed is 0.0.
+            """Create a SpeedTrap object from values, through the parser. Neither fastest flag is set,
+            the session fastest vehicle index is 255 (none) and the session fastest speed is 0.0.
 
             Args:
                 vehicle_idx (int): Index of the vehicle through the speed trap
-                speed (float): Speed through the trap
+                speed (float): Speed through the trap. Read back as float32, as off the wire
 
             Returns:
                 PacketEventData.SpeedTrap: The created object
             """
-            obj = cls.__new__(cls)
-            obj.vehicleIdx = vehicle_idx
-            obj.speed = speed
-            obj.isOverallFastestInSession = False
-            obj.isDriverFastestInSession = False
-            obj.fastestVehicleIdxInSession = 255
-            obj.fastestSpeedInSession = 0.0
-            return obj
+            # The layout is the same in every format, so any format will do
+            return cls(cls.COMPILED_PACKET_STRUCT.pack(vehicle_idx, speed, 0, 0, 255, 0.0), 0)
 
     class StartLights(EventType):
         """
@@ -1153,7 +1148,7 @@ class PacketEventData(F1PacketBase):
 
         @classmethod
         def from_values(cls, frame_identifier: int) -> "PacketEventData.Flashback":
-            """Create a Flashback object from values. The session time is 0.0.
+            """Create a Flashback object from values, through the parser. The session time is 0.0.
 
             Args:
                 frame_identifier (int): Frame identifier flashed back to
@@ -1161,10 +1156,8 @@ class PacketEventData(F1PacketBase):
             Returns:
                 PacketEventData.Flashback: The created object
             """
-            obj = cls.__new__(cls)
-            obj.flashbackFrameIdentifier = frame_identifier
-            obj.flashbackSessionTime = 0.0
-            return obj
+            # The layout is the same in every format, so any format will do
+            return cls(cls.COMPILED_PACKET_STRUCT.pack(frame_identifier, 0.0), 0)
 
     class Buttons(EventType):
         """
@@ -1416,7 +1409,7 @@ class PacketEventData(F1PacketBase):
         def from_values(cls,
                         overtaking_vehicle_idx: int,
                         being_overtaken_vehicle_idx: int) -> "PacketEventData.Overtake":
-            """Create an Overtake object from values.
+            """Create an Overtake object from values, through the parser.
 
             Args:
                 overtaking_vehicle_idx (int): Index of the overtaking vehicle
@@ -1425,10 +1418,8 @@ class PacketEventData(F1PacketBase):
             Returns:
                 PacketEventData.Overtake: The created object
             """
-            obj = cls.__new__(cls)
-            obj.overtakingVehicleIdx = overtaking_vehicle_idx
-            obj.beingOvertakenVehicleIdx = being_overtaken_vehicle_idx
-            return obj
+            # The layout is the same in every format, so any format will do
+            return cls(cls.COMPILED_PACKET_STRUCT.pack(overtaking_vehicle_idx, being_overtaken_vehicle_idx), 0)
 
     class SafetyCarEvent(EventType):
         """

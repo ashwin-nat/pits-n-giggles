@@ -22,10 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import logging
 import random
 
 from apps.backend.state_mgmt_layer.data_per_driver import (
-    TyreSetHistoryEntry, TyreSetInfo)
+    TyreSetHistoryEntry, TyreSetHistoryManager, TyreSetInfo)
 from lib.f1_types import ActualTyreCompound, VisualTyreCompound
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
@@ -183,3 +184,32 @@ class TestTyreSetHistoryEntry(TestTyreSets):
 
         expected_str = "start_lap: 5 end_lap: None key: key_1 tyre_wear_history_len: 0"
         self.assertEqual(str(history_entry), expected_str)
+
+# The flashback scenarios in tests_session_state cover remove(). These are the two branches packets never reach
+
+def _history_manager() -> TyreSetHistoryManager:
+    return TyreSetHistoryManager(logging.getLogger("tests_tyre_info"))
+
+
+def test_remove_keeps_a_last_sample_on_a_lap_not_being_removed():
+    manager = _history_manager()
+    entry = TyreSetHistoryEntry(start_lap=5, index=1)
+    manager.add(entry)
+    manager.addTyreWear(TyreWearPerLap(fl_tyre_wear=10.5, fr_tyre_wear=12.3, rl_tyre_wear=11.2, rr_tyre_wear=9.8,
+                                       lap_number=6, is_racing_lap=True))
+
+    manager.remove([10])
+
+    assert [sample.lap_number for sample in entry.m_tyre_wear_history] == [6]
+    assert manager.length == 1
+
+
+def test_remove_on_a_stint_with_no_wear_samples_keeps_the_stint():
+    manager = _history_manager()
+    entry = TyreSetHistoryEntry(start_lap=5, index=1)
+    manager.add(entry)
+
+    manager.remove([6])
+
+    assert manager.length == 1
+    assert not entry.m_tyre_wear_history

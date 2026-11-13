@@ -250,8 +250,18 @@ def test_speed_trap_from_values():
     _assert_fully_built(speed_trap)
 
 
-def test_retirement_from_values():
-    retirement = PacketEventData.Retirement.from_values(vehicle_idx=9)
+def test_speed_trap_from_values_reads_speed_back_as_float32():
+    # The same value a parsed packet carries, so from_values objects compare equal to parsed ones
+    speed_trap = PacketEventData.SpeedTrap.from_values(vehicle_idx=5, speed=321.7)
+
+    wire = PacketEventData.SpeedTrap.COMPILED_PACKET_STRUCT.pack(5, 321.7, 0, 0, 255, 0.0)
+    assert speed_trap == PacketEventData.SpeedTrap(wire, 2025)
+    assert speed_trap.speed != 321.7
+
+
+@pytest.mark.parametrize("packet_format", [2024, 2025])
+def test_retirement_from_values(packet_format):
+    retirement = PacketEventData.Retirement.from_values(vehicle_idx=9, packet_format=packet_format)
 
     assert retirement.vehicleIdx == 9
     assert retirement.m_reason == PacketEventData.Retirement.Reason.INVALID

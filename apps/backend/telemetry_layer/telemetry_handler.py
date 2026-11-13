@@ -138,8 +138,7 @@ def setupTelemetryTask(
         manager=manager,
         packet_forward_queue=packet_forward_queue,
     )
-    manager.on_raw_packet()(telemetry_server.handleRawPacket)
-    telemetry_server.register_tasks(ctx.subsystem, manager)
+    telemetry_server.register_tasks(ctx.subsystem)
     return telemetry_server
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
@@ -159,7 +158,7 @@ class F1TelemetryHandler:
         packet_forward_queue: asyncio.Queue) -> None:
         """
         Initialize F1TelemetryHandler. Registers the any-packet and typed callbacks on manager.
-        The caller wires handleRawPacket and the receive loop, which only the async manager has.
+        register_tasks() wires handleRawPacket and the receive loop, which only the async manager has.
 
         Parameters:
             - ctx (AppCtx): Backend app context (logger, settings, subsystem). The subsystem
@@ -219,16 +218,23 @@ class F1TelemetryHandler:
         self.m_save_task: Optional[asyncio.Task] = None
         self.registerCallbacks()
 
-    def register_tasks(self, subsys: AsyncSubsystem, manager: AsyncF1TelemetryManager) -> None:
-        """Register this layer's three long-lived tasks with the subsystem.
+    def register_tasks(self, subsys: AsyncSubsystem) -> None:
+        """Wire handleRawPacket and register this layer's three long-lived tasks with the subsystem.
+        Needs the handler to have been built with an AsyncF1TelemetryManager, whose run() is the receive loop.
 
         The receive loop's handle is kept because stop() cancels it - run() is a socket receive
         loop with no cooperative exit.
 
         Args:
             subsys: Async subsystem handle
-            manager: The async manager this handler was built with; its run() is the receive loop
+
+        Raises:
+            TypeError: If the handler's manager has no transport
         """
+        manager = self.m_manager
+        if not isinstance(manager, AsyncF1TelemetryManager):
+            raise TypeError(f"register_tasks needs an AsyncF1TelemetryManager, got {type(manager).__name__}")
+        manager.on_raw_packet()(self.handleRawPacket)
         self.m_manager_task = subsys.add_task(manager.run(), name="Game Telemetry Listener Task")
         subsys.add_task(self.getWatchdogTask(), name="Watchdog Timer Task")
         subsys.add_task(self.getMenuWatchdogTask(), name="Menu Silence WDT Task")

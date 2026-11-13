@@ -521,6 +521,28 @@ def test_from_values_rejects_more_forecast_samples_than_the_format_allows():
                                       formula=PacketSessionData.FormulaType.F1_MODERN, is_spectating=False)
 
 
+@pytest.mark.parametrize("track_value, is_unknown", [(-1, False), (99, True)], ids=["game_unknown", "undeclared"])
+def test_track_id_unknown_is_the_games_own_sentinel(track_value, is_unknown):
+    # -1 is the wire's "unknown" and maps to the declared member. Only an undeclared ID is flagged as unrecognised
+    header = F1TypesTest.getRandomHeader(F1PacketType.SESSION, 25)
+    packet = PacketSessionData.from_values(header, SessionType24.RACE, TrackID(track_value), total_laps=5,
+                                           track_length=5807, weather_forecast_samples=[],
+                                           formula=PacketSessionData.FormulaType.F1_MODERN, is_spectating=False)
+
+    assert packet.m_trackId == TrackID.UNKNOWN
+    assert packet.m_trackId.raw_value == track_value
+    assert packet.m_trackId.is_unknown() is is_unknown
+
+
+def test_total_laps_is_unsigned():
+    header = F1TypesTest.getRandomHeader(F1PacketType.SESSION, 25)
+    packet = PacketSessionData.from_values(header, SessionType24.RACE, TrackID.Suzuka, total_laps=200,
+                                           track_length=5807, weather_forecast_samples=[],
+                                           formula=PacketSessionData.FormulaType.F1_MODERN, is_spectating=False)
+
+    assert packet.m_totalLaps == 200
+
+
 @pytest.mark.parametrize("packet_format, session_type", [(2023, SessionType23.RACE), (2026, SessionType24.RACE)])
 def test_weather_forecast_sample_round_trips(packet_format, session_type):
     sample = _forecast(packet_format, session_type, WeatherForecastSample.WeatherCondition.STORM, 15)

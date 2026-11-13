@@ -26,7 +26,7 @@ import allure
 import pytest
 
 from apps.backend.state_mgmt_layer import SessionState
-from lib.f1_types import TrackID
+from lib.f1_types import F1PacketType, TrackID
 
 from .harness import InjectingTelemetryManager
 from .packet_helpers import Packets, ai, car, lap_time, player
@@ -51,6 +51,7 @@ async def test_other_types_stay_unique_per_frame(manager: InjectingTelemetryMana
 
     # The second LAP_DATA is dropped. SESSION_HISTORY is a different type, so it gets through
     assert state.m_driver_data[0].m_packet_copies.m_packet_lap_data.m_lapDistance == 1000
-    assert state.has_lap_data
-    dropped = manager.getStats()["packets"]["__DROPPED_PACKETS_FRAME_GATE__"]
+    stats = manager.getStats()["packets"]
+    assert stats["__PROCESSED__"][str(F1PacketType.SESSION_HISTORY)]["count"] == 1
+    dropped = stats["__DROPPED_PACKETS_FRAME_GATE__"]
     assert {reason: stat["count"] for reason, stat in dropped.items()} == {"DUPLICATE_PACKET_TYPE": 1}

@@ -159,9 +159,18 @@ class F1TelemetryManagerBase:
                 str(packet_id),
                 type(e).__name__,
                 str(e),
-                json.dumps(parsed_obj.toJSON(include_header=True)),
+                self._packetJSONForLog(parsed_obj),
             )
             raise
+
+    @staticmethod
+    def _packetJSONForLog(parsed_obj: F1PacketBase) -> str:
+        """The packet as JSON, or a placeholder naming the error if it cannot be serialised."""
+        try:
+            return json.dumps(parsed_obj.toJSON(include_header=True))
+        except Exception as e: # pylint: disable=broad-exception-caught
+            # The packet that broke a callback may also break toJSON. Never let that hide the original error
+            return f"<toJSON failed: {type(e).__name__}: {e}>"
 
 class AsyncF1TelemetryManager(F1TelemetryManagerBase):
     """

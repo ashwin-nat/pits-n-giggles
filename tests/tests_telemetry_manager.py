@@ -166,3 +166,19 @@ async def test_raising_callback_logs_single_line_json_and_writes_no_file(caplog,
     assert json.loads(packet_line.removeprefix("Packet: ")) == {"header": {"frame": 1}, "body": 1}
     assert "__EXCEPTION_CB__" in manager.getStats()["packets"]
     assert not os.listdir(tmp_path)
+
+async def test_unserialisable_packet_still_logs_and_reraises_the_callback_error(caplog):
+    manager = _manager()
+    packet = _packet(F1PacketType.LAP_DATA, 1)
+    packet.toJSON = lambda include_header=False: {"sector": object()}    # json.dumps raises TypeError
+
+    @manager.on_packet(F1PacketType.LAP_DATA)
+    async def _typed(_packet):
+        raise RuntimeError("boom")
+
+    with caplog.at_level(logging.ERROR, logger="tests_telemetry_manager"):
+        with pytest.raises(RuntimeError, match="boom"):
+            await manager._dispatch(packet)
+
+    assert "Message: boom" in caplog.messages[0]
+    assert "Packet: <toJSON failed: TypeError: " in caplog.messages[0]
