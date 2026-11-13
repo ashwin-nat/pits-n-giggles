@@ -25,7 +25,7 @@ import random
 import pytest
 
 from lib.f1_types import (F1PacketType, PacketSessionData, SessionType23,
-                          SessionType24, TrackID)
+                          SessionType24, TrackID, WeatherForecastSample)
 from .tests_parser_base import F1TypesTest, assert_all_slots_set
 
 class TestPacketSessionData(F1TypesTest):
@@ -489,7 +489,11 @@ def test_from_values_sets_the_given_fields_and_every_slot(game_year):
     session_type = SessionType23.RACE if game_year == 23 else SessionType24.RACE
     header = F1TypesTest.getRandomHeader(F1PacketType.SESSION, game_year)
 
-    packet = PacketSessionData.from_values(header, session_type, TrackID.Suzuka, total_laps=5, track_length=5807)
+    samples = [_forecast(header.m_packetFormat, session_type, WeatherForecastSample.WeatherCondition.LIGHT_RAIN, 0),
+               _forecast(header.m_packetFormat, session_type, WeatherForecastSample.WeatherCondition.HEAVY_RAIN, 5)]
+
+    packet = PacketSessionData.from_values(header, session_type, TrackID.Suzuka, total_laps=5, track_length=5807,
+                                           weather_forecast_samples=samples)
 
     assert packet.m_header is header
     assert packet.m_sessionType == session_type
@@ -498,5 +502,30 @@ def test_from_values_sets_the_given_fields_and_every_slot(game_year):
     assert packet.m_trackLength == 5807
     assert packet.m_sessionDuration != 0
     assert packet.m_spectatorCarIndex == 255
+    assert packet.m_numWeatherForecastSamples == 2
+    assert packet.m_weatherForecastSamples == samples
     assert_all_slots_set(packet)
     packet.toJSON(include_header=True)
+
+
+def test_from_values_rejects_more_forecast_samples_than_the_format_allows():
+    header = F1TypesTest.getRandomHeader(F1PacketType.SESSION, 23)
+    sample = _forecast(2023, SessionType23.RACE, WeatherForecastSample.WeatherCondition.CLEAR, 0)
+
+    with pytest.raises(ValueError):
+        PacketSessionData.from_values(header, SessionType23.RACE, TrackID.Suzuka, total_laps=5, track_length=5807,
+                                      weather_forecast_samples=[sample] * 57)
+
+
+@pytest.mark.parametrize("packet_format, session_type", [(2023, SessionType23.RACE), (2026, SessionType24.RACE)])
+def test_weather_forecast_sample_round_trips(packet_format, session_type):
+    sample = _forecast(packet_format, session_type, WeatherForecastSample.WeatherCondition.STORM, 15)
+
+    assert WeatherForecastSample(sample.to_bytes(), packet_format) == sample
+
+
+def _forecast(packet_format, session_type, weather, time_offset):
+    return WeatherForecastSample.from_values(
+        packet_format, session_type, time_offset, weather,
+        track_temp=30, track_temp_change=WeatherForecastSample.TrackTemperatureChange.NO_CHANGE,
+        air_temp=20, air_temp_change=WeatherForecastSample.AirTemperatureChange.NO_CHANGE, rain_percentage=10)

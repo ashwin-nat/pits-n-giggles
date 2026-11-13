@@ -417,8 +417,10 @@ class WeatherForecastSample(F1SubPacketBase):
             bytes: A list of bytes representing the raw data.
         """
 
+        # safeCast leaves an undeclared session type as a bare int
+        session_type = self.m_sessionType.value if isinstance(self.m_sessionType, F1BaseEnum) else self.m_sessionType
         return self.COMPILED_PACKET_STRUCT.pack(
-            self.m_sessionType,
+            session_type,
             self.m_timeOffset,
             self.m_weather.value,
             self.m_trackTemperature,
@@ -1739,7 +1741,8 @@ class PacketSessionData(F1PacketBase):
                     session_type: Union[SessionType23, SessionType24],
                     track_id: TrackID,
                     total_laps: int,
-                    track_length: int) -> "PacketSessionData":
+                    track_length: int,
+                    weather_forecast_samples: List[WeatherForecastSample]) -> "PacketSessionData":
         """Create a PacketSessionData object from values. Every other field is what the parser
         produces from zero bytes for header.m_packetFormat, except the ones noted inline.
 
@@ -1749,12 +1752,23 @@ class PacketSessionData(F1PacketBase):
             track_id (TrackID): Track
             total_laps (int): Total laps in the session
             track_length (int): Track length in metres
+            weather_forecast_samples (List[WeatherForecastSample]): Forecast samples, in order. The first
+                one is what the state layer reads as the current weather.
+
+        Raises:
+            ValueError: If there are more forecast samples than the format allows
 
         Returns:
             PacketSessionData: The created object
         """
 
         fmt = header.m_packetFormat
+        # Fixed-size arrays are always on the wire at their max length, whatever the count
+        max_forecast_samples = (cls.F1_23_MAX_NUM_WEATHER_FORECAST_SAMPLES if fmt == 2023
+                                else cls.F1_24_MAX_NUM_WEATHER_FORECAST_SAMPLES)
+        if len(weather_forecast_samples) > max_forecast_samples:
+            raise ValueError(f"{len(weather_forecast_samples)} weather forecast samples, "
+                             f"format {fmt} allows {max_forecast_samples}")
         data = cls.COMPILED_PACKET_STRUCT_SECTION_0.pack(
             0, 0, 0,        # weather, track temp, air temp
             total_laps,
@@ -1768,13 +1782,15 @@ class PacketSessionData(F1PacketBase):
             255,            # spectator car index - 255 is the game's "none"
             0, 0,           # SLI Pro support, num marshal zones
         )
-        # Fixed-size arrays are always on the wire at their max length, whatever the count
-        max_forecast_samples = (cls.F1_23_MAX_NUM_WEATHER_FORECAST_SAMPLES if fmt == 2023
-                                else cls.F1_24_MAX_NUM_WEATHER_FORECAST_SAMPLES)
-        zeros_len = (cls.F1_23_MAX_NUM_MARSHAL_ZONES * MarshalZone.PACKET_LEN +
-                     cls.PACKET_LEN_SECTION_2 +
-                     max_forecast_samples * WeatherForecastSample.PACKET_LEN +
-                     cls.PACKET_LEN_SECTION_4)
+        data += bytes(cls.F1_23_MAX_NUM_MARSHAL_ZONES * MarshalZone.PACKET_LEN)
+        data += cls.COMPILED_PACKET_STRUCT_SECTION_2.pack(
+            0, 0,           # safety car status, network game
+            len(weather_forecast_samples),
+        )
+        data += b"".join(sample.to_bytes() for sample in weather_forecast_samples)
+        data += bytes((max_forecast_samples - len(weather_forecast_samples)) * WeatherForecastSample.PACKET_LEN)
+
+        zeros_len = cls.PACKET_LEN_SECTION_4
         if fmt >= 2024:
             zeros_len += cls.PACKET_LEN_SECTION_5
         if fmt == 2026:

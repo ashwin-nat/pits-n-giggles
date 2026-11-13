@@ -32,7 +32,7 @@ from lib.f1_types import (F1PacketType, FinalClassificationData,
                           PacketSessionData, PacketSessionHistoryData,
                           ParticipantData, Platform, ResultStatus,
                           SessionType23, SessionType24, TelemetrySetting,
-                          TrackID, get_team_id_class)
+                          TrackID, WeatherForecastSample, get_team_id_class)
 from lib.f1_types.common import get_num_cars
 from lib.f1_types.packet_2_lap_data import LapData
 
@@ -131,13 +131,21 @@ class Packets:
         )
 
     def session(self, *, session_uid: int, session_type: str, track: TrackID, total_laps: int,
-                track_length: int, **header_kwargs: Optional[int]) -> PacketSessionData:
+                track_length: int,
+                weather: WeatherForecastSample.WeatherCondition = WeatherForecastSample.WeatherCondition.CLEAR,
+                **header_kwargs: Optional[int]) -> PacketSessionData:
         """A SESSION packet. session_type is the enum member name (e.g. "RACE"), resolved per format,
-        since the numeric values differ between SessionType23 and SessionType24."""
-        session_type_enum = SessionType23 if self.packet_format == 2023 else SessionType24
+        since the numeric values differ between SessionType23 and SessionType24. weather is the single
+        forecast sample's weather, which the state layer reads as the current weather."""
+        session_type_enum = (SessionType23 if self.packet_format == 2023 else SessionType24)[session_type]
+        forecast = WeatherForecastSample.from_values(
+            self.packet_format, session_type_enum, time_offset=0, weather=weather,
+            track_temp=0, track_temp_change=WeatherForecastSample.TrackTemperatureChange.NO_CHANGE,
+            air_temp=0, air_temp_change=WeatherForecastSample.AirTemperatureChange.NO_CHANGE, rain_percentage=0)
         return PacketSessionData.from_values(
             self.header(F1PacketType.SESSION, session_uid, **header_kwargs),
-            session_type_enum[session_type], track, total_laps=total_laps, track_length=track_length)
+            session_type_enum, track, total_laps=total_laps, track_length=track_length,
+            weather_forecast_samples=[forecast])
 
     def participants(self, *drivers: DriverSpec, session_uid: int, **header_kwargs: Optional[int]) -> PacketParticipantsData:
         """A PARTICIPANTS packet. drivers fill car indices 0.. in order. The rest of the grid is
