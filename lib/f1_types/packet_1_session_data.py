@@ -1774,7 +1774,7 @@ class PacketSessionData(F1PacketBase):
             total_laps,
             track_length,
             session_type.value,
-            track_id.value,
+            track_id.raw_value,     # same as .value unless the ID is one TrackID doesn't declare
             0,              # formula
             # Non-zero: a zero duration is the game's menu packet, which the handler clears on
             3600, 3600,     # time left, duration

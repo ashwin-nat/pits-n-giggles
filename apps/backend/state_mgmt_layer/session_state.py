@@ -1443,6 +1443,11 @@ class SessionState:
                 # UNKNOWN everywhere, but log the raw value so it can be added to the enum
                 self.m_logger.warning("Unrecognised formula type from game: %d. "
                                       "Treating as UNKNOWN", packet.m_formula.raw_value)
+            if packet.m_trackId.is_unknown():
+                # Same for the track. Track-specific logic (e.g. pit garage before the finish line) falls back to
+                # the default path for an unknown track
+                self.m_logger.warning("Unrecognised track ID from game: %d. "
+                                      "Treating as UNKNOWN", packet.m_trackId.raw_value)
 
         self.m_ideal_pit_stop_window = packet.m_pitStopWindowIdealLap
 
