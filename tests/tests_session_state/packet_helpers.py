@@ -23,16 +23,22 @@
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
-from lib.f1_types import (F1PacketType, FinalClassificationData,
-                          LapHistoryData, LiveryColour, Nationality,
+from lib.f1_types import (ActualTyreCompound, CarDamageData, CarStatusData,
+                          CarTelemetry2Data, CarTelemetryData, F1PacketType,
+                          FinalClassificationData, LapHistoryData,
+                          LiveryColour, Nationality, PacketCarDamageData,
+                          PacketCarStatusData, PacketCarTelemetry2Data,
+                          PacketCarTelemetryData, PacketEventData,
                           PacketFinalClassificationData, PacketHeader,
                           PacketLapData, PacketParticipantsData,
                           PacketSessionData, PacketSessionHistoryData,
-                          ParticipantData, Platform, ResultStatus,
-                          SessionType23, SessionType24, TelemetrySetting,
-                          TrackID, WeatherForecastSample, get_team_id_class)
+                          PacketTyreSetsData, ParticipantData, Platform,
+                          ResultStatus, SessionType23, SessionType24,
+                          TelemetrySetting, TrackID, TractionControlAssistMode,
+                          TyreSetData, VisualTyreCompound,
+                          WeatherForecastSample, get_team_id_class)
 from lib.f1_types.common import get_num_cars
 from lib.f1_types.packet_2_lap_data import LapData
 
@@ -40,6 +46,17 @@ from lib.f1_types.packet_2_lap_data import LapData
 
 # Sweep with @pytest.mark.parametrize("packet_format", ALL_FORMATS, indirect=True)
 ALL_FORMATS = [2023, 2024, 2025, 2026]
+
+# The 20 TYRE_SETS entries, by index: the race weekend allocation of 8 soft, 3 medium, 2 hard, 4 inter, 3 wet.
+# The C-numbers vary by track in the game; these are one plausible choice.
+TYRE_SET_ALLOCATION = (
+    [(ActualTyreCompound.C4, VisualTyreCompound.SOFT)] * 8 +
+    [(ActualTyreCompound.C3, VisualTyreCompound.MEDIUM)] * 3 +
+    [(ActualTyreCompound.C2, VisualTyreCompound.HARD)] * 2 +
+    [(ActualTyreCompound.INTER, VisualTyreCompound.INTER)] * 4 +
+    [(ActualTyreCompound.WET, VisualTyreCompound.WET)] * 3
+)
+FIRST_SOFT_IDX, FIRST_MEDIUM_IDX, FIRST_HARD_IDX = 0, 8, 11
 
 # ------------------------- SPECS --------------------------------------------------------------------------------------
 
@@ -98,6 +115,18 @@ def lap_time(lap_time_ms: int, valid: bool) -> LapHistoryData:
     """One SESSION_HISTORY lap."""
     return LapHistoryData.from_values(lap_time_ms, valid=valid)
 
+
+@dataclass(frozen=True)
+class DamageSpec:
+    """One CAR_DAMAGE entry. Build with damage()."""
+    index: int
+    tyre_wear: float
+
+
+def damage(index: int, tyre_wear: float) -> DamageSpec:
+    """A car whose four tyres all carry tyre_wear percent."""
+    return DamageSpec(index=index, tyre_wear=tyre_wear)
+
 # ------------------------- PACKETS ------------------------------------------------------------------------------------
 
 class Packets:
@@ -137,7 +166,7 @@ class Packets:
         """A SESSION packet. session_type is the enum member name (e.g. "RACE"), resolved per format,
         since the numeric values differ between SessionType23 and SessionType24. weather is the single
         forecast sample's weather, which the state layer reads as the current weather."""
-        session_type_enum = (SessionType23 if self.packet_format == 2023 else SessionType24)[session_type]
+        session_type_enum = self._session_type(session_type)
         forecast = WeatherForecastSample.from_values(
             self.packet_format, session_type_enum, time_offset=0, weather=weather,
             track_temp=0, track_temp_change=WeatherForecastSample.TrackTemperatureChange.NO_CHANGE,
@@ -177,6 +206,75 @@ class Packets:
                 for entry in entries]
         return PacketFinalClassificationData.from_values(
             self.header(F1PacketType.FINAL_CLASSIFICATION, session_uid, **header_kwargs), len(data), data)
+
+    def car_damage(self, *cars: DamageSpec, session_uid: int, **header_kwargs: Optional[int]) -> PacketCarDamageData:
+        """A CAR_DAMAGE packet. Every car index not in cars is an all-zero entry."""
+        by_index: Dict[int, DamageSpec] = {spec.index: spec for spec in cars}
+        entries = []
+        for index in range(get_num_cars(self.packet_format)):
+            wear = by_index[index].tyre_wear if index in by_index else 0.0
+            entries.append(CarDamageData.from_values(
+                self.packet_format, tyres_wear=[wear] * 4, tyres_damage=[0] * 4, brakes_damage=[0] * 4,
+                tyre_blisters=[0] * 4, fl_wing_damage=0, fr_wing_damage=0, rear_wing_damage=0, floor_damage=0,
+                diffuser_damage=0, sidepod_damage=0, drs_fault=False, ers_fault=False, gear_box_damage=0,
+                engine_damage=0, engine_mguh_wear=0, engine_es_wear=0, engine_ce_wear=0, engine_ice_wear=0,
+                engine_mguk_wear=0, engine_tc_wear=0, engine_blown=False, engine_seized=False))
+        return PacketCarDamageData.from_values(
+            self.header(F1PacketType.CAR_DAMAGE, session_uid, **header_kwargs), entries)
+
+    def tyre_sets(self, *, car_idx: int, fitted_idx: int, session_uid: int,
+                  **header_kwargs: Optional[int]) -> PacketTyreSetsData:
+        """A TYRE_SETS packet for one car, with the TYRE_SET_ALLOCATION sets. Everything but the compounds and
+        the fitted flag is zero."""
+        sets = [TyreSetData.from_values(
+            self.packet_format, actual_tyre_compound=actual, visual_tyre_compound=visual, wear=0, available=True,
+            recommended_session=self._session_type("RACE"), life_span=0, usable_life=0, lap_delta_time=0,
+            fitted=index == fitted_idx) for index, (actual, visual) in enumerate(TYRE_SET_ALLOCATION)]
+        return PacketTyreSetsData.from_values(
+            self.header(F1PacketType.TYRE_SETS, session_uid, **header_kwargs), car_idx, sets, fitted_idx)
+
+    def car_status(self, *, session_uid: int, **header_kwargs: Optional[int]) -> PacketCarStatusData:
+        """A CAR_STATUS packet with the same entry for every car: on C3 / MEDIUM, everything else zero."""
+        entry = CarStatusData.from_values(
+            traction_control=TractionControlAssistMode.OFF, anti_lock_brakes=False,
+            fuel_mix=CarStatusData.FuelMix.LEAN, front_brake_bias=0, pit_limiter_status=False, fuel_in_tank=0.0,
+            fuel_capacity=0.0, fuel_remaining_laps=0.0, max_rpm=0, idle_rpm=0, max_gears=0, drs_allowed=0,
+            drs_activation_distance=0, actual_tyre_compound=ActualTyreCompound.C3,
+            visual_tyre_compound=VisualTyreCompound.MEDIUM, tyres_age_laps=0,
+            m_vehicle_fia_flags=CarStatusData.VehicleFIAFlags.NONE, engine_power_ice=0.0, engine_power_mguk=0.0,
+            ers_store_energy=0.0, ers_deploy_mode=CarStatusData.ERSDeployMode.NONE,
+            ers_harvested_this_lap_mguk=0.0, ers_harvested_this_lap_mguh=0.0, ers_deployed_this_lap=0.0,
+            network_paused=0, packet_format=self.packet_format)
+        return PacketCarStatusData.from_values(
+            self.header(F1PacketType.CAR_STATUS, session_uid, **header_kwargs),
+            [entry] * get_num_cars(self.packet_format))
+
+    def car_telemetry(self, *, session_uid: int, **header_kwargs: Optional[int]) -> PacketCarTelemetryData:
+        """A CAR_TELEMETRY packet with an all-zero entry for every car. MFD panels are closed (255)."""
+        entry = CarTelemetryData.from_values(*([0] * 31), packet_format=self.packet_format)
+        return PacketCarTelemetryData.from_values(
+            self.header(F1PacketType.CAR_TELEMETRY, session_uid, **header_kwargs),
+            [entry] * get_num_cars(self.packet_format), mfd_panel_index=255, mfd_panel_index_secondary_player=255,
+            suggested_gear=0)
+
+    def car_telemetry_2(self, *, session_uid: int, **header_kwargs: Optional[int]) -> PacketCarTelemetry2Data:
+        """A CAR_TELEMETRY_2 packet (2026 only) with an all-zero entry for every car."""
+        entry = CarTelemetry2Data.from_values(
+            active_aero_mode=CarTelemetry2Data.ActiveAeroMode.CORNER_MODE, active_aero_available=False,
+            active_aero_activation_distance=0, overtake_available=False, overtake_active=False,
+            overtake_activation_distance=0, regulations_2026=False, driving_wrong_way=False)
+        return PacketCarTelemetry2Data.from_values(
+            self.header(F1PacketType.CAR_TELEMETRY_2, session_uid, **header_kwargs),
+            [entry] * get_num_cars(self.packet_format))
+
+    def event(self, event_type: PacketEventData.EventPacketType, details: Optional[object], *,
+              session_uid: int, **header_kwargs: Optional[int]) -> PacketEventData:
+        """An EVENT packet. Build details with the event type's own from_values."""
+        return PacketEventData.from_values(
+            self.header(F1PacketType.EVENT, session_uid, **header_kwargs), event_type, details)
+
+    def _session_type(self, name: str) -> Union[SessionType23, SessionType24]:
+        return (SessionType23 if self.packet_format == 2023 else SessionType24)[name]
 
     def _lap_data(self, spec: Optional[CarSpec]) -> LapData:
         active = spec is not None
