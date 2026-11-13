@@ -22,12 +22,14 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
+import asyncio
 import json
 from dataclasses import dataclass
 from logging import Logger
+from pathlib import Path
 from types import ModuleType
-from typing import (Any, Callable, Coroutine, Dict, List, Optional, Sequence,
-                    Tuple)
+from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
+                    Sequence, Tuple)
 
 import allure
 import pytest
@@ -88,19 +90,62 @@ class FakeDealer:
         return _noop()
 
 
+@dataclass(frozen=True)
+class ProcessCall:
+    """One run_in_process() call."""
+    fn_name: str
+    args: Tuple[Any, ...]
+    kwargs: Dict[str, Any]
+
+
 class FakeSubsystem:
-    """Stands in for the backend's AsyncSubsystem: records fire_and_forget names and runs nothing."""
+    """Stands in for the backend's AsyncSubsystem: records fire_and_forget names and run_in_process calls, and
+    runs nothing."""
 
     version = "test"
 
     def __init__(self) -> None:
         self.dealer = FakeDealer()
         self.fired_names: List[Optional[str]] = []
+        self.process_calls: List[ProcessCall] = []
+        self._blocked = False
+        self._blocked_futures: List[asyncio.Future] = []
+        self._fail_next: Optional[BaseException] = None
 
     def fire_and_forget(self, coro: Coroutine, name: Optional[str] = None) -> None:
         """Record the name and close the coroutine without running it."""
         self.fired_names.append(name)
         coro.close()
+
+    def run_in_process(self, fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Awaitable[Any]:
+        """Record the call without running fn. Returns a future that resolves to None straight away, unless
+        block() or fail_with() says otherwise. Same signature as AsyncSubsystem.run_in_process."""
+        self.process_calls.append(ProcessCall(fn_name=fn.__name__, args=args, kwargs=kwargs))
+        future = asyncio.get_running_loop().create_future()
+        if self._fail_next is not None:
+            future.set_exception(self._fail_next)
+            self._fail_next = None
+        elif self._blocked:
+            self._blocked_futures.append(future)
+        else:
+            future.set_result(None)
+        return future
+
+    def block(self) -> None:
+        """Hold every run_in_process() call from now on until release()."""
+        self._blocked = True
+
+    def release(self) -> None:
+        """Complete every held run_in_process() call, and stop holding new ones."""
+        self._blocked = False
+        for future in self._blocked_futures:
+            if not future.done():
+                future.set_result(None)
+        self._blocked_futures.clear()
+
+    def fail_with(self, exc: BaseException) -> None:
+        """Make the next run_in_process() call raise exc."""
+        self._fail_next = exc
 
     def add_task(self, *_args: Any, **_kwargs: Any) -> None:
         """Tests never call register_tasks, so nothing may register a task."""
@@ -114,37 +159,58 @@ async def _noop() -> None:
 
 @dataclass(frozen=True)
 class SaveRequestRecord:
-    """One save the handler asked for. reason is None for the post-final-classification save."""
-    kind: str
+    """One save the handler asked for, on the separate-files path (Capture.unified_save_format off).
+
+    Attributes:
+        trigger (str): "final_classification", "just_in_case" or "manual"
+        content (str): "json" or "pngt"
+        session_uid (int): The session being saved
+    """
+    trigger: str
+    content: str
     session_uid: int
-    reason: Optional[str]
 
 
 class SaveRecorder:
-    """Records the handler's save requests without writing anything. ManualSaveRsp construction for
-    the just-in-case save stays real, because that synchronous snapshot is part of the behaviour."""
+    """Records the handler's save requests on the separate-files path without writing anything. Everything
+    the handler does synchronously before the write (ManualSaveRsp, prepareLapTelemetryWrite) stays real.
+    Unified saves are recorded by FakeSubsystem.run_in_process instead."""
 
     def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self.requests: List[SaveRequestRecord] = []
         recorder = self
 
-        def just_in_case(handler: F1TelemetryHandler, session_uid: int, save_rsp: ManualSaveRsp) -> Coroutine:
-            recorder.requests.append(SaveRequestRecord(
-                kind="just_in_case", session_uid=session_uid, reason=save_rsp.m_final_json["debug"]["reason"]))
-            return _finish_save_task(handler)
+        # Patched as plain functions, so the request is recorded when the task is created, not when it runs
+        def auto_json(handler: F1TelemetryHandler, _final_json: Dict[str, Any], _file_name: str,
+                      session_uid: int) -> Coroutine:
+            recorder.requests.append(SaveRequestRecord("final_classification", "json", session_uid))
+            return _clear_task_slot(handler, "m_json_save_task")
 
-        async def final_classification(_handler: F1TelemetryHandler, _final_json: Dict[str, Any],
-                                       session_uid: int) -> None:
-            recorder.requests.append(SaveRequestRecord(kind="final_classification", session_uid=session_uid,
-                                                       reason=None))
+        def just_in_case_json(handler: F1TelemetryHandler, session_uid: int, _save_rsp: ManualSaveRsp) -> Coroutine:
+            recorder.requests.append(SaveRequestRecord("just_in_case", "json", session_uid))
+            return _clear_task_slot(handler, "m_json_save_task")
 
-        monkeypatch.setattr(F1TelemetryHandler, "_saveJustInCaseDataTask", just_in_case)
-        monkeypatch.setattr(F1TelemetryHandler, "postGameDumpToFile", final_classification)
+        def auto_lap_telemetry(handler: F1TelemetryHandler, _dest_path: Path, _args: tuple,
+                               session_uid: int) -> Coroutine:
+            # Final classification sets the flag before scheduling this; just-in-case only runs without it
+            trigger = "final_classification" if handler.m_final_classification_processed else "just_in_case"
+            recorder.requests.append(SaveRequestRecord(trigger, "pngt", session_uid))
+            return _clear_task_slot(handler, "m_lap_telemetry_save_task")
+
+        def manual_lap_telemetry(_handler: F1TelemetryHandler, lap_telemetry_write: Optional[Tuple[Path, tuple]],
+                                 session_uid: int) -> None:
+            if lap_telemetry_write is not None:
+                recorder.requests.append(SaveRequestRecord("manual", "pngt", session_uid))
+
+        monkeypatch.setattr(F1TelemetryHandler, "_autoSaveJsonTask", auto_json)
+        monkeypatch.setattr(F1TelemetryHandler, "_saveJustInCaseJsonTask", just_in_case_json)
+        monkeypatch.setattr(F1TelemetryHandler, "_autoSaveLapTelemetryTask", auto_lap_telemetry)
+        monkeypatch.setattr(F1TelemetryHandler, "fireLapTelemetryWrite", manual_lap_telemetry)
 
 
-async def _finish_save_task(handler: F1TelemetryHandler) -> None:
-    # The real task clears the handle when it finishes, which is what lets the next save start
-    handler.m_save_task = None
+async def _clear_task_slot(handler: F1TelemetryHandler, slot: str) -> None:
+    # The real task clears its handle when it finishes, which is what lets the next save start
+    setattr(handler, slot, None)
 
 
 class TokenRecorder:

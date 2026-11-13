@@ -21,10 +21,12 @@
 # SOFTWARE.
 
 """Checks on the harness itself: every packet helper builds a packet the handler accepts, with the fields it was
-given."""
+given, and the FakeSubsystem controls behave as documented."""
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
+import asyncio
+import inspect
 from typing import Optional
 
 import allure
@@ -34,8 +36,10 @@ from lib.f1_types import (PacketEventData, PacketSessionData, TelemetrySetting,
                           TrackID)
 from lib.f1_types.common import get_num_cars
 from lib.f1_types.packet_2_lap_data import LapData
+from lib.subsystem import AsyncSubsystem
 
-from .harness import InjectingTelemetryManager, SaveRecorder
+from .harness import (FakeSubsystem, InjectingTelemetryManager, ProcessCall,
+                      SaveRecorder)
 from .packet_helpers import (ALL_FORMATS, Packets, ai, car, classified,
                              fuel_and_ers, lap_time, player, speed,
                              world_position)
@@ -173,7 +177,8 @@ async def test_final_classification_sets_laps_per_car(manager: InjectingTelemetr
     await manager.inject(packet)
 
     assert [entry.m_numLaps for entry in packet.m_classificationData] == [5, 4]
-    assert len(saves.requests) == 1
+    assert [(r.trigger, r.content) for r in saves.requests] == [("final_classification", "json"),
+                                                                ("final_classification", "pngt")]
 
 
 @allure.story("Packet helpers")
@@ -197,3 +202,46 @@ async def test_session_history_burst_covers_the_grid_on_one_frame(manager: Injec
 
     assert [packet.m_carIdx for packet in burst] == list(range(get_num_cars(packets.packet_format)))
     assert {packet.m_header.m_overallFrameIdentifier for packet in burst} == {50}
+
+
+# ------------------------- FAKE SUBSYSTEM -----------------------------------------------------------------------------
+
+def _write(path: str, *, mode: str) -> None:
+    raise AssertionError("run_in_process must not run fn")
+
+
+@allure.story("Fake subsystem")
+def test_run_in_process_has_the_real_signature() -> None:
+    assert inspect.signature(FakeSubsystem.run_in_process) == inspect.signature(AsyncSubsystem.run_in_process)
+
+
+@allure.story("Fake subsystem")
+async def test_run_in_process_records_the_call_and_resolves() -> None:
+    subsystem = FakeSubsystem()
+
+    assert await subsystem.run_in_process(_write, "out.pngt", mode="w") is None
+    assert subsystem.process_calls == [ProcessCall(fn_name="_write", args=("out.pngt",), kwargs={"mode": "w"})]
+
+
+@allure.story("Fake subsystem")
+async def test_run_in_process_block_holds_calls_until_release() -> None:
+    subsystem = FakeSubsystem()
+    subsystem.block()
+    first = asyncio.ensure_future(subsystem.run_in_process(_write, "a", mode="w"))
+    second = asyncio.ensure_future(subsystem.run_in_process(_write, "b", mode="w"))
+    await asyncio.sleep(0)
+    assert not first.done() and not second.done()
+
+    subsystem.release()
+    assert await first is None and await second is None
+    assert await subsystem.run_in_process(_write, "c", mode="w") is None, "release stops holding new calls"
+
+
+@allure.story("Fake subsystem")
+async def test_run_in_process_fail_with_raises_once() -> None:
+    subsystem = FakeSubsystem()
+    subsystem.fail_with(OSError("disk full"))
+
+    with pytest.raises(OSError, match="disk full"):
+        await subsystem.run_in_process(_write, "a", mode="w")
+    assert await subsystem.run_in_process(_write, "b", mode="w") is None

@@ -197,9 +197,12 @@ Fixtures (`conftest.py`):
 | `packets` | Packet helpers bound to `packet_format` (default 2026). Frames count up on their own |
 | `frame_gate_enabled` | False by default. `@pytest.mark.parametrize("frame_gate_enabled", [True], indirect=True)` turns the frame gate on |
 | `state`, `handler` | The real `SessionState` and `F1TelemetryHandler` |
-| `saves` | Records save requests (just-in-case, final classification) instead of writing files |
-| `tokens` | Records the handler's `report_*_from_child` tokens |
-| `fake_subsystem` | Records `fire_and_forget` names and `dealer.fire` calls, runs nothing |
+| `settings` | Every session type autosaves and records laps, every lap analyzer sensor on, just-in-case saves on |
+| `unified_save` | False by default. `@pytest.mark.parametrize("unified_save", [True], indirect=True)` turns on `Capture.unified_save_format` |
+| `saves` | Records separate-files save requests as (trigger, content, session UID), e.g. `("just_in_case", "pngt", 100)`, instead of writing files |
+| `tokens` | Records the handler's `report_*_from_child` tokens (save skipped, session saved, `.pngt` save start and end) |
+| `fake_subsystem` | Records `fire_and_forget` names, `dealer.fire` calls and `run_in_process` calls (where unified saves land), runs nothing. `block()` / `release()` / `fail_with()` control when a `run_in_process` call finishes |
+| `user_data_dir` | Autouse. `resolve_user_file` points into `tmp_path`, so nothing is written under the real `data/` |
 | `caplog` | Wired to the real `PngLogger` the state layer uses |
 
 A scenario:

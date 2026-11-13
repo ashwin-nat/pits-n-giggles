@@ -36,9 +36,11 @@ from allure_commons.types import LabelType
 
 from apps.backend.app_ctx import AppCtx
 from apps.backend.state_mgmt_layer import SessionState
+from apps.backend.state_mgmt_layer import save_request as save_request_module
 from apps.backend.telemetry_layer import telemetry_handler as telemetry_handler_module
 from apps.backend.telemetry_layer.telemetry_handler import F1TelemetryHandler
-from lib.config import PngSettings
+from lib.config import (CaptureSettings, LapAnalyzerSensorSettings,
+                        LapAnalyzerSettings, PngSettings)
 from lib.logger import PngLogger
 
 from .packet_helpers import Packets
@@ -48,7 +50,12 @@ from .harness import (FakeSubsystem, InjectingTelemetryManager, SaveRecorder,
 # ------------------------- CONSTANTS ----------------------------------------------------------------------------------
 
 # The report_*_from_child tokens telemetry_handler imports by name
-HANDLER_TOKENS = ["report_session_save_skipped_from_child"]
+HANDLER_TOKENS = [
+    "report_session_save_skipped_from_child",
+    "report_session_saved_from_child",
+    "report_pngt_save_start_from_child",
+    "report_pngt_save_end_from_child",
+]
 
 SUITE_DIR = Path(__file__).parent
 CALL_REPORT = pytest.StashKey[pytest.TestReport]()
@@ -96,9 +103,33 @@ def packets(packet_format: int) -> Packets:
 
 
 @pytest.fixture
-def settings() -> PngSettings:
-    """Default settings."""
-    return PngSettings()
+def unified_save(request: pytest.FixtureRequest) -> bool:
+    """False (the default setting) unless a test passes @pytest.mark.parametrize("unified_save", [True],
+    indirect=True)."""
+    return getattr(request, "param", False)
+
+
+@pytest.fixture
+def settings(unified_save: bool) -> PngSettings:
+    """Every session type autosaves and records laps, every lap analyzer sensor is on, and just-in-case saves
+    are on. Capture.unified_save_format comes from unified_save."""
+    all_sensors = LapAnalyzerSensorSettings(**{name: True for name in LapAnalyzerSensorSettings.model_fields})
+    return PngSettings(
+        Capture=CaptureSettings(post_race_data_autosave=True, post_quali_data_autosave=True,
+                                post_fp_data_autosave=True, post_tt_data_autosave=True,
+                                just_in_case_autosave=True, unified_save_format=unified_save),
+        LapAnalyzer=LapAnalyzerSettings(enable=True, record_in_race=True, record_in_quali=True,
+                                        record_in_fp=True, record_in_tt=True, Sensors=all_sensors),
+    )
+
+
+@pytest.fixture(autouse=True)
+def user_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Where saves would land. resolve_user_file points here for every module that imports it, so no
+    scenario creates anything under the real data/ directory."""
+    for module in (telemetry_handler_module, save_request_module):
+        monkeypatch.setattr(module, "resolve_user_file", lambda name: str(tmp_path / name))
+    return tmp_path
 
 
 @pytest.fixture

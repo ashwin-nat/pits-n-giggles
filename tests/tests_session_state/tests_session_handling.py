@@ -36,6 +36,10 @@ from .packet_helpers import (ALL_FORMATS, Packets, ai, car, classified,
 
 pytestmark = allure.feature("Session handling")
 
+# The JSON and the .pngt, both requested on FINAL_CLASSIFICATION for UID 100
+FINAL_SAVES = [SaveRequestRecord("final_classification", "json", 100),
+               SaveRequestRecord("final_classification", "pngt", 100)]
+
 # ------------------------- HELPERS ------------------------------------------------------------------------------------
 
 async def _race_in_progress(manager: InjectingTelemetryManager, packets: Packets, session_uid: int) -> None:
@@ -65,7 +69,8 @@ async def test_uid_change_clears_and_saves_just_in_case(manager: InjectingTeleme
     # The first packet of a new session, and no FINAL_CLASSIFICATION was ever received for UID 100
     await manager.inject(packets.lap(car(0, lap=1, lap_distance=10), session_uid=200))
 
-    assert saves.requests == [SaveRequestRecord(kind="just_in_case", session_uid=100, reason="Just_in_case")]
+    assert saves.requests == [SaveRequestRecord("just_in_case", "json", 100),
+                              SaveRequestRecord("just_in_case", "pngt", 100)]
     assert tokens.records == []
     assert handler.m_last_session_uid == 200
     assert state.m_session_info.m_session_uid is None
@@ -82,12 +87,12 @@ async def test_uid_change_after_final_classification_skips_just_in_case(manager:
     await _race_in_progress(manager, packets, session_uid=100)
     await manager.inject(packets.final_classification(classified(position=1, num_laps=5),
                                                       classified(position=2, num_laps=5), session_uid=100))
-    assert saves.requests == [SaveRequestRecord(kind="final_classification", session_uid=100, reason=None)]
+    assert saves.requests == FINAL_SAVES
 
     await manager.inject(packets.lap(car(0, lap=1, lap_distance=10), session_uid=200))
 
     # Only the final classification save. The session ended properly, so no just-in-case save
-    assert saves.requests == [SaveRequestRecord(kind="final_classification", session_uid=100, reason=None)]
+    assert saves.requests == FINAL_SAVES
     assert tokens.records == []
     assert handler.m_last_session_uid == 200
     assert all(driver is None for driver in state.m_driver_data)
@@ -114,6 +119,6 @@ async def test_final_classification_before_any_lap_data(manager: InjectingTeleme
     await manager.inject(packets.final_classification(classified(position=1, num_laps=5),
                                                       classified(position=2, num_laps=5), session_uid=100))
 
-    assert saves.requests == [SaveRequestRecord(kind="final_classification", session_uid=100, reason=None)]
+    assert saves.requests == FINAL_SAVES
     expected = [] if packets.packet_format == 2023 else ["Player", "Opponent"]   # 2023 has no speed trap records
     assert [r["name"] for r in state.buildFinalClassificationJSON()["speed-trap-records"]] == expected
