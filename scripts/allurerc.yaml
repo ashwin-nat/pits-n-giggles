@@ -1,0 +1,29 @@
+# Allure 3 config for the local UT report: allure generate -c scripts/allurerc.yaml
+# Paths resolve against the working directory, so run from the repo root.
+name: "Pits n' Giggles - unit tests"
+# Explicit, else Allure globs ./**/allure-results across the repo, apps/external included
+resultsDir: reports/allure-results
+output: reports/allure-report
+historyPath: reports/allure-history.jsonl
+historyLimit: 200
+
+categories:
+  rules:
+    # allure-pytest reports xfail as skipped with an "XFAIL <reason>" message
+    - id: known-bugs
+      name: Known bugs (xfail)
+      matchers:
+        statuses: [skipped]
+        message: XFAIL
+
+# Awesome only: the dashboard plugin repeats awesome's charts, and a second plugin adds a summary landing page
+plugins:
+  awesome:
+    options:
+      # Labelled tests nest by epic > feature > story; a test missing a label skips that level,
+      # and appendTitlePath keeps unlabelled tests in their module tree instead of a flat root list
+      groupBy: [epic, feature, story]
+      appendTitlePath: true
+      # A multi-file report is built in awesome/ then renamed up; on Windows that rename randomly hits
+      # EPERM (something briefly opens the ~1600 fresh files under Documents). One file has no such move
+      singleFile: true

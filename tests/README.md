@@ -118,23 +118,40 @@ Everything written under `reports/` is gitignored.
 
 ## Allure Report (local)
 
-Requires the Allure CLI installed separately (pick any one):
+Requires the Allure 3 CLI (Node.js). `allure-commandline` and the Scoop/Homebrew packages are Allure 2:
 
 ```bash
-npm install -g allure-commandline   # requires Node.js — works on all platforms
-scoop install allure                # Windows (Scoop)
-brew install allure                 # macOS (Homebrew)
+npm install -g allure@3.33.0
 ```
 
 Then:
 
 ```bash
-# Run tests and collect results
+# Clear old results. Not --clean-alluredir: every xdist worker runs it, racing the others' writes
+rm -rf reports/allure-results
+
+# Run tests and collect results (add the --cov flags above to feed the coverage reports from the same run)
 poetry run pytest tests/ --alluredir=reports/allure-results
 
-# Generate and open the report in a browser
-allure serve reports/allure-results
+# Build the report from scripts/allurerc.yaml, append the run to history, and open it
+allure generate -c scripts/allurerc.yaml --clean --open
 ```
+
+`allure open -c scripts/allurerc.yaml` re-serves the last report without regenerating it.
+
+Each `generate` appends one line to `reports/allure-history.jsonl`, which drives the trend charts and flaky
+detection (capped at 200 runs). Deleting `reports/` wholesale resets it. To keep it, delete only
+`reports/allure-results/` or `reports/allure-report/`.
+
+Allure has no xfail status. `allure-pytest` reports xfail as skipped, so the strict xfail known bugs are grouped
+under the "Known bugs (xfail)" category instead.
+
+Allure 3 identifies a test by its name plus its *displayed* parameter values (`repr()`, not the pytest `ids`). So
+parametrize over plain values (`str`, numbers, enums):
+- `bytes` all display as `<class 'bytes'>`, which merges the cases into one test with "retries". Use `str` and
+  `.encode()` inside the test.
+- Functions and objects without a `__repr__` display with a memory address, so the case is "new" on every run and
+  has no history. Parametrize over a name and look the object up inside the test.
 
 ## Layout
 
