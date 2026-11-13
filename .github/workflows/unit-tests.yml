@@ -48,7 +48,7 @@ jobs:
       - name: Run tests
         run: |
           poetry run pytest tests/ \
-            --cov=lib \
+            --cov \
             --cov-config=scripts/.coveragerc_ut \
             --cov-report=html:reports/coverage \
             --cov-report=xml:reports/coverage.xml \

@@ -42,10 +42,14 @@ poetry run pytest tests/tests_openf1/tests_openf1_integration.py -m openf1 -v -n
 ## Coverage Report (local)
 
 ```bash
-poetry run pytest tests/ --cov=lib --cov-config=scripts/.coveragerc_ut --cov-report=html:reports/coverage
+poetry run pytest tests/ --cov --cov-config=scripts/.coveragerc_ut --cov-report=html:reports/coverage
 start reports/coverage/index.html   # Windows
 open reports/coverage/index.html    # macOS
 ```
+
+What is measured is set in `scripts/.coveragerc_ut`: `lib/`, plus the backend's
+`state_mgmt_layer/` (without `intf/`) and `telemetry_layer/`, which `tests_session_state/` drives. Pass
+a bare `--cov`. `--cov=<path>` replaces the config's `source` list rather than adding to it.
 
 Alongside `index.html`, coverage.py also writes `function_index.html` and
 `class_index.html` — the same data grouped per function and per class, which is the
@@ -81,12 +85,12 @@ reportgenerator \
     -targetdir:reports/coverage-rg \
     -historydir:reports/coverage-history \
     -reporttypes:"Html_Dark;MarkdownSummaryGithub" \
-    -title:"Pits n' Giggles - lib coverage"
+    -title:"Pits n' Giggles - unit test coverage"
 
 start reports/coverage-rg/index.html
 ```
 
-`coverage xml` maps each directory under `lib/` to a Cobertura `<package>`, which is
+`coverage xml` maps each measured directory to a Cobertura `<package>`, which is
 what gives the per-directory table. Keeping `-historydir` across runs appends one point
 per invocation, so the trend chart fills in over time — delete the directory to reset
 it. `MarkdownSummaryGithub` also writes `reports/coverage-rg/SummaryGithub.md`, handy

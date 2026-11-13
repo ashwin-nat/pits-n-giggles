@@ -5,8 +5,16 @@ omit =
     */tests/*
     lib/f1_types/constants.py
     lib/subsystem/identity.py
+    # apps/backend is measured for its state and telemetry layers only, the ones tests/tests_session_state drives
+    apps/backend/*.py
+    apps/backend/intf_layer/*
+    apps/backend/state_mgmt_layer/intf/*
+# Callers pass a bare --cov so this list applies; --cov=<path> would replace it.
+# One apps/backend root, not one per layer: report paths keep the layer prefix, so the layers' top-level files
+# don't merge with lib's into one package
 source =
     lib
+    apps/backend
 
 [report]
 show_missing = True
