@@ -26,7 +26,7 @@ from typing import Any, Dict, List
 
 from .base_pkt import F1PacketBase, F1RawValueEnum, F1SubPacketBase
 from .common import get_num_cars
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -444,6 +444,8 @@ class PacketCarTelemetryData(F1PacketBase):
         m_mfdPanelIndexSecondaryPlayer (int): Secondary player's MFD panel index. See m_mfdPanelIndex for details.
         m_suggestedGear (int): Suggested gear for the player (1-8), 0 if no gear is suggested.
     """
+
+    PACKET_ID = F1PacketType.CAR_TELEMETRY
 
     COMPILED_PACKET_FORMAT_EXTRA = struct.Struct("<BBb")
     PACKET_LEN_EXTRA = COMPILED_PACKET_FORMAT_EXTRA.size

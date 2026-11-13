@@ -40,6 +40,7 @@ class DummyPacket(F1PacketBase):
     """
     Minimal concrete packet for testing SessionFrameGate.
     """
+    ABSTRACT = True     # Takes its packet type per instance, so it registers as no parser
     __slots__ = ()
 
     def __init__(self, session_uid: int, frame_id: int, packet_type: F1PacketType):

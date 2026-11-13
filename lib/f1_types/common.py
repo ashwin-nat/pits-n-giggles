@@ -759,7 +759,7 @@ class TrackID(F1RawValueEnum):
     Austria_Reverse = 40
     Zandvoort_Reverse = 41
     Madrid = 42
-    UNKNOWN = 255
+    UNKNOWN = -1    # The game's own "unknown" on the int8 wire field
 
     @classmethod
     def safeCast(cls, value: int) -> "TrackID":

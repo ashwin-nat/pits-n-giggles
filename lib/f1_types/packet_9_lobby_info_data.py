@@ -27,7 +27,7 @@ from typing import Any, Dict, List, Optional
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
 from .common import (Nationality, Platform, TelemetrySetting)
 from .team_id import TeamID, get_team_id
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -435,6 +435,8 @@ class PacketLobbyInfoData(F1PacketBase):
     Note:
         The class is designed to parse and represent the lobby information data packet.
     """
+
+    PACKET_ID = F1PacketType.LOBBY_INFO
 
     MAX_PLAYERS: int = 24
 

@@ -1,6 +1,10 @@
 import os
 import random
+from pathlib import Path
+
+import allure
 import pytest
+from allure_commons.types import LabelType
 
 _GLOBAL_SEED = 42
 
@@ -30,3 +34,18 @@ def pytest_collection_modifyitems(items):
     for item in items:
         if item.get_closest_marker("serial"):
             item.add_marker(pytest.mark.xdist_group(name="serial"))
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_collection_finish(session):
+    # The report tree groups by epic > feature > story. Each level a test doesn't set falls back to folder > file > class
+    tests_dir = Path(__file__).parent
+    for item in session.items:
+        labelled = {mark.kwargs.get("label_type") for mark in item.iter_markers(name="allure_label")}
+        if LabelType.EPIC not in labelled:
+            folder = item.path.parent.relative_to(tests_dir).as_posix()
+            item.add_marker(allure.epic(folder if folder != "." else "tests"))
+        if LabelType.FEATURE not in labelled:
+            item.add_marker(allure.feature(item.path.name))
+        if LabelType.STORY not in labelled and item.cls is not None:
+            item.add_marker(allure.story(item.cls.__name__))

@@ -20,7 +20,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from lib.f1_types import F1PacketBase, PacketHeader, F1PacketType
+from lib.f1_types import (F1PacketBase, F1PacketType, PacketCarDamageData,
+                          PacketCarSetupData, PacketCarStatusData,
+                          PacketCarTelemetry2Data, PacketCarTelemetryData,
+                          PacketEventData, PacketFinalClassificationData,
+                          PacketHeader, PacketLapData, PacketLapPositionsData,
+                          PacketLobbyInfoData, PacketMotionData,
+                          PacketMotionExData, PacketParticipantsData,
+                          PacketSessionData, PacketSessionHistoryData,
+                          PacketTimeTrialData, PacketTyreSetsData)
 import pytest
 
 from lib.f1_types.base_pkt import (F1BaseEnum, F1CompareableEnum,
@@ -65,6 +73,8 @@ class Code(F1RawValueEnum):
     UNKNOWN = "????"
 
 class PacketWithoutToJSON(F1PacketBase):
+    ABSTRACT = True
+
     def __init__(self, header):
         super().__init__(header)
 
@@ -363,6 +373,7 @@ def test_subpacket_instances_are_fully_slotted():
 
 def test_packet_instances_are_fully_slotted():
     class TestPacket(F1PacketBase):
+        ABSTRACT = True
         __slots__ = ()
 
         def __init__(self, header):
@@ -377,4 +388,72 @@ def test_packet_instances_are_fully_slotted():
 
     with pytest.raises(AttributeError):
         packet.undeclared_attribute = 123
+
+# --- PACKET_ID registration ---
+
+def _all_parsers():
+    return {packet_type: F1PacketBase.parser_for(packet_type) for packet_type in F1PacketType}
+
+def test_every_packet_type_has_a_parser():
+    assert [t for t, cls in _all_parsers().items() if cls is None] == []
+
+def test_parsers_match_the_packet_classes():
+    assert _all_parsers() == {
+        F1PacketType.MOTION: PacketMotionData,
+        F1PacketType.SESSION: PacketSessionData,
+        F1PacketType.LAP_DATA: PacketLapData,
+        F1PacketType.EVENT: PacketEventData,
+        F1PacketType.PARTICIPANTS: PacketParticipantsData,
+        F1PacketType.CAR_SETUPS: PacketCarSetupData,
+        F1PacketType.CAR_TELEMETRY: PacketCarTelemetryData,
+        F1PacketType.CAR_STATUS: PacketCarStatusData,
+        F1PacketType.FINAL_CLASSIFICATION: PacketFinalClassificationData,
+        F1PacketType.LOBBY_INFO: PacketLobbyInfoData,
+        F1PacketType.CAR_DAMAGE: PacketCarDamageData,
+        F1PacketType.SESSION_HISTORY: PacketSessionHistoryData,
+        F1PacketType.TYRE_SETS: PacketTyreSetsData,
+        F1PacketType.MOTION_EX: PacketMotionExData,
+        F1PacketType.TIME_TRIAL: PacketTimeTrialData,
+        F1PacketType.LAP_POSITIONS: PacketLapPositionsData,
+        F1PacketType.CAR_TELEMETRY_2: PacketCarTelemetry2Data,
+    }
+
+def test_missing_packet_id_is_rejected():
+    with pytest.raises(TypeError, match="NoId must define: PACKET_ID"):
+        class NoId(F1PacketBase):    # pylint: disable=unused-variable
+            pass
+
+def test_non_enum_packet_id_is_rejected():
+    with pytest.raises(TypeError, match="RawId must define: PACKET_ID"):
+        class RawId(F1PacketBase):    # pylint: disable=unused-variable
+            PACKET_ID = 2
+
+def test_duplicate_packet_id_is_rejected_and_keeps_the_original():
+    before = _all_parsers()
+    with pytest.raises(TypeError, match="SecondLapData claims LAP_DATA, already parsed by PacketLapData"):
+        class SecondLapData(F1PacketBase):    # pylint: disable=unused-variable
+            PACKET_ID = F1PacketType.LAP_DATA
+
+    assert _all_parsers() == before
+
+def test_abstract_class_registers_nothing():
+    before = _all_parsers()
+
+    class Abstract(F1PacketBase):    # pylint: disable=unused-variable
+        ABSTRACT = True
+
+    assert _all_parsers() == before
+
+def test_abstract_is_not_inherited():
+    class Abstract(F1PacketBase):
+        ABSTRACT = True
+
+    with pytest.raises(TypeError, match="Concrete must define: PACKET_ID"):
+        class Concrete(Abstract):    # pylint: disable=unused-variable
+            pass
+
+def test_packet_id_is_not_inherited():
+    with pytest.raises(TypeError, match="LapDataSubclass must define: PACKET_ID"):
+        class LapDataSubclass(PacketLapData):    # pylint: disable=unused-variable
+            pass
 

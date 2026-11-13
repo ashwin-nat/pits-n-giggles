@@ -24,7 +24,7 @@ import random
 
 import pytest
 
-from lib.f1_types import PacketLapData, F1PacketType
+from lib.f1_types import F1PacketType, PacketHeader, PacketLapData
 from lib.f1_types.packet_2_lap_data import LapData
 from .tests_parser_base import F1TypesTest
 
@@ -2034,3 +2034,53 @@ def test_f1_23_totals_fall_back_to_the_raw_fields():
     assert lap_data.m_deltaToRaceLeaderMinutes == 0
     assert lap_data.deltaToFrontTotalMs == 12250
     assert lap_data.deltaToLeaderTotalMs == 61150
+
+
+# ------------------------- from_values / to_bytes per format ----------------------------------------------------------
+
+def _distinct_lap_data(packet_format: int) -> LapData:
+    """Every field gets its own value, so a field landing in the wrong slot shows up."""
+    return LapData.from_values(
+        last_lap_time_ms=91_001, current_lap_time_ms=45_002,
+        sector1_time_ms=30_003, sector1_time_minutes=1,
+        sector2_time_ms=31_004, sector2_time_minutes=2,
+        delta_to_front_ms=1_005, delta_to_front_minutes=3,
+        delta_to_leader_ms=2_006, delta_to_leader_minutes=4,
+        lap_distance=1234.5, total_distance=5678.25, safety_car_delta=1.5,
+        car_position=7, current_lap_num=8, pit_status=1, num_pit_stops=2,
+        sector=1, current_lap_invalid=1, penalties=5, total_warnings=6,
+        corner_cutting_warnings=3, num_unserved_drive_through_pens=1,
+        num_unserved_stop_go_pens=2, grid_position=9, driver_status=4,
+        result_status=2, pit_lane_timer_active=1, pit_lane_time_ms=1_234,
+        pit_stop_timer_ms=2_345, pit_stop_should_serve_pen=1,
+        speed_trap_fastest_speed=321.5, speed_trap_fastest_lap=3,
+        packet_format=packet_format,
+    )
+
+
+@pytest.mark.parametrize("packet_format", [2023, 2024, 2025, 2026])
+def test_lap_data_round_trips_in_its_format(packet_format):
+    lap_data = _distinct_lap_data(packet_format)
+
+    assert LapData(lap_data.to_bytes(), packet_format) == lap_data
+    assert (lap_data.m_carPosition, lap_data.m_currentLapNum, lap_data.m_gridPosition) == (7, 8, 9)
+    assert lap_data.m_pitStopShouldServePen == 1
+    assert lap_data.m_deltaToRaceLeaderInMS == 2_006
+
+
+def test_lap_data_2023_drops_the_fields_its_wire_format_lacks():
+    lap_data = _distinct_lap_data(2023)
+
+    assert len(lap_data.to_bytes()) == LapData.PACKET_LEN_23
+    assert (lap_data.m_deltaToCarInFrontMinutes, lap_data.m_deltaToRaceLeaderMinutes) == (0, 0)
+    assert (lap_data.m_speedTrapFastestSpeed, lap_data.m_speedTrapFastestLap) == (0, 0)
+
+
+def test_packet_lap_data_2023_round_trips():
+    header = F1TypesTest.getRandomHeader(F1PacketType.LAP_DATA, 23, 22)
+    generated = PacketLapData.from_values(header, [_distinct_lap_data(2023) for _ in range(PacketLapData.MAX_CARS)])
+
+    serialised = generated.to_bytes()
+    parsed = PacketLapData(PacketHeader(serialised[:PacketHeader.PACKET_LEN]), serialised[PacketHeader.PACKET_LEN:])
+
+    assert parsed == generated

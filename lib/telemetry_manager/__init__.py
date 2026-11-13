@@ -23,11 +23,12 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .factory import telemetry_transport_factory
-from .manager import AsyncF1TelemetryManager
+from .manager import AsyncF1TelemetryManager, F1TelemetryManagerBase
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     'AsyncF1TelemetryManager',
+    'F1TelemetryManagerBase',
     'telemetry_transport_factory',
 ]

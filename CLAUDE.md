@@ -40,7 +40,7 @@ poetry run python scripts/qmllint.py
 poetry run python scripts/build.py
 
 # Unit test coverage (same invocation CI uses; results are uploaded to Codecov)
-poetry run pytest tests/ --cov=lib --cov-config=scripts/.coveragerc_ut --cov-report=term-missing
+poetry run pytest tests/ --cov --cov-config=scripts/.coveragerc_ut --cov-report=term-missing
 
 # Integration test coverage
 poetry run python scripts/coverage_integration_tests.py

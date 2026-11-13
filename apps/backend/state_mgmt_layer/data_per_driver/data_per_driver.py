@@ -883,16 +883,7 @@ class DataPerDriver:
                 # On weird tracks (pit garage before the finish line), the tyre set change happens before lap
                 #   completion, so the prev lap's tyre wear data could get lost. There, the lap change is awaited
                 #   as well, and the last stint's final wear is rewritten on completion
-                if track is None:
-                    # Topology is unknowable until the session packet names the track, and
-                    #   isFinishLineAfterPitGarage(None) is bare set membership - it would answer False
-                    #   and quietly put a weird track on the normal-track path. Defer instead: the
-                    #   session packet lands within seconds and detection re-fires on the next tyre
-                    #   sets packet.
-                    self.m_logger.debug("Driver %s - tyre set change detected before the track is known. "
-                                        "Deferring until the session packet names it", str(self))
-                    return
-
+                # Track is always known here: tyre history only starts after a session packet has named it
                 pending = self.m_pending_tyre_change
                 if pending and pending.target_idx != fitted_index:
                     # The fitted set moved on before the previous change settled. Whether that is a
@@ -905,6 +896,7 @@ class DataPerDriver:
                     pending = None
 
                 if pending is None:
+                    # An unknown track is treated as non weird
                     is_weird = F1Utils.isFinishLineAfterPitGarage(track)
 
                     # The weird-track lap wait exists so the rewrite happens after onLapChange has

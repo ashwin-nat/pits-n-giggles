@@ -20,8 +20,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from lib.f1_types import PacketSessionHistoryData, F1PacketType, PacketCountValidationError
-from .tests_parser_base import F1TypesTest
+import pytest
+
+from lib.f1_types import (F1PacketType, LapHistoryData, PacketCountValidationError,
+                          PacketSessionHistoryData)
+from .tests_parser_base import F1TypesTest, assert_all_slots_set
 
 class TestPacketSessionHistoryData(F1TypesTest):
     """
@@ -153,3 +156,29 @@ class TestPacketSessionHistoryData(F1TypesTest):
         self.jsonComparisionUtil(expected_json, parsed_json)
         self.assertFalse(hasattr(parsed_packet, '__dict__'))
 
+
+# ------------------------- from_values ------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("valid", [True, False])
+def test_lap_history_from_values_sets_time_and_validity(valid):
+    lap = LapHistoryData.from_values(92_000, valid=valid)
+
+    assert lap.m_lapTimeInMS == 92_000
+    assert bool(lap.isLapValid()) is valid
+    assert bool(lap.isSector1Valid()) is bool(lap.isSector2Valid()) is bool(lap.isSector3Valid()) is valid
+    assert (lap.s1TimeMS, lap.s2TimeMS, lap.s3TimeMS) == (0, 0, 0)
+
+def test_session_history_from_values_sets_the_given_fields_and_every_slot():
+    header = F1TypesTest.getRandomHeader(F1PacketType.SESSION_HISTORY, 26, 22)
+    laps = [LapHistoryData.from_values(92_000, valid=True), LapHistoryData.from_values(0, valid=False)]
+
+    packet = PacketSessionHistoryData.from_values(header, car_idx=3, lap_history=laps)
+
+    assert packet.m_header is header
+    assert packet.m_carIdx == 3
+    assert packet.m_numLaps == 2
+    assert packet.m_lapHistoryData == laps
+    assert packet.m_tyreStintsHistoryData == []
+    assert not packet.is_valid
+    assert_all_slots_set(packet)
+    packet.toJSON(include_header=True)

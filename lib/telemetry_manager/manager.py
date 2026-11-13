@@ -24,8 +24,6 @@
 
 import asyncio
 import json
-import os
-from datetime import datetime
 from logging import Logger
 from typing import Awaitable, Callable, Dict, Optional
 
@@ -44,34 +42,26 @@ F1TelemetryCallback = Optional[Callable[[F1PacketBase], Awaitable[None]]]
 
 # ------------------------- CLASSES ------------------------------------------------------------------------------------
 
-class AsyncF1TelemetryManager:
-    """
-    This class is used to act as the interface between the raw parsers and the state management layer.
-    This class handles the following tasks
-        1 - manage the socket and receive the data
-        2 - parse the packet into its appropriate type
-        3 - call the appropriate state management layer callback
+class F1TelemetryManagerBase:
+    """CPU-bound half of the telemetry manager: callback registry, frame gate and dispatch.
+
+    Owns no transport and no receive loop. Feed it parsed packets through _dispatch().
     """
 
     def __init__(self,
-                 transport: TelemetryTransport,
                  logger: Logger = None,
                  frame_gate_enabled: bool = False):
-        """Init the telemetry manager app and all its sub components
+        """Init the callback registry, frame gate and stats
 
         Args:
-            transport (TelemetryTransport): The transport to receive packets from
             logger (Logger): The logger to use
             frame_gate_enabled (bool): If True, the frame gate will be enabled
         """
 
         self.m_stats = EventCounter()
         self.m_logger = logger
-        self.m_transport = transport
         self.m_callbacks: Dict[F1PacketType, F1TelemetryCallback] = {}
         self.m_frame_gate: SessionFrameGate = SessionFrameGate(frame_gate_enabled)
-
-        self.m_raw_packet_callback: Optional[Callable[[object], Awaitable[None]]] = None
         self.m_any_packet_callback: Optional[F1TelemetryCallback] = None
 
     def on_packet(self, packet_type: F1PacketType):
@@ -88,18 +78,6 @@ class AsyncF1TelemetryManager:
 
         def decorator(callback: Callable[[object], Awaitable[None]]):
             self.m_callbacks[packet_type] = callback
-            return callback
-
-        return decorator
-
-    def on_raw_packet(self):
-        """Decorator to register a callback for every raw UDP message
-
-        Returns:
-            Callable: The decorator function
-        """
-        def decorator(callback: Callable[[object], Awaitable[None]]):
-            self.m_raw_packet_callback = callback
             return callback
 
         return decorator
@@ -121,6 +99,112 @@ class AsyncF1TelemetryManager:
         """
         def decorator(callback: Callable[[F1PacketBase], Awaitable[None]]):
             self.m_any_packet_callback = callback
+            return callback
+
+        return decorator
+
+    def getStats(self) -> dict:
+        """Get the current packet statistics
+
+        Returns:
+            dict: The current packet statistics
+        """
+        return {
+            "packets": self.m_stats.get_stats(),
+        }
+
+    async def _dispatch(self, parsed_obj: F1PacketBase, size: int = 0) -> None:
+        """Run a parsed packet through the frame gate, the any-packet callback and its typed callback
+
+        Args:
+            parsed_obj (F1PacketBase): The parsed packet
+            size (int): Raw packet size in bytes, used only for stats
+        """
+
+        packet_id = parsed_obj.m_header.m_packetId
+        callback = self.m_callbacks.get(packet_id)
+        if callback is None:
+            raise UnsupportedPacketType(packet_id)
+
+        if self.m_frame_gate.should_drop(parsed_obj):
+            self.m_stats.track_packet(
+                "__DROPPED_PACKETS_FRAME_GATE__",
+                self.m_frame_gate.last_drop_reason or "N/A",
+                size
+            )
+            return
+
+        # Runs for every packet that reaches this point, ahead of its typed callback, so a
+        # consumer can act on the packet (e.g. detect a session change) before anything
+        # merges it into per-type state.
+        if self.m_any_packet_callback:
+            await self.m_any_packet_callback(parsed_obj)
+
+        # Perform the registered callback
+        try:
+            await callback(parsed_obj)
+            self.m_stats.track_packet(
+                "__PROCESSED__",
+                str(packet_id),
+                size,
+            )
+        except Exception as e:
+            self.m_stats.track_packet(
+                "__EXCEPTION_CB__",
+                str(packet_id),
+                size)
+            self.m_logger.exception(
+                "Exception while handling packet callback.\n"
+                "Packet type: %s\nException type: %s\nMessage: %s\nPacket: %s",
+                str(packet_id),
+                type(e).__name__,
+                str(e),
+                self._packetJSONForLog(parsed_obj),
+            )
+            raise
+
+    @staticmethod
+    def _packetJSONForLog(parsed_obj: F1PacketBase) -> str:
+        """The packet as JSON, or a placeholder naming the error if it cannot be serialised."""
+        try:
+            return json.dumps(parsed_obj.toJSON(include_header=True))
+        except Exception as e: # pylint: disable=broad-exception-caught
+            # The packet that broke a callback may also break toJSON. Never let that hide the original error
+            return f"<toJSON failed: {type(e).__name__}: {e}>"
+
+class AsyncF1TelemetryManager(F1TelemetryManagerBase):
+    """
+    This class is used to act as the interface between the raw parsers and the state management layer.
+    This class handles the following tasks
+        1 - manage the socket and receive the data
+        2 - parse the packet into its appropriate type
+        3 - call the appropriate state management layer callback
+    """
+
+    def __init__(self,
+                 transport: TelemetryTransport,
+                 logger: Logger = None,
+                 frame_gate_enabled: bool = False):
+        """Init the telemetry manager app and all its sub components
+
+        Args:
+            transport (TelemetryTransport): The transport to receive packets from
+            logger (Logger): The logger to use
+            frame_gate_enabled (bool): If True, the frame gate will be enabled
+        """
+
+        super().__init__(logger, frame_gate_enabled)
+        self.m_transport = transport
+        self.m_raw_packet_callback: Optional[Callable[[object], Awaitable[None]]] = None
+
+    def on_raw_packet(self):
+        """Decorator to register a callback for every raw UDP message
+
+        Returns:
+            Callable: The decorator function
+        """
+        def decorator(callback: Callable[[object], Awaitable[None]]):
+            self.m_raw_packet_callback = callback
             return callback
 
         return decorator
@@ -149,7 +233,7 @@ class AsyncF1TelemetryManager:
             dict: The current packet statistics
         """
         return {
-            "packets": self.m_stats.get_stats(),
+            **super().getStats(),
             "transport": self.m_transport.get_stats(),
         }
 
@@ -176,72 +260,4 @@ class AsyncF1TelemetryManager:
                 len(raw_packet))
             return
 
-        # self.m_logger.silent(f"Packet meta: frameId={parsed_obj.m_header.m_frameIdentifier}, "
-        #                      f"packetId={parsed_obj.m_header.m_packetId}, "
-        #                      f"overallFrameId={parsed_obj.m_header.m_overallFrameIdentifier}, "
-        #                      f"sessionUID={parsed_obj.m_header.m_sessionUID}, "
-        #                      f"should_drop={should_drop}, ")
-
-        if self.m_frame_gate.should_drop(parsed_obj):
-            self.m_stats.track_packet(
-                "__DROPPED_PACKETS_FRAME_GATE__",
-                self.m_frame_gate.last_drop_reason or "N/A",
-                len(raw_packet)
-            )
-            return
-
-        # Runs for every packet that reaches this point, ahead of its typed callback, so a
-        # consumer can act on the packet (e.g. detect a session change) before anything
-        # merges it into per-type state.
-        if self.m_any_packet_callback:
-            await self.m_any_packet_callback(parsed_obj)
-
-        # Perform the registered callback
-        try:
-            await self.m_callbacks[parsed_obj.m_header.m_packetId](parsed_obj)
-            self.m_stats.track_packet(
-                "__PROCESSED__",
-                str(parsed_obj.m_header.m_packetId),
-                len(raw_packet),
-            )
-        except Exception as e:
-            packet_file = self._dumpPacketToFile(parsed_obj)
-            self.m_stats.track_packet(
-                "__EXCEPTION_CB__",
-                str(parsed_obj.m_header.m_packetId),
-                len(raw_packet))
-            self.m_logger.exception(
-                "Exception while handling packet callback.\n"
-                "Packet type: %s\nException type: %s\nMessage: %s\n"
-                "Header: %s\nPacket dumped to: %s",
-                str(parsed_obj.m_header.m_packetId),
-                type(e).__name__,
-                str(e),
-                json.dumps(parsed_obj.m_header.toJSON(), indent=2),
-                packet_file,
-            )
-            raise
-
-    def _dumpPacketToFile(self, packet_obj: object, directory: str = "crash_packet_dumps") -> str:
-        """Dump packet JSON to a timestamped file and return the file path.
-
-        Args:
-            packet_obj (object): The packet object to dump.
-            directory (str, optional): The directory to dump the packet to. Defaults to "crash_packet_dumps".
-
-        Returns:
-            str: The file path of the dumped packet.
-
-        """
-        os.makedirs(directory, exist_ok=True)
-
-        timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
-        filename = f"{timestamp}.json"
-        filepath = os.path.join(directory, filename)
-
-        try:
-            with open(filepath, "w", encoding="utf-8") as f:
-                json.dump(packet_obj.toJSON(), f, ensure_ascii=False, indent=2)
-            return filepath
-        except Exception as e: # pylint: disable=broad-exception-caught
-            return f"<Failed to write packet to file: {e}>"
+        await self._dispatch(parsed_obj, len(raw_packet))

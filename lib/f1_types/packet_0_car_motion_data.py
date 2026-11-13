@@ -27,7 +27,7 @@ from typing import Any, Dict, List
 from .base_pkt import F1PacketBase, F1SubPacketBase
 from .common import get_num_cars
 from .errors import InvalidPacketLengthError
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -406,6 +406,8 @@ class PacketMotionData(F1PacketBase):
     Raises:
         InvalidPacketLengthError: If received length is not as per expectation
     """
+
+    PACKET_ID = F1PacketType.MOTION
 
     MAX_CARS = 22
     MAX_CARS_2026 = 24

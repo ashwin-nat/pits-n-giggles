@@ -29,7 +29,7 @@ from .base_pkt import (F1BaseEnum, F1PacketBase, F1RawValueEnum,
                        F1SubPacketBase)
 from .common import SafetyCarEventType, SafetyCarType
 from .errors import UnsupportedValueError
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -53,6 +53,9 @@ class PacketEventData(F1PacketBase):
                                                             Refer PacketEventData.event_type_map
 
     """
+
+    PACKET_ID = F1PacketType.EVENT
+
     class EventPacketType(F1RawValueEnum):
         """
         Enum class representing different event types.
@@ -320,6 +323,23 @@ class PacketEventData(F1PacketBase):
                 bool: True if the Retirement objects are not equal, False otherwise.
             """
             return not self.__eq__(other)
+
+        @classmethod
+        def from_values(cls, vehicle_idx: int, packet_format: int) -> "PacketEventData.Retirement":
+            """Create a Retirement object from values, through the parser. The reason is INVALID.
+
+            Args:
+                vehicle_idx (int): Index of the vehicle that retired
+                packet_format (int): The packet format. 2025 onward also carries the reason
+
+            Returns:
+                PacketEventData.Retirement: The created object
+            """
+            if packet_format >= 2025:
+                data = cls.COMPILED_PACKET_STRUCT_25.pack(vehicle_idx, PacketEventData.Retirement.Reason.INVALID.value)
+            else:
+                data = cls.COMPILED_PACKET_STRUCT_23_24.pack(vehicle_idx)
+            return cls(data, packet_format)
 
     class DrsDisabled(EventType):
         """
@@ -808,6 +828,21 @@ class PacketEventData(F1PacketBase):
 
             return not self.__eq__(other)
 
+        @classmethod
+        def from_values(cls, vehicle_idx: int, speed: float) -> "PacketEventData.SpeedTrap":
+            """Create a SpeedTrap object from values, through the parser. Neither fastest flag is set,
+            the session fastest vehicle index is 255 (none) and the session fastest speed is 0.0.
+
+            Args:
+                vehicle_idx (int): Index of the vehicle through the speed trap
+                speed (float): Speed through the trap. Read back as float32, as off the wire
+
+            Returns:
+                PacketEventData.SpeedTrap: The created object
+            """
+            # The layout is the same in every format, so any format will do
+            return cls(cls.COMPILED_PACKET_STRUCT.pack(vehicle_idx, speed, 0, 0, 255, 0.0), 0)
+
     class StartLights(EventType):
         """
         The class representing the START LIGHTS event. This is sent when the start lights sequence begins.
@@ -1111,6 +1146,19 @@ class PacketEventData(F1PacketBase):
             """
             return not self.__eq__(other)
 
+        @classmethod
+        def from_values(cls, frame_identifier: int) -> "PacketEventData.Flashback":
+            """Create a Flashback object from values, through the parser. The session time is 0.0.
+
+            Args:
+                frame_identifier (int): Frame identifier flashed back to
+
+            Returns:
+                PacketEventData.Flashback: The created object
+            """
+            # The layout is the same in every format, so any format will do
+            return cls(cls.COMPILED_PACKET_STRUCT.pack(frame_identifier, 0.0), 0)
+
     class Buttons(EventType):
         """
         Represents a packet containing button press information.
@@ -1356,6 +1404,22 @@ class PacketEventData(F1PacketBase):
 
             return self.overtakingVehicleIdx != other.overtakingVehicleIdx or \
                 self.beingOvertakenVehicleIdx != other.beingOvertakenVehicleIdx
+
+        @classmethod
+        def from_values(cls,
+                        overtaking_vehicle_idx: int,
+                        being_overtaken_vehicle_idx: int) -> "PacketEventData.Overtake":
+            """Create an Overtake object from values, through the parser.
+
+            Args:
+                overtaking_vehicle_idx (int): Index of the overtaking vehicle
+                being_overtaken_vehicle_idx (int): Index of the vehicle being overtaken
+
+            Returns:
+                PacketEventData.Overtake: The created object
+            """
+            # The layout is the same in every format, so any format will do
+            return cls(cls.COMPILED_PACKET_STRUCT.pack(overtaking_vehicle_idx, being_overtaken_vehicle_idx), 0)
 
     class SafetyCarEvent(EventType):
         """

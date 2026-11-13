@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Optional
 
 from .base_pkt import F1PacketBase, F1SubPacketBase
 from .common import get_num_cars
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -537,6 +537,8 @@ class PacketCarSetupData(F1PacketBase):
             Note:
                 The length of m_carSetups should not exceed the maximum number of participants.
     """
+
+    PACKET_ID = F1PacketType.CAR_SETUPS
 
     COMPILED_PACKET_STRUCT_EXTRA = struct.Struct("<f")
 

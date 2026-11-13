@@ -25,11 +25,11 @@
 from abc import abstractmethod
 from enum import Enum
 from functools import total_ordering
-from typing import (Any, Dict, List, Optional, Tuple, Type, TypeVar, Union,
-                    overload)
+from typing import (Any, ClassVar, Dict, List, Optional, Tuple, Type, TypeVar,
+                    Union, overload)
 
 from .errors import PacketCountValidationError, PacketParsingError
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -253,10 +253,34 @@ class F1RawValueEnum(F1BaseEnum):
 class F1PacketBase:
     """
     Base class for parsed F1 telemetry packets.
-    All derived classes must use __slots__.
+    All derived classes must use __slots__, and set PACKET_ID to the packet type they parse.
+    A class that parses no packet type (a test double) sets ABSTRACT = True instead.
     """
 
     __slots__ = ("m_header",)
+
+    # Annotated only: concrete subclasses always set it, so readers never see None
+    PACKET_ID: ClassVar[F1PacketType]
+    _PARSERS: ClassVar[Dict[F1PacketType, Type["F1PacketBase"]]] = {}
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        """Fail at import time if a subclass did not say which packet type it parses, or claims a taken one"""
+
+        super().__init_subclass__(**kwargs)
+        # __dict__ holds only this class's own body, so a parent's ABSTRACT or PACKET_ID is not inherited
+        if cls.__dict__.get("ABSTRACT", False):
+            return
+        packet_id = cls.__dict__.get("PACKET_ID")
+        if not isinstance(packet_id, F1PacketType):
+            raise TypeError(f"{cls.__name__} must define: PACKET_ID")
+        if (taken_by := F1PacketBase._PARSERS.get(packet_id)) is not None:
+            raise TypeError(f"{cls.__name__} claims {packet_id.name}, already parsed by {taken_by.__name__}")
+        F1PacketBase._PARSERS[packet_id] = cls
+
+    @staticmethod
+    def parser_for(packet_id: F1PacketType) -> Optional[Type["F1PacketBase"]]:
+        """The class that parses packet_id, or None if no class claims it."""
+        return F1PacketBase._PARSERS.get(packet_id)
 
     def __init__(self, header: PacketHeader) -> None:
         """
