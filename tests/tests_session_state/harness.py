@@ -22,10 +22,11 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
+import asyncio
 from dataclasses import dataclass
 from types import ModuleType
-from typing import (Any, Callable, Coroutine, Dict, List, Optional, Sequence,
-                    Tuple)
+from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
+                    Sequence, Tuple)
 
 import pytest
 
@@ -62,19 +63,63 @@ class FakeDealer:
         return _noop()
 
 
+@dataclass(frozen=True)
+class ProcessCall:
+    """One run_in_process() call."""
+    fn_name: str
+    args: Tuple[Any, ...]
+    kwargs: Dict[str, Any]
+
+
 class FakeSubsystem:
-    """Stands in for the backend's AsyncSubsystem: records fire_and_forget names and runs nothing."""
+    """Stands in for the backend's AsyncSubsystem: records fire_and_forget names and run_in_process calls, and
+    runs nothing."""
 
     version = "test"
 
     def __init__(self) -> None:
         self.dealer = FakeDealer()
         self.fired_names: List[Optional[str]] = []
+        self.process_calls: List[ProcessCall] = []
+        self._blocked = False
+        self._blocked_futures: List[asyncio.Future] = []
+        self._fail_next: Optional[BaseException] = None
 
     def fire_and_forget(self, coro: Coroutine, name: Optional[str] = None) -> None:
         """Record the name and close the coroutine without running it."""
         self.fired_names.append(name)
         coro.close()
+
+    def run_in_process(self, fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Awaitable[Any]:
+        """Record the call without running fn. Returns a future that resolves to None straight away, unless
+        block() or fail_with() says otherwise. Same signature as AsyncSubsystem.run_in_process on the feature
+        branch."""
+        self.process_calls.append(ProcessCall(fn_name=fn.__name__, args=args, kwargs=kwargs))
+        future = asyncio.get_running_loop().create_future()
+        if self._fail_next is not None:
+            future.set_exception(self._fail_next)
+            self._fail_next = None
+        elif self._blocked:
+            self._blocked_futures.append(future)
+        else:
+            future.set_result(None)
+        return future
+
+    def block(self) -> None:
+        """Hold every run_in_process() call from now on until release()."""
+        self._blocked = True
+
+    def release(self) -> None:
+        """Complete every held run_in_process() call, and stop holding new ones."""
+        self._blocked = False
+        for future in self._blocked_futures:
+            if not future.done():
+                future.set_result(None)
+        self._blocked_futures.clear()
+
+    def fail_with(self, exc: BaseException) -> None:
+        """Make the next run_in_process() call raise exc."""
+        self._fail_next = exc
 
     def add_task(self, *_args: Any, **_kwargs: Any) -> None:
         """Tests never call register_tasks, so nothing may register a task."""

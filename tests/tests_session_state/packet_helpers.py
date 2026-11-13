@@ -25,14 +25,14 @@
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union
 
-from lib.f1_types import (ActualTyreCompound, CarDamageData, CarStatusData,
+from lib.f1_types import (ActualTyreCompound, CarDamageData, CarMotionData, CarStatusData,
                           CarTelemetry2Data, CarTelemetryData, F1PacketType,
                           FinalClassificationData, LapHistoryData,
                           LiveryColour, Nationality, PacketCarDamageData,
                           PacketCarStatusData, PacketCarTelemetry2Data,
                           PacketCarTelemetryData, PacketEventData,
                           PacketFinalClassificationData, PacketHeader,
-                          PacketLapData, PacketParticipantsData,
+                          PacketLapData, PacketMotionData, PacketParticipantsData,
                           PacketSessionData, PacketSessionHistoryData,
                           PacketTyreSetsData, ParticipantData, Platform,
                           ResultStatus, SessionType23, SessionType24,
@@ -127,6 +127,49 @@ def damage(index: int, tyre_wear: float) -> DamageSpec:
     """A car whose four tyres all carry tyre_wear percent."""
     return DamageSpec(index=index, tyre_wear=tyre_wear)
 
+
+@dataclass(frozen=True)
+class StatusSpec:
+    """One CAR_STATUS entry. Build with fuel_and_ers()."""
+    index: int
+    fuel_in_tank: float
+    ers_harvested_mguk: float
+    ers_deployed: float
+
+
+def fuel_and_ers(index: int, *, fuel_in_tank: float = 0.0, ers_harvested_mguk: float = 0.0,
+                 ers_deployed: float = 0.0) -> StatusSpec:
+    """A car's fuel in kg and its MGU-K harvest and ERS deployment this lap in joules. Unset values are 0."""
+    return StatusSpec(index=index, fuel_in_tank=fuel_in_tank, ers_harvested_mguk=ers_harvested_mguk,
+                      ers_deployed=ers_deployed)
+
+
+@dataclass(frozen=True)
+class SpeedSpec:
+    """One CAR_TELEMETRY entry. Build with speed()."""
+    index: int
+    kmph: int
+
+
+def speed(index: int, kmph: int) -> SpeedSpec:
+    """A car travelling at kmph."""
+    return SpeedSpec(index=index, kmph=kmph)
+
+
+@dataclass(frozen=True)
+class PositionSpec:
+    """One MOTION entry. Build with world_position()."""
+    index: int
+    x: float
+    y: float
+    z: float
+    yaw: float
+
+
+def world_position(index: int, x: float, y: float, z: float, yaw: float) -> PositionSpec:
+    """A car at world position (x, y, z), facing yaw radians."""
+    return PositionSpec(index=index, x=x, y=y, z=z, yaw=yaw)
+
 # ------------------------- PACKETS ------------------------------------------------------------------------------------
 
 class Packets:
@@ -162,10 +205,13 @@ class Packets:
     def session(self, *, session_uid: int, session_type: str, track: TrackID, total_laps: int,
                 track_length: int,
                 weather: WeatherForecastSample.WeatherCondition = WeatherForecastSample.WeatherCondition.CLEAR,
+                formula: PacketSessionData.FormulaType = PacketSessionData.FormulaType.F1_MODERN,
+                is_spectating: bool = False,
                 **header_kwargs: Optional[int]) -> PacketSessionData:
-        """A SESSION packet. session_type is the enum member name (e.g. "RACE"), resolved per format,
-        since the numeric values differ between SessionType23 and SessionType24. weather is the single
-        forecast sample's weather, which the state layer reads as the current weather."""
+        """A SESSION packet. session_type is the enum member name (e.g. "RACE", "SHORT_QUALIFYING",
+        "TIME_TRIAL"), resolved per format, since the numeric values differ between SessionType23 and
+        SessionType24. weather is the single forecast sample's weather, which the state layer reads as the
+        current weather."""
         session_type_enum = self._session_type(session_type)
         forecast = WeatherForecastSample.from_values(
             self.packet_format, session_type_enum, time_offset=0, weather=weather,
@@ -174,7 +220,7 @@ class Packets:
         return PacketSessionData.from_values(
             self.header(F1PacketType.SESSION, session_uid, **header_kwargs),
             session_type_enum, track, total_laps=total_laps, track_length=track_length,
-            weather_forecast_samples=[forecast])
+            weather_forecast_samples=[forecast], formula=formula, is_spectating=is_spectating)
 
     def participants(self, *drivers: DriverSpec, session_uid: int, **header_kwargs: Optional[int]) -> PacketParticipantsData:
         """A PARTICIPANTS packet. drivers fill car indices 0.. in order. The rest of the grid is
@@ -192,11 +238,23 @@ class Packets:
             self.header(F1PacketType.LAP_DATA, session_uid, **header_kwargs),
             [self._lap_data(by_index.get(index)) for index in range(get_num_cars(self.packet_format))])
 
+    def drive(self, index: int, *, lap: int, distances: List[float], session_uid: int,
+              status: LapData.DriverStatus = LapData.DriverStatus.ON_TRACK) -> List[PacketLapData]:
+        """One LAP_DATA per distance, for car index on lap, frames counting up. Inject them in order."""
+        return [self.lap(car(index, lap=lap, lap_distance=distance, status=status), session_uid=session_uid)
+                for distance in distances]
+
     def session_history(self, *, car_idx: int, laps: List[LapHistoryData], session_uid: int,
                         **header_kwargs: Optional[int]) -> PacketSessionHistoryData:
         """A SESSION_HISTORY packet for one car."""
         return PacketSessionHistoryData.from_values(
             self.header(F1PacketType.SESSION_HISTORY, session_uid, **header_kwargs), car_idx, laps)
+
+    def session_history_burst(self, *, laps: List[LapHistoryData], session_uid: int,
+                              overall_frame: int) -> List[PacketSessionHistoryData]:
+        """One SESSION_HISTORY per car on the grid, all on overall_frame, each carrying laps."""
+        return [self.session_history(car_idx=index, laps=laps, session_uid=session_uid, overall_frame=overall_frame)
+                for index in range(get_num_cars(self.packet_format))]
 
     def final_classification(self, *entries: ClassifiedSpec, session_uid: int,
                              **header_kwargs: Optional[int]) -> PacketFinalClassificationData:
@@ -233,29 +291,38 @@ class Packets:
         return PacketTyreSetsData.from_values(
             self.header(F1PacketType.TYRE_SETS, session_uid, **header_kwargs), car_idx, sets, fitted_idx)
 
-    def car_status(self, *, session_uid: int, **header_kwargs: Optional[int]) -> PacketCarStatusData:
-        """A CAR_STATUS packet with the same entry for every car: on C3 / MEDIUM, everything else zero."""
-        entry = CarStatusData.from_values(
-            traction_control=TractionControlAssistMode.OFF, anti_lock_brakes=False,
-            fuel_mix=CarStatusData.FuelMix.LEAN, front_brake_bias=0, pit_limiter_status=False, fuel_in_tank=0.0,
-            fuel_capacity=0.0, fuel_remaining_laps=0.0, max_rpm=0, idle_rpm=0, max_gears=0, drs_allowed=0,
-            drs_activation_distance=0, actual_tyre_compound=ActualTyreCompound.C3,
-            visual_tyre_compound=VisualTyreCompound.MEDIUM, tyres_age_laps=0,
-            m_vehicle_fia_flags=CarStatusData.VehicleFIAFlags.NONE, engine_power_ice=0.0, engine_power_mguk=0.0,
-            ers_store_energy=0.0, ers_deploy_mode=CarStatusData.ERSDeployMode.NONE,
-            ers_harvested_this_lap_mguk=0.0, ers_harvested_this_lap_mguh=0.0, ers_deployed_this_lap=0.0,
-            network_paused=0, packet_format=self.packet_format)
+    def car_status(self, *cars: StatusSpec, session_uid: int, **header_kwargs: Optional[int]) -> PacketCarStatusData:
+        """A CAR_STATUS packet. Every car is on C3 / MEDIUM. Fuel and ERS come from cars, and are zero for any
+        car index not in cars, as is everything else."""
+        by_index: Dict[int, StatusSpec] = {spec.index: spec for spec in cars}
+        entries = [self._car_status(by_index.get(index, fuel_and_ers(index)))
+                   for index in range(get_num_cars(self.packet_format))]
         return PacketCarStatusData.from_values(
-            self.header(F1PacketType.CAR_STATUS, session_uid, **header_kwargs),
-            [entry] * get_num_cars(self.packet_format))
+            self.header(F1PacketType.CAR_STATUS, session_uid, **header_kwargs), entries)
 
-    def car_telemetry(self, *, session_uid: int, **header_kwargs: Optional[int]) -> PacketCarTelemetryData:
-        """A CAR_TELEMETRY packet with an all-zero entry for every car. MFD panels are closed (255)."""
-        entry = CarTelemetryData.from_values(*([0] * 31), packet_format=self.packet_format)
+    def car_telemetry(self, *cars: SpeedSpec, session_uid: int,
+                      **header_kwargs: Optional[int]) -> PacketCarTelemetryData:
+        """A CAR_TELEMETRY packet. Speed comes from cars. Every other field, and every car index not in cars, is
+        zero. MFD panels are closed (255)."""
+        by_index: Dict[int, SpeedSpec] = {spec.index: spec for spec in cars}
+        entries = [CarTelemetryData.from_values(by_index[index].kmph if index in by_index else 0, *([0] * 30),
+                                                packet_format=self.packet_format)
+                   for index in range(get_num_cars(self.packet_format))]
         return PacketCarTelemetryData.from_values(
             self.header(F1PacketType.CAR_TELEMETRY, session_uid, **header_kwargs),
-            [entry] * get_num_cars(self.packet_format), mfd_panel_index=255, mfd_panel_index_secondary_player=255,
-            suggested_gear=0)
+            entries, mfd_panel_index=255, mfd_panel_index_secondary_player=255, suggested_gear=0)
+
+    def motion(self, *cars: PositionSpec, session_uid: int, **header_kwargs: Optional[int]) -> PacketMotionData:
+        """A MOTION packet. World position and yaw come from cars. Every other field, and every car index not in
+        cars, is zero."""
+        by_index: Dict[int, PositionSpec] = {spec.index: spec for spec in cars}
+        entries = []
+        for index in range(get_num_cars(self.packet_format)):
+            spec = by_index.get(index, PositionSpec(index=index, x=0.0, y=0.0, z=0.0, yaw=0.0))
+            entries.append(CarMotionData.from_values(
+                spec.x, spec.y, spec.z, 0.0, 0.0, 0.0, 0, 0, 0, 0, 0, 0, 0.0, 0.0, 0.0, spec.yaw, 0.0, 0.0,
+                packet_format=self.packet_format))
+        return PacketMotionData.from_values(self.header(F1PacketType.MOTION, session_uid, **header_kwargs), entries)
 
     def car_telemetry_2(self, *, session_uid: int, **header_kwargs: Optional[int]) -> PacketCarTelemetry2Data:
         """A CAR_TELEMETRY_2 packet (2026 only) with an all-zero entry for every car."""
@@ -272,6 +339,18 @@ class Packets:
         """An EVENT packet. Build details with the event type's own from_values."""
         return PacketEventData.from_values(
             self.header(F1PacketType.EVENT, session_uid, **header_kwargs), event_type, details)
+
+    def _car_status(self, spec: StatusSpec) -> CarStatusData:
+        return CarStatusData.from_values(
+            traction_control=TractionControlAssistMode.OFF, anti_lock_brakes=False,
+            fuel_mix=CarStatusData.FuelMix.LEAN, front_brake_bias=0, pit_limiter_status=False,
+            fuel_in_tank=spec.fuel_in_tank, fuel_capacity=0.0, fuel_remaining_laps=0.0, max_rpm=0, idle_rpm=0,
+            max_gears=0, drs_allowed=0, drs_activation_distance=0, actual_tyre_compound=ActualTyreCompound.C3,
+            visual_tyre_compound=VisualTyreCompound.MEDIUM, tyres_age_laps=0,
+            m_vehicle_fia_flags=CarStatusData.VehicleFIAFlags.NONE, engine_power_ice=0.0, engine_power_mguk=0.0,
+            ers_store_energy=0.0, ers_deploy_mode=CarStatusData.ERSDeployMode.NONE,
+            ers_harvested_this_lap_mguk=spec.ers_harvested_mguk, ers_harvested_this_lap_mguh=0.0,
+            ers_deployed_this_lap=spec.ers_deployed, network_paused=0, packet_format=self.packet_format)
 
     def _session_type(self, name: str) -> Union[SessionType23, SessionType24]:
         return (SessionType23 if self.packet_format == 2023 else SessionType24)[name]
@@ -306,7 +385,7 @@ class Packets:
             header, ai_controlled=driver.ai_controlled, driver_id=index, network_id=0,
             team_id=get_team_id_class(self.packet_format).MERCEDES, my_team=False, race_number=index + 1,
             nationality=Nationality.Unspecified, name=driver.name, your_telemetry=driver.telemetry,
-            show_online_names=False, platform=Platform.NONE, liveries=_black_liveries())
+            show_online_names=True, platform=Platform.NONE, liveries=_black_liveries())
 
     def _empty_participant(self, header: PacketHeader) -> ParticipantData:
         return ParticipantData.from_values(

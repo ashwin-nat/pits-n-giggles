@@ -1742,7 +1742,9 @@ class PacketSessionData(F1PacketBase):
                     track_id: TrackID,
                     total_laps: int,
                     track_length: int,
-                    weather_forecast_samples: List[WeatherForecastSample]) -> "PacketSessionData":
+                    weather_forecast_samples: List[WeatherForecastSample],
+                    formula: "PacketSessionData.FormulaType",
+                    is_spectating: bool) -> "PacketSessionData":
         """Create a PacketSessionData object from values. Every other field is what the parser
         produces from zero bytes for header.m_packetFormat, except the ones noted inline.
 
@@ -1754,6 +1756,8 @@ class PacketSessionData(F1PacketBase):
             track_length (int): Track length in metres
             weather_forecast_samples (List[WeatherForecastSample]): Forecast samples, in order. The first
                 one is what the state layer reads as the current weather.
+            formula (PacketSessionData.FormulaType): Formula of the session's cars
+            is_spectating (bool): Whether the player is spectating
 
         Raises:
             ValueError: If there are more forecast samples than the format allows
@@ -1775,10 +1779,11 @@ class PacketSessionData(F1PacketBase):
             track_length,
             session_type.value,
             track_id.raw_value,     # same as .value unless the ID is one TrackID doesn't declare
-            0,              # formula
+            formula.raw_value,
             # Non-zero: a zero duration is the game's menu packet, which the handler clears on
             3600, 3600,     # time left, duration
-            0, 0, 0,        # pit speed limit, game paused, spectating
+            0, 0,           # pit speed limit, game paused
+            int(is_spectating),
             255,            # spectator car index - 255 is the game's "none"
             0, 0,           # SLI Pro support, num marshal zones
         )

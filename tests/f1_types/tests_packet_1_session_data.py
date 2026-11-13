@@ -493,7 +493,8 @@ def test_from_values_sets_the_given_fields_and_every_slot(game_year):
                _forecast(header.m_packetFormat, session_type, WeatherForecastSample.WeatherCondition.HEAVY_RAIN, 5)]
 
     packet = PacketSessionData.from_values(header, session_type, TrackID.Suzuka, total_laps=5, track_length=5807,
-                                           weather_forecast_samples=samples)
+                                           weather_forecast_samples=samples,
+                                           formula=PacketSessionData.FormulaType.F2, is_spectating=True)
 
     assert packet.m_header is header
     assert packet.m_sessionType == session_type
@@ -502,6 +503,8 @@ def test_from_values_sets_the_given_fields_and_every_slot(game_year):
     assert packet.m_trackLength == 5807
     assert packet.m_sessionDuration != 0
     assert packet.m_spectatorCarIndex == 255
+    assert packet.m_formula == PacketSessionData.FormulaType.F2
+    assert packet.m_isSpectating is True
     assert packet.m_numWeatherForecastSamples == 2
     assert packet.m_weatherForecastSamples == samples
     assert_all_slots_set(packet)
@@ -514,7 +517,8 @@ def test_from_values_rejects_more_forecast_samples_than_the_format_allows():
 
     with pytest.raises(ValueError):
         PacketSessionData.from_values(header, SessionType23.RACE, TrackID.Suzuka, total_laps=5, track_length=5807,
-                                      weather_forecast_samples=[sample] * 57)
+                                      weather_forecast_samples=[sample] * 57,
+                                      formula=PacketSessionData.FormulaType.F1_MODERN, is_spectating=False)
 
 
 @pytest.mark.parametrize("packet_format, session_type", [(2023, SessionType23.RACE), (2026, SessionType24.RACE)])
