@@ -276,6 +276,24 @@ async def test_new_stint_seeded_from_new_tyre_wear(race: Race) -> None:
     assert race.latest_stint().m_tyre_wear_history[0].fl_tyre_wear == NEW_TYRE_WEAR
 
 
+async def test_old_stint_final_wear_rewritten_only_on_weird_tracks(race: Race) -> None:
+    """Weird tracks close the old stint with the old set's final wear. Others leave its history as recorded."""
+    before = race.wear_history()
+    await race.change_tyres(NEW_SET_IDX)
+
+    expected = before + [(START_LAP, OLD_TYRE_WEAR)] if IS_WEIRD[race.track] else before
+    assert race.wear_history(stint_index=0) == expected
+
+
+async def test_old_stint_holds_no_rolling_buffer_instance(race: Race) -> None:
+    """The weird-track rewrite stores a copy of the rolling buffer's max sample, not the live instance."""
+    await race.change_tyres(NEW_SET_IDX)
+
+    stored = race.driver.m_tyre_info.m_tyre_set_history_manager.getEntry(index=0).m_tyre_wear_history
+    live = race.driver.m_tyre_info.tyre_wear
+    assert not any(s is b for s in stored for b in live), "stint history must not hold a live rolling buffer instance"
+
+
 async def test_damage_packet_before_detection_does_not_satisfy_the_wait(race: Race) -> None:
     """D arriving before T must not count - it is what the wait exists to exclude."""
     await race.car_damage()
@@ -331,32 +349,6 @@ async def test_t_l_d_completes(weird_race: Race) -> None:
 
     assert weird_race.driver.m_pending_tyre_change is None
     assert weird_race.stint_count() == 2
-
-
-async def test_old_stint_final_wear_rewritten_to_old_tyre_value(weird_race: Race) -> None:
-    """The weird-track rewrite: the old stint's last lap keeps the old set's wear."""
-    await weird_race.tyre_sets()
-    await weird_race.car_damage()
-    await weird_race.lap_change()
-
-    old_stint = weird_race.driver.m_tyre_info.m_tyre_set_history_manager.getEntry(index=0)
-    assert old_stint.m_tyre_wear_history[-1].fl_tyre_wear == OLD_TYRE_WEAR
-
-
-async def test_rewrite_does_not_alias_the_rolling_buffer(weird_race: Race) -> None:
-    """The rewrite must store a copy, not the live sample still in the rolling buffer.
-
-    `get_max_average_with_index()` returns the instance held in the deque. Storing that same object into the
-    stint history would leave it with two owners, so a later change selecting it again would rewrite an
-    already recorded entry in place.
-    """
-    await weird_race.tyre_sets()
-    await weird_race.car_damage()
-    await weird_race.lap_change()
-
-    stored = weird_race.driver.m_tyre_info.m_tyre_set_history_manager.getEntry(index=0).m_tyre_wear_history[-1]
-    assert all(stored is not sample for sample in weird_race.driver.m_tyre_info.tyre_wear), \
-        "stint history must not hold a live rolling buffer instance"
 
 # ------------------------- LAP CHANGE BEFORE DETECTION ----------------------------------------------------------------
 
