@@ -170,6 +170,7 @@ Fixtures (`conftest.py`):
 |---------|------------|
 | `manager` | `InjectingTelemetryManager` with the handler's callbacks registered. `await manager.inject(packet)` |
 | `packets` | Packet helpers bound to `packet_format` (default 2026). Frames count up on their own |
+| `frame_gate_enabled` | False by default. `@pytest.mark.parametrize("frame_gate_enabled", [True], indirect=True)` turns the frame gate on |
 | `state`, `handler` | The real `SessionState` and `F1TelemetryHandler` |
 | `saves` | Records save requests (just-in-case, final classification) instead of writing files |
 | `tokens` | Records the handler's `report_*_from_child` tokens |

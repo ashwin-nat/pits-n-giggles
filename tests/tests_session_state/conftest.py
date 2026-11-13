@@ -56,6 +56,13 @@ def packet_format(request: pytest.FixtureRequest) -> int:
 
 
 @pytest.fixture
+def frame_gate_enabled(request: pytest.FixtureRequest) -> bool:
+    """False (the default setting) unless a test passes @pytest.mark.parametrize("frame_gate_enabled", [True],
+    indirect=True)."""
+    return getattr(request, "param", False)
+
+
+@pytest.fixture
 def packets(packet_format: int) -> Packets:
     """Packet helpers bound to the test's packet format."""
     return Packets(packet_format)
@@ -68,12 +75,13 @@ def settings() -> PngSettings:
 
 
 @pytest.fixture
-def logger(caplog: pytest.LogCaptureFixture) -> PngLogger:
-    """A real PngLogger wired into caplog. Not taken from the logging registry, so tests never share one."""
+def logger() -> PngLogger:
+    """A real PngLogger, not taken from the logging registry, so tests never share one. It propagates to
+    root, where pytest's per-test handlers feed both caplog and the report's captured log (Allure's "log")."""
     png_logger = PngLogger("session_state_harness")
     png_logger.setLevel(logging.DEBUG)
-    png_logger.propagate = False
-    png_logger.addHandler(caplog.handler)
+    png_logger.parent = logging.getLogger()
+    png_logger.propagate = True
     return png_logger
 
 
@@ -96,13 +104,14 @@ def state(ctx: AppCtx) -> SessionState:
 
 
 @pytest.fixture
-async def handler(ctx: AppCtx, state: SessionState) -> AsyncIterator[F1TelemetryHandler]:
+async def handler(ctx: AppCtx, state: SessionState,
+                  frame_gate_enabled: bool) -> AsyncIterator[F1TelemetryHandler]:
     """The real F1TelemetryHandler, registered on an InjectingTelemetryManager. Stopped at teardown,
     which also waits for any save task it started."""
     telemetry_handler = F1TelemetryHandler(
         ctx=ctx,
         session_state=state,
-        manager=InjectingTelemetryManager(ctx.logger),
+        manager=InjectingTelemetryManager(ctx.logger, frame_gate_enabled=frame_gate_enabled),
         packet_forward_queue=asyncio.Queue(),
     )
     yield telemetry_handler
