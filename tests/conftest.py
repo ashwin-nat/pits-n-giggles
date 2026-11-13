@@ -38,13 +38,14 @@ def pytest_collection_modifyitems(items):
 
 @pytest.hookimpl(trylast=True)
 def pytest_collection_finish(session):
-    # The report tree groups by epic > feature > story. Tests that set none are grouped by folder > file > class
+    # The report tree groups by epic > feature > story. Each level a test doesn't set falls back to folder > file > class
     tests_dir = Path(__file__).parent
     for item in session.items:
-        if any(mark.kwargs.get("label_type") == LabelType.EPIC for mark in item.iter_markers(name="allure_label")):
-            continue
-        folder = item.path.parent.relative_to(tests_dir).as_posix()
-        item.add_marker(allure.epic(folder if folder != "." else "tests"))
-        item.add_marker(allure.feature(item.path.name))
-        if item.cls is not None:
+        labelled = {mark.kwargs.get("label_type") for mark in item.iter_markers(name="allure_label")}
+        if LabelType.EPIC not in labelled:
+            folder = item.path.parent.relative_to(tests_dir).as_posix()
+            item.add_marker(allure.epic(folder if folder != "." else "tests"))
+        if LabelType.FEATURE not in labelled:
+            item.add_marker(allure.feature(item.path.name))
+        if LabelType.STORY not in labelled and item.cls is not None:
             item.add_marker(allure.story(item.cls.__name__))
