@@ -16,13 +16,15 @@ categories:
         statuses: [skipped]
         message: XFAIL
 
-# Awesome only: the dashboard plugin repeats awesome's charts, and a second plugin adds a summary landing page
+# One HTML report, Allure's "awesome" plugin. The dashboard plugin repeats its charts, and a second plugin adds a
+# summary landing page. The key is only an id; import names the plugin
 plugins:
-  awesome:
+  html-report:
+    import: awesome
     options:
       # A test missing a label skips that level. tests/conftest.py gives tests with no epic folder > file > class,
       # so none land in a flat root list. No appendTitlePath: it suffixes every group with the module path
       groupBy: [epic, feature, story, track]
-      # A multi-file report is built in awesome/ then renamed up; on Windows that rename randomly hits
+      # A multi-file report is built in html-report/ then renamed up; on Windows that rename randomly hits
       # EPERM (something briefly opens the ~1600 fresh files under Documents). One file has no such move
       singleFile: true
