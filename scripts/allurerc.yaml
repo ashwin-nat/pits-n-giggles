@@ -20,10 +20,9 @@ categories:
 plugins:
   awesome:
     options:
-      # Labelled tests nest by epic > feature > story; a test missing a label skips that level,
-      # and appendTitlePath keeps unlabelled tests in their module tree instead of a flat root list
-      groupBy: [epic, feature, story]
-      appendTitlePath: true
+      # A test missing a label skips that level. tests/conftest.py gives tests with no epic folder > file > class,
+      # so none land in a flat root list. No appendTitlePath: it suffixes every group with the module path
+      groupBy: [epic, feature, story, track]
       # A multi-file report is built in awesome/ then renamed up; on Windows that rename randomly hits
       # EPERM (something briefly opens the ~1600 fresh files under Documents). One file has no such move
       singleFile: true

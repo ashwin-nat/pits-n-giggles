@@ -146,6 +146,10 @@ detection (capped at 200 runs). Deleting `reports/` wholesale resets it. To keep
 Allure has no xfail status. `allure-pytest` reports xfail as skipped, so the strict xfail known bugs are grouped
 under the "Known bugs (xfail)" category instead.
 
+The report tree groups tests by epic > feature > story > track (`groupBy` in `scripts/allurerc.yaml`). Suites that
+set Allure labels, such as `tests_session_state/`, get their own tree. For every other test, `tests/conftest.py`
+fills in folder > file > class.
+
 Allure 3 identifies a test by its name plus its *displayed* parameter values (`repr()`, not the pytest `ids`). So
 parametrize over plain values (`str`, numbers, enums):
 - `bytes` all display as `<class 'bytes'>`, which merges the cases into one test with "retries". Use `str` and
