@@ -66,8 +66,8 @@ class TyresStatusPage(MfdPageBase):
 
         @self.on_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
-            ref_row = get_ref_row(data)
-            tyre_info: Dict[str, Any] = ref_row.get("tyre-info") if ref_row else None
+            ref_row = get_ref_row(data) or {}
+            tyre_info: Dict[str, Any] = ref_row.get("tyre-info", {}) 
             telemetry_setting = ref_row.get("driver-info", {}).get("telemetry-setting") if ref_row else None
             if not tyre_info or telemetry_setting is None:
                 self._clear()
