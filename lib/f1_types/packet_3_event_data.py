@@ -29,7 +29,7 @@ from .base_pkt import (F1BaseEnum, F1PacketBase, F1RawValueEnum,
                        F1SubPacketBase)
 from .common import SafetyCarEventType, SafetyCarType
 from .errors import UnsupportedValueError
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -53,6 +53,9 @@ class PacketEventData(F1PacketBase):
                                                             Refer PacketEventData.event_type_map
 
     """
+
+    PACKET_ID = F1PacketType.EVENT
+
     class EventPacketType(F1RawValueEnum):
         """
         Enum class representing different event types.

@@ -24,19 +24,11 @@
 
 import struct
 from logging import Logger
-from typing import Optional, Set, Type
+from typing import Optional, Set
 
 from lib.f1_types import (F1PacketBase, F1PacketType, InvalidPacketLengthError,
-                          PacketCarDamageData, PacketCarSetupData,
-                          PacketCarStatusData, PacketCarTelemetry2Data,
-                          PacketCarTelemetryData, PacketCountValidationError,
-                          PacketEventData, PacketFinalClassificationData,
-                          PacketHeader, PacketLapData, PacketLapPositionsData,
-                          PacketLobbyInfoData, PacketMotionData,
-                          PacketMotionExData, PacketParsingError,
-                          PacketParticipantsData, PacketSessionData,
-                          PacketSessionHistoryData, PacketTimeTrialData,
-                          PacketTyreSetsData, UnsupportedValueError)
+                          PacketCountValidationError, PacketHeader,
+                          PacketParsingError, UnsupportedValueError)
 from lib.socket_receiver import TcpTransport, TelemetryTransport, UdpTransport
 
 from .exceptions import UnsupportedPacketFormat, UnsupportedPacketType
@@ -46,25 +38,6 @@ from .exceptions import UnsupportedPacketFormat, UnsupportedPacketType
 class PacketParserFactory:
     """Factory to parse raw F1 telemetry packets and retrieve registered callbacks."""
 
-    _PACKET_TYPE_MAP: dict[F1PacketType, Type] = {
-        F1PacketType.MOTION: PacketMotionData,
-        F1PacketType.SESSION: PacketSessionData,
-        F1PacketType.LAP_DATA: PacketLapData,
-        F1PacketType.EVENT: PacketEventData,
-        F1PacketType.PARTICIPANTS: PacketParticipantsData,
-        F1PacketType.CAR_SETUPS: PacketCarSetupData,
-        F1PacketType.CAR_TELEMETRY: PacketCarTelemetryData,
-        F1PacketType.CAR_STATUS: PacketCarStatusData,
-        F1PacketType.FINAL_CLASSIFICATION: PacketFinalClassificationData,
-        F1PacketType.LOBBY_INFO: PacketLobbyInfoData,
-        F1PacketType.CAR_DAMAGE: PacketCarDamageData,
-        F1PacketType.SESSION_HISTORY: PacketSessionHistoryData,
-        F1PacketType.TYRE_SETS: PacketTyreSetsData,
-        F1PacketType.MOTION_EX: PacketMotionExData,
-        F1PacketType.TIME_TRIAL: PacketTimeTrialData,
-        F1PacketType.LAP_POSITIONS: PacketLapPositionsData,
-        F1PacketType.CAR_TELEMETRY_2: PacketCarTelemetry2Data,
-    }
     _MIN_PACKET_FORMAT = 2023
 
     def __init__(
@@ -107,7 +80,7 @@ class PacketParserFactory:
             return None
 
         # Parse payload
-        parser_cls = self._PACKET_TYPE_MAP.get(header.m_packetId)
+        parser_cls = F1PacketBase.parser_for(header.m_packetId)
         if not parser_cls:
             self._last_failure_reason = f"No parser registered for packet type. Packet ID = {header.m_packetId}"
             raise UnsupportedPacketType(header.m_packetId)

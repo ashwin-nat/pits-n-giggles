@@ -23,7 +23,7 @@
 
 import struct
 from typing import Dict, Any
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 from .base_pkt import F1PacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -60,6 +60,8 @@ class PacketMotionExData(F1PacketBase):
         m_rearRollAngle (float): Roll angle of the rear suspension
         m_chassisYaw (float): Yaw angle of the chassis relative to the direction of motion - radians
     """
+
+    PACKET_ID = F1PacketType.MOTION_EX
 
     COMPILED_PACKET_STRUCT_23 = struct.Struct("<"
         # // Extra player car ONLY data

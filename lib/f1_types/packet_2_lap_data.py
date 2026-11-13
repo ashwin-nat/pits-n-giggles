@@ -27,7 +27,7 @@ from typing import Any, Dict, List, final
 from .base_pkt import (F1BaseEnum, F1CompareableEnum, F1PacketBase,
                        F1SubPacketBase)
 from .common import F1Utils, ResultStatus, get_num_cars
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -708,6 +708,8 @@ class PacketLapData(F1PacketBase):
         - m_timeTrialPBCarIdx (int) - Index of Personal Best car in time trial (255 if invalid)
         - m_timeTrialRivalCarIdx (int) - Index of Rival car in time trial (255 if invalid)
     """
+
+    PACKET_ID = F1PacketType.LAP_DATA
 
     MAX_CARS = 22
     MAX_CARS_2026 = 24

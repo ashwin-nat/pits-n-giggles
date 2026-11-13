@@ -27,7 +27,7 @@ from typing import Any, Dict, List, Optional, Union
 from .base_pkt import F1PacketBase, F1SubPacketBase
 from .common import (ActualTyreCompound, SessionType23, SessionType24,
                      VisualTyreCompound)
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -258,6 +258,9 @@ class PacketTyreSetsData(F1PacketBase):
         m_fittedIdx (int): Index into the array of the fitted tyre.
 
     """
+
+    PACKET_ID = F1PacketType.TYRE_SETS
+
     MAX_TYRE_SETS = 20
 
     COMPILED_PACKET_STRUCT_CAR_IDX = struct.Struct("<B")

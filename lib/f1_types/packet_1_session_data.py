@@ -28,7 +28,7 @@ from .base_pkt import (F1BaseEnum, F1PacketBase, F1RawValueEnum,
                        F1SubPacketBase)
 from .common import (GameMode, GearboxAssistMode, RuleSet, SafetyCarType,
                      SessionLength, SessionType23, SessionType24, TrackID)
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -601,6 +601,8 @@ class PacketSessionData(F1PacketBase):
         - m_numVirtualSafetyCarPeriods (uint8): Number of virtual safety car periods called.
         - m_numRedFlagPeriods (uint8): Number of red flags called during the session.
     """
+
+    PACKET_ID = F1PacketType.SESSION
 
     F1_23_MAX_NUM_WEATHER_FORECAST_SAMPLES = 56
     F1_23_MAX_NUM_MARSHAL_ZONES = 21

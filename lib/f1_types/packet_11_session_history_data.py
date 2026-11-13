@@ -28,7 +28,7 @@ from typing import Any, Dict, List, Optional
 
 from .base_pkt import F1PacketBase, F1SubPacketBase
 from .common import ActualTyreCompound, F1Utils, VisualTyreCompound
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -403,6 +403,8 @@ class PacketSessionHistoryData(F1PacketBase):
         m_lapHistoryData (List[LapHistoryData]): List of lap history data for each lap.
         m_tyreStintsHistoryData (List[TyreStintHistoryData]): List of tyre stint history data.
     """
+
+    PACKET_ID = F1PacketType.SESSION_HISTORY
 
     MAX_LAPS = 100
     MAX_TYRE_STINT_COUNT = 8

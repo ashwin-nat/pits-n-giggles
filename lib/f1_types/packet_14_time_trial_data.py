@@ -27,7 +27,7 @@ from typing import Any, Dict
 from .common import F1Utils
 from .team_id import TeamID, get_team_id
 from .base_pkt import F1SubPacketBase, F1PacketBase
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -304,6 +304,8 @@ class PacketTimeTrialData(F1PacketBase):
         - m_rivalSessionBestDataSet (TimeTrialDataSet): The rival data set
 
     """
+
+    PACKET_ID = F1PacketType.TIME_TRIAL
 
     __slots__ = (
         "m_playerSessionBestDataSet",

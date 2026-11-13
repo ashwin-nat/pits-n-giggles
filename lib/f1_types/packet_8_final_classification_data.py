@@ -27,7 +27,7 @@ from typing import Any, Dict, List
 from .base_pkt import F1PacketBase, F1SubPacketBase
 from .common import (ActualTyreCompound, F1Utils, ResultReason, ResultStatus,
                      VisualTyreCompound)
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -602,6 +602,8 @@ class PacketFinalClassificationData(F1PacketBase):
     Note:
         The class is designed to parse and represent the final classification data packet.
     """
+
+    PACKET_ID = F1PacketType.FINAL_CLASSIFICATION
 
     MAX_CARS = 24
 

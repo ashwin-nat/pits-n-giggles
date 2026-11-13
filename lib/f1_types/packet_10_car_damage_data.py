@@ -25,7 +25,7 @@ import struct
 from typing import Any, Dict, List
 
 from .common import get_num_cars
-from .header import PacketHeader
+from .header import F1PacketType, PacketHeader
 
 from .base_pkt import F1PacketBase, F1SubPacketBase
 
@@ -561,6 +561,8 @@ class PacketCarDamageData(F1PacketBase):
     Note:
         The class is designed to parse and represent the car damage data packet.
     """
+
+    PACKET_ID = F1PacketType.CAR_DAMAGE
 
     MAX_CARS = 24
 
