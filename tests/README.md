@@ -210,6 +210,25 @@ To run a scenario on every packet format, add
 Packet helper arguments are only the fields some scenario sets. When a scenario needs another field,
 add it as an explicit argument in that change rather than reaching into the packet afterwards.
 
+Report labels. Every test in the suite sits under the "Session state" epic. Each file sets its feature, and
+collection fails for a test without one:
+
+```python
+pytestmark = allure.feature("Tyre change")
+
+@allure.story("Flashback and tyre set history")   # one story per section of the file
+async def test_something(race): ...
+```
+
+A test that runs on several track types takes its track from a fixture built with `track_param(track, kind)`
+(`harness.py`). Each case is then tagged "normal track", "weird track" or "unknown track". Select a single kind
+with `--allure-label track=weird`, or with `-k weird`. Features and stories can also be selected, with
+`--allure-features` and `--allure-stories`.
+
+Each injected packet is a report step, nested under the scenario step that sent it (`Race.change_tyres`,
+`Race.flashback`, ...). A test that does not pass also gets every packet it injected attached as one JSON file,
+"injected packets".
+
 ## Serial vs Parallel
 
 Tests marked `@pytest.mark.serial` (via module-level `pytestmark`) bind real sockets,

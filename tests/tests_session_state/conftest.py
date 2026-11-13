@@ -27,9 +27,12 @@
 
 import asyncio
 import logging
-from typing import AsyncIterator
+from pathlib import Path
+from typing import AsyncIterator, Iterator, List
 
+import allure
 import pytest
+from allure_commons.types import LabelType
 
 from apps.backend.app_ctx import AppCtx
 from apps.backend.state_mgmt_layer import SessionState
@@ -46,6 +49,30 @@ from .harness import (FakeSubsystem, InjectingTelemetryManager, SaveRecorder,
 
 # The report_*_from_child tokens telemetry_handler imports by name
 HANDLER_TOKENS = ["report_session_save_skipped_from_child"]
+
+SUITE_DIR = Path(__file__).parent
+CALL_REPORT = pytest.StashKey[pytest.TestReport]()
+
+# ------------------------- HOOKS --------------------------------------------------------------------------------------
+
+def pytest_collection_modifyitems(items: List[pytest.Item]) -> None:
+    """Put every test in this suite under the "Session state" epic, and refuse one with no feature label."""
+    for item in items:
+        if SUITE_DIR not in item.path.parents:
+            continue
+        item.add_marker(allure.epic("Session state"))
+        if not any(mark.kwargs.get("label_type") == LabelType.FEATURE
+                   for mark in item.iter_markers(name="allure_label")):
+            raise pytest.UsageError(f"{item.nodeid} has no allure.feature. Set pytestmark = allure.feature(...)")
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_makereport(item: pytest.Item) -> Iterator[pytest.TestReport]:
+    """Keep the call phase's report, so fixtures can tell at teardown whether the test passed."""
+    report = yield
+    if report.when == "call":
+        item.stash[CALL_REPORT] = report
+    return report
 
 # ------------------------- FIXTURES -----------------------------------------------------------------------------------
 
@@ -119,9 +146,13 @@ async def handler(ctx: AppCtx, state: SessionState,
 
 
 @pytest.fixture
-def manager(handler: F1TelemetryHandler) -> InjectingTelemetryManager:
-    """The handler's manager. Depends on handler, so injecting always runs the full handler path."""
-    return handler.m_manager
+def manager(request: pytest.FixtureRequest, handler: F1TelemetryHandler) -> Iterator[InjectingTelemetryManager]:
+    """The handler's manager. Depends on handler, so injecting always runs the full handler path.
+    A test that does not pass (failed, errored or xfailed) gets every injected packet attached to its report."""
+    yield handler.m_manager
+    call_report = request.node.stash.get(CALL_REPORT, None)
+    if call_report is None or not call_report.passed:
+        handler.m_manager.attach_trace()
 
 
 @pytest.fixture

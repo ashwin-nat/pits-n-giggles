@@ -37,6 +37,7 @@ The last section covers what a flashback over the line does to the tyre set hist
 
 from typing import List, Optional, Tuple
 
+import allure
 import pytest
 
 from apps.backend.state_mgmt_layer import SessionState
@@ -44,7 +45,7 @@ from apps.backend.state_mgmt_layer.data_per_driver import TyreSetHistoryEntry
 from apps.backend.state_mgmt_layer.data_per_driver.data_per_driver import DataPerDriver
 from lib.f1_types import PacketEventData, TelemetrySetting, TrackID
 
-from .harness import InjectingTelemetryManager
+from .harness import InjectingTelemetryManager, track_param
 from .packet_helpers import (FIRST_HARD_IDX, FIRST_MEDIUM_IDX, FIRST_SOFT_IDX,
                              Packets, car, damage, player)
 
@@ -64,9 +65,16 @@ WEAR_PER_LAP = 4.0
 OLD_TYRE_WEAR = 40.0    # the old set at lap 10, end of its stint
 NEW_TYRE_WEAR = 2.0     # fresh set just fitted
 
+pytestmark = allure.feature("Tyre change")
+
 # ------------------------- FIXTURES -----------------------------------------------------------------------------------
 
-@pytest.fixture(params=[NORMAL_TRACK, WEIRD_TRACK, UNKNOWN_TRACK], ids=["normal", "weird", "unknown"])
+NORMAL = track_param(NORMAL_TRACK, "normal")
+WEIRD = track_param(WEIRD_TRACK, "weird")
+UNKNOWN = track_param(UNKNOWN_TRACK, "unknown")
+
+
+@pytest.fixture(params=[NORMAL, WEIRD, UNKNOWN])
 def track(request: pytest.FixtureRequest) -> TrackID:
     """Both track topologies, plus an unrecognised track."""
     return request.param
@@ -96,11 +104,13 @@ class Race:
 
     async def tyre_sets(self, fitted_idx: int = NEW_SET_IDX) -> None:
         """(T) TYRE_SETS reporting fitted_idx. A new index is detection."""
-        await self.manager.inject(self.packets.tyre_sets(car_idx=0, fitted_idx=fitted_idx, session_uid=UID))
+        with allure.step(f"(T) tyre sets: set {fitted_idx} fitted"):
+            await self.manager.inject(self.packets.tyre_sets(car_idx=0, fitted_idx=fitted_idx, session_uid=UID))
 
     async def car_damage(self, wear: float = NEW_TYRE_WEAR) -> None:
         """(D) CAR_DAMAGE with all four tyres at wear."""
-        await self.manager.inject(self.packets.car_damage(damage(0, tyre_wear=wear), session_uid=UID))
+        with allure.step(f"(D) car damage: tyre wear {wear}%"):
+            await self.manager.inject(self.packets.car_damage(damage(0, tyre_wear=wear), session_uid=UID))
 
     async def lap(self, lap: int) -> None:
         """LAP_DATA putting the player on lap."""
@@ -108,7 +118,9 @@ class Race:
 
     async def lap_change(self) -> None:
         """(L) The player crosses the line."""
-        await self.lap(self.driver.m_lap_info.m_current_lap + 1)
+        next_lap = self.driver.m_lap_info.m_current_lap + 1
+        with allure.step(f"(L) lap change: onto lap {next_lap}"):
+            await self.lap(next_lap)
 
     async def all_signals(self) -> None:
         """Every signal this track's topology waits on, after detection."""
@@ -119,6 +131,20 @@ class Race:
     async def on_old_set(self, telemetry: TelemetrySetting = TelemetrySetting.PUBLIC) -> None:
         """Lap START_LAP on the old set, with its stint in history. Wear reaches OLD_TYRE_WEAR on that lap.
         With RESTRICTED telemetry the same packets arrive, but no tyre history is kept."""
+        with allure.step(f"{self.track.name}: lap {START_LAP} on set {OLD_SET_IDX}, {telemetry.name} telemetry"):
+            await self._drive_old_set(telemetry)
+
+        assert self.driver.m_lap_info.m_current_lap == START_LAP
+        if not telemetry:
+            assert self.stint_count() == 0
+            return
+        assert self.driver.m_current_set_last_seen_lap == START_LAP
+        assert self.stint_count() == 1
+        assert self.latest_stint().m_fitted_index == OLD_SET_IDX
+        assert self.wear_history() == [(lap, WEAR_PER_LAP * lap) for lap in range(START_LAP)]
+
+    async def _drive_old_set(self, telemetry: TelemetrySetting) -> None:
+        """The packets on_old_set sends."""
         await self.session()
         await self.manager.inject(self.packets.participants(player("Player", telemetry), session_uid=UID))
         await self.lap(1)
@@ -142,28 +168,21 @@ class Race:
         await self.car_damage(wear=OLD_TYRE_WEAR)
         await self.tyre_sets(OLD_SET_IDX)
 
-        assert self.driver.m_lap_info.m_current_lap == START_LAP
-        if not telemetry:
-            assert self.stint_count() == 0
-            return
-        assert self.driver.m_current_set_last_seen_lap == START_LAP
-        assert self.stint_count() == 1
-        assert self.latest_stint().m_fitted_index == OLD_SET_IDX
-        assert self.wear_history() == [(lap, WEAR_PER_LAP * lap) for lap in range(START_LAP)]
-
     async def flashback(self, land_lap: int, wear: float) -> None:
         """A FLBK event, then the landing LAP_DATA on land_lap and the rewound CAR_DAMAGE at wear."""
-        await self.manager.inject(self.packets.event(
-            PacketEventData.EventPacketType.FLASHBACK, PacketEventData.Flashback.from_values(frame_identifier=1),
-            session_uid=UID))
-        await self.lap(land_lap)
-        await self.car_damage(wear=wear)
+        with allure.step(f"Flashback to lap {land_lap}, tyre wear {wear}%"):
+            await self.manager.inject(self.packets.event(
+                PacketEventData.EventPacketType.FLASHBACK, PacketEventData.Flashback.from_values(frame_identifier=1),
+                session_uid=UID))
+            await self.lap(land_lap)
+            await self.car_damage(wear=wear)
 
     async def change_tyres(self, fitted_idx: int) -> int:
         """A completed tyre change to fitted_idx, with every signal this track waits on. Returns the lap the new
         stint started on, which on a weird track can be a lap later than on a normal one."""
-        await self.tyre_sets(fitted_idx)
-        await self.all_signals()
+        with allure.step(f"Tyre change to set {fitted_idx}"):
+            await self.tyre_sets(fitted_idx)
+            await self.all_signals()
         assert self.latest_stint().m_fitted_index == fitted_idx
         return self.latest_stint().m_start_lap
 
@@ -194,7 +213,7 @@ async def race(manager: InjectingTelemetryManager, packets: Packets, state: Sess
     return on_track
 
 
-@pytest.fixture(params=[NORMAL_TRACK, UNKNOWN_TRACK], ids=["normal", "unknown"])
+@pytest.fixture(params=[NORMAL, UNKNOWN])
 async def normal_race(request: pytest.FixtureRequest, manager: InjectingTelemetryManager, packets: Packets,
                       state: SessionState) -> Race:
     """A race on the normal track, or on an unrecognised one, on the old set at lap START_LAP."""
@@ -212,15 +231,17 @@ async def restricted_race(manager: InjectingTelemetryManager, packets: Packets, 
     return on_track
 
 
-@pytest.fixture
-async def weird_race(manager: InjectingTelemetryManager, packets: Packets, state: SessionState) -> Race:
+@pytest.fixture(params=[WEIRD])
+async def weird_race(request: pytest.FixtureRequest, manager: InjectingTelemetryManager, packets: Packets,
+                     state: SessionState) -> Race:
     """A race on the weird track, on the old set at lap START_LAP."""
-    on_track = Race(manager, packets, state, WEIRD_TRACK)
+    on_track = Race(manager, packets, state, request.param)
     await on_track.on_old_set()
     return on_track
 
 # ------------------------- DETECTION ----------------------------------------------------------------------------------
 
+@allure.story("Detection")
 async def test_detection_registers_pending(race: Race) -> None:
     await race.tyre_sets()
 
@@ -228,6 +249,7 @@ async def test_detection_registers_pending(race: Race) -> None:
     assert race.stint_count() == 1, "the change must not complete at detection"
 
 
+@allure.story("Detection")
 async def test_wait_set_matches_track_topology(race: Race) -> None:
     """Weird tracks wait on a lap change too; normal tracks only on car damage."""
     await race.tyre_sets()
@@ -239,6 +261,7 @@ async def test_wait_set_matches_track_topology(race: Race) -> None:
     assert pending.awaiting_car_dmg
 
 
+@allure.story("Detection")
 async def test_unchanged_tyre_sets_packet_records_the_lap(race: Race) -> None:
     """Packets confirming the fitted set track the lap, without registering anything."""
     for lap in range(START_LAP + 1, START_LAP + 4):
@@ -249,6 +272,7 @@ async def test_unchanged_tyre_sets_packet_records_the_lap(race: Race) -> None:
     assert race.driver.m_pending_tyre_change is None
 
 
+@allure.story("Detection")
 async def test_repeat_tyre_sets_packets_do_not_re_register(race: Race) -> None:
     """Tyre sets packets keep arriving during the pit exit; detection is idempotent."""
     await race.tyre_sets()
@@ -259,6 +283,7 @@ async def test_repeat_tyre_sets_packets_do_not_re_register(race: Race) -> None:
 
 # ------------------------- COMPLETION ---------------------------------------------------------------------------------
 
+@allure.story("Completion")
 async def test_completes_once_all_awaited_signals_arrive(race: Race) -> None:
     await race.tyre_sets()
     await race.all_signals()
@@ -268,6 +293,7 @@ async def test_completes_once_all_awaited_signals_arrive(race: Race) -> None:
     assert race.latest_stint().m_fitted_index == NEW_SET_IDX
 
 
+@allure.story("Completion")
 async def test_new_stint_seeded_from_new_tyre_wear(race: Race) -> None:
     """The whole point of the damage wait: never seed the new stint from the old set."""
     await race.tyre_sets()
@@ -276,6 +302,7 @@ async def test_new_stint_seeded_from_new_tyre_wear(race: Race) -> None:
     assert race.latest_stint().m_tyre_wear_history[0].fl_tyre_wear == NEW_TYRE_WEAR
 
 
+@allure.story("Completion")
 async def test_old_stint_final_wear_rewritten_only_on_weird_tracks(race: Race) -> None:
     """Weird tracks close the old stint with the old set's final wear. Others leave its history as recorded."""
     before = race.wear_history()
@@ -285,6 +312,7 @@ async def test_old_stint_final_wear_rewritten_only_on_weird_tracks(race: Race) -
     assert race.wear_history(stint_index=0) == expected
 
 
+@allure.story("Completion")
 async def test_old_stint_holds_no_rolling_buffer_instance(race: Race) -> None:
     """The weird-track rewrite stores a copy of the rolling buffer's max sample, not the live instance."""
     await race.change_tyres(NEW_SET_IDX)
@@ -294,6 +322,7 @@ async def test_old_stint_holds_no_rolling_buffer_instance(race: Race) -> None:
     assert not any(s is b for s in stored for b in live), "stint history must not hold a live rolling buffer instance"
 
 
+@allure.story("Completion")
 async def test_damage_packet_before_detection_does_not_satisfy_the_wait(race: Race) -> None:
     """D arriving before T must not count - it is what the wait exists to exclude."""
     await race.car_damage()
@@ -308,6 +337,7 @@ async def test_damage_packet_before_detection_does_not_satisfy_the_wait(race: Ra
 
 # ------------------------- NORMAL TRACK ORDERINGS ---------------------------------------------------------------------
 
+@allure.story("Normal track orderings")
 async def test_car_damage_alone_completes(normal_race: Race) -> None:
     await normal_race.tyre_sets()
     await normal_race.car_damage()
@@ -316,6 +346,7 @@ async def test_car_damage_alone_completes(normal_race: Race) -> None:
     assert normal_race.stint_count() == 2
 
 
+@allure.story("Normal track orderings")
 async def test_lap_change_alone_does_not_complete(normal_race: Race) -> None:
     await normal_race.tyre_sets()
     await normal_race.lap_change()
@@ -325,6 +356,7 @@ async def test_lap_change_alone_does_not_complete(normal_race: Race) -> None:
 
 # ------------------------- WEIRD TRACK ORDERINGS ----------------------------------------------------------------------
 
+@allure.story("Weird track orderings")
 async def test_car_damage_alone_does_not_complete(weird_race: Race) -> None:
     await weird_race.tyre_sets()
     await weird_race.car_damage()
@@ -333,6 +365,7 @@ async def test_car_damage_alone_does_not_complete(weird_race: Race) -> None:
     assert weird_race.stint_count() == 1
 
 
+@allure.story("Weird track orderings")
 async def test_t_d_l_completes(weird_race: Race) -> None:
     await weird_race.tyre_sets()
     await weird_race.car_damage()
@@ -342,6 +375,7 @@ async def test_t_d_l_completes(weird_race: Race) -> None:
     assert weird_race.stint_count() == 2
 
 
+@allure.story("Weird track orderings")
 async def test_t_l_d_completes(weird_race: Race) -> None:
     await weird_race.tyre_sets()
     await weird_race.lap_change()
@@ -352,6 +386,7 @@ async def test_t_l_d_completes(weird_race: Race) -> None:
 
 # ------------------------- LAP CHANGE BEFORE DETECTION ----------------------------------------------------------------
 
+@allure.story("Lap change before detection")
 async def test_lap_change_before_detection_still_completes(race: Race) -> None:
     """The wait is for "a lap boundary passed since the tyres were fitted". That is already satisfied here, so
     the change completes on the next car damage packet rather than a full lap later."""
@@ -363,6 +398,7 @@ async def test_lap_change_before_detection_still_completes(race: Race) -> None:
     assert race.stint_count() == 2
 
 
+@allure.story("Lap change before detection")
 async def test_new_stint_start_lap_is_the_lap_the_tyres_were_fitted(race: Race) -> None:
     """Knock-on of the above: a late completion would land start_lap a lap out."""
     await race.lap_change()
@@ -373,6 +409,7 @@ async def test_new_stint_start_lap_is_the_lap_the_tyres_were_fitted(race: Race) 
 
 # ------------------------- PENDING LIFETIME ---------------------------------------------------------------------------
 
+@allure.story("Pending lifetime")
 async def test_stuck_pending_change_does_not_suppress_a_later_one(race: Race) -> None:
     """A pending change whose packets never arrive must not wedge tyre tracking: a later set re-arms it."""
     await race.tyre_sets()
@@ -388,6 +425,7 @@ async def test_stuck_pending_change_does_not_suppress_a_later_one(race: Race) ->
     assert race.latest_stint().m_fitted_index == THIRD_SET_IDX
 
 
+@allure.story("Pending lifetime")
 async def test_flashback_discards_pending_change(race: Race) -> None:
     """A flashback rewinds the wear state; a pending change must not outlive it."""
     await race.tyre_sets()
@@ -412,12 +450,14 @@ SINGLE_SAMPLE_REMOVE = ("TyreSetHistoryManager.remove() pops only the last wear 
                         "laps leaves the earlier laps' samples behind.")
 
 
+@allure.story("Flashback and tyre set history")
 async def test_flashback_with_no_tyre_history_changes_nothing(restricted_race: Race) -> None:
     await restricted_race.flashback(land_lap=START_LAP - 1, wear=OLD_TYRE_WEAR - WEAR_PER_LAP)
 
     assert restricted_race.stint_count() == 0
 
 
+@allure.story("Flashback and tyre set history")
 async def test_flashback_within_a_lap_keeps_tyre_history(race: Race) -> None:
     """Landing on the same lap redoes no lap, so nothing is removed."""
     before = race.wear_history()
@@ -426,6 +466,7 @@ async def test_flashback_within_a_lap_keeps_tyre_history(race: Race) -> None:
     assert race.wear_history() == before
 
 
+@allure.story("Flashback and tyre set history")
 @pytest.mark.xfail(strict=True, reason=EARLY_RE_RECORD)
 async def test_flashback_over_the_line_drops_the_redone_laps_wear(race: Race) -> None:
     await race.flashback(land_lap=START_LAP - 1, wear=WEAR_PER_LAP * (START_LAP - 1))
@@ -437,6 +478,7 @@ async def test_flashback_over_the_line_drops_the_redone_laps_wear(race: Race) ->
     assert race.wear_history()[-1] == (START_LAP - 1, 38.0)
 
 
+@allure.story("Flashback and tyre set history")
 async def test_flashback_keeps_the_stint_when_earlier_wear_remains(race: Race) -> None:
     """Only the redone lap's sample goes. The stint started before the landing lap, so it stays."""
     await race.flashback(land_lap=START_LAP - 1, wear=WEAR_PER_LAP * (START_LAP - 1))
@@ -446,6 +488,7 @@ async def test_flashback_keeps_the_stint_when_earlier_wear_remains(race: Race) -
     assert race.wear_history()[:START_LAP - 1] == [(lap, WEAR_PER_LAP * lap) for lap in range(START_LAP - 1)]
 
 
+@allure.story("Flashback and tyre set history")
 @pytest.mark.xfail(strict=True, reason=f"{SINGLE_SAMPLE_REMOVE} {EARLY_RE_RECORD}")
 async def test_flashback_two_laps_back_drops_both_laps(race: Race) -> None:
     await race.flashback(land_lap=START_LAP - 2, wear=WEAR_PER_LAP * (START_LAP - 2))
@@ -453,6 +496,7 @@ async def test_flashback_two_laps_back_drops_both_laps(race: Race) -> None:
     assert race.wear_history() == [(lap, WEAR_PER_LAP * lap) for lap in range(START_LAP - 2)]
 
 
+@allure.story("Flashback and tyre set history")
 @pytest.mark.xfail(strict=True, reason=f"{SINGLE_SAMPLE_REMOVE} {EARLY_RE_RECORD}")
 async def test_two_flashbacks_in_a_row_each_trim_history(race: Race) -> None:
     await race.flashback(land_lap=START_LAP - 1, wear=WEAR_PER_LAP * (START_LAP - 1))
@@ -461,6 +505,7 @@ async def test_two_flashbacks_in_a_row_each_trim_history(race: Race) -> None:
     assert race.wear_history() == [(lap, WEAR_PER_LAP * lap) for lap in range(START_LAP - 2)]
 
 
+@allure.story("Flashback and tyre set history")
 async def test_flashback_to_before_a_tyre_change_drops_the_new_set(race: Race) -> None:
     medium_start = await race.change_tyres(NEW_SET_IDX)
     await race.car_damage(wear=NEW_TYRE_WEAR + WEAR_PER_LAP)
@@ -473,6 +518,7 @@ async def test_flashback_to_before_a_tyre_change_drops_the_new_set(race: Race) -
     assert race.latest_stint().m_fitted_index == OLD_SET_IDX
 
 
+@allure.story("Flashback and tyre set history")
 async def test_flashback_across_several_stints_trims_only_the_redone_laps(race: Race) -> None:
     medium_start = await race.change_tyres(NEW_SET_IDX)
     for lap in (1, 2):

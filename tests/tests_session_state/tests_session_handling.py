@@ -22,6 +22,7 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
+import allure
 import pytest
 
 from apps.backend.state_mgmt_layer import SessionState
@@ -32,6 +33,8 @@ from .harness import (InjectingTelemetryManager, SaveRecorder,
                       SaveRequestRecord, TokenRecorder)
 from .packet_helpers import (ALL_FORMATS, Packets, ai, car, classified,
                              lap_time, player)
+
+pytestmark = allure.feature("Session handling")
 
 # ------------------------- HELPERS ------------------------------------------------------------------------------------
 
@@ -47,6 +50,7 @@ async def _race_in_progress(manager: InjectingTelemetryManager, packets: Packets
 
 # ------------------------- TESTS --------------------------------------------------------------------------------------
 
+@allure.story("Session UID change")
 @pytest.mark.parametrize("packet_format", ALL_FORMATS, indirect=True)
 async def test_uid_change_clears_and_saves_just_in_case(manager: InjectingTelemetryManager,
                                                         packets: Packets,
@@ -68,6 +72,7 @@ async def test_uid_change_clears_and_saves_just_in_case(manager: InjectingTeleme
     assert all(driver is None for driver in state.m_driver_data)
 
 
+@allure.story("Session UID change")
 async def test_uid_change_after_final_classification_skips_just_in_case(manager: InjectingTelemetryManager,
                                                                         packets: Packets,
                                                                         state: SessionState,
@@ -87,6 +92,8 @@ async def test_uid_change_after_final_classification_skips_just_in_case(manager:
     assert handler.m_last_session_uid == 200
     assert all(driver is None for driver in state.m_driver_data)
 
+
+@allure.story("Final classification")
 @pytest.mark.parametrize("packet_format", ALL_FORMATS, indirect=True)
 async def test_final_classification_before_any_lap_data(manager: InjectingTelemetryManager,
                                                         packets: Packets,

@@ -22,6 +22,7 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
+import allure
 import pytest
 
 from apps.backend.state_mgmt_layer import SessionState
@@ -29,6 +30,8 @@ from lib.f1_types import TrackID
 
 from .harness import InjectingTelemetryManager
 from .packet_helpers import Packets, ai, car, lap_time, player
+
+pytestmark = allure.feature("Frame gate")
 
 # ------------------------- TESTS --------------------------------------------------------------------------------------
 

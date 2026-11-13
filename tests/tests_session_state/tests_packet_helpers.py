@@ -28,6 +28,7 @@ given, and the FakeSubsystem controls behave as documented."""
 import asyncio
 from typing import Optional
 
+import allure
 import pytest
 
 from lib.f1_types import (PacketEventData, PacketSessionData, TelemetrySetting,
@@ -39,6 +40,8 @@ from .harness import FakeSubsystem, InjectingTelemetryManager, ProcessCall, Save
 from .packet_helpers import (ALL_FORMATS, Packets, ai, car, classified,
                              fuel_and_ers, lap_time, player, speed,
                              world_position)
+
+pytestmark = allure.feature("Harness")
 
 # ------------------------- HELPERS ------------------------------------------------------------------------------------
 
@@ -54,6 +57,7 @@ async def _start(manager: InjectingTelemetryManager, packets: Packets) -> None:
 
 # ------------------------- PACKET HELPERS -----------------------------------------------------------------------------
 
+@allure.story("Packet helpers")
 @FORMAT_SWEEP
 @pytest.mark.parametrize("session_type", ["RACE", "SHORT_QUALIFYING", "TIME_TRIAL"])
 async def test_session_sets_its_fields(manager: InjectingTelemetryManager, packets: Packets, session_type: str) -> None:
@@ -67,6 +71,7 @@ async def test_session_sets_its_fields(manager: InjectingTelemetryManager, packe
     assert packet.m_isSpectating is True
 
 
+@allure.story("Packet helpers")
 @FORMAT_SWEEP
 async def test_participants_set_ai_and_telemetry(manager: InjectingTelemetryManager, packets: Packets) -> None:
     packet = packets.participants(player("Player", TelemetrySetting.RESTRICTED), ai("Opponent"), session_uid=UID)
@@ -80,6 +85,7 @@ async def test_participants_set_ai_and_telemetry(manager: InjectingTelemetryMana
         (True, TelemetrySetting.PUBLIC)
 
 
+@allure.story("Packet helpers")
 @FORMAT_SWEEP
 async def test_lap_sets_status_lap_time_and_a_negative_distance(manager: InjectingTelemetryManager,
                                                                 packets: Packets) -> None:
@@ -93,6 +99,7 @@ async def test_lap_sets_status_lap_time_and_a_negative_distance(manager: Injecti
     assert entry.m_driverStatus == LapData.DriverStatus.OUT_LAP
 
 
+@allure.story("Packet helpers")
 @FORMAT_SWEEP
 async def test_car_status_sets_fuel_and_ers(manager: InjectingTelemetryManager, packets: Packets) -> None:
     await _start(manager, packets)
@@ -106,6 +113,7 @@ async def test_car_status_sets_fuel_and_ers(manager: InjectingTelemetryManager, 
     assert packet.m_carStatusData[1].m_fuelInTank == 0.0
 
 
+@allure.story("Packet helpers")
 @FORMAT_SWEEP
 async def test_car_telemetry_sets_speed(manager: InjectingTelemetryManager, packets: Packets) -> None:
     await _start(manager, packets)
@@ -116,6 +124,7 @@ async def test_car_telemetry_sets_speed(manager: InjectingTelemetryManager, pack
     assert packet.m_carTelemetryData[1].m_speed == 0
 
 
+@allure.story("Packet helpers")
 @FORMAT_SWEEP
 async def test_motion_sets_position_and_yaw(manager: InjectingTelemetryManager, packets: Packets) -> None:
     await _start(manager, packets)
@@ -139,6 +148,7 @@ EVENT_DETAILS = {
 }
 
 
+@allure.story("Packet helpers")
 @FORMAT_SWEEP
 @pytest.mark.parametrize("event_type", list(EVENT_DETAILS), ids=["FLBK", "BUTN", "OVTK", "SEND", "SSTA", "SPTP"])
 async def test_event_carries_its_details(manager: InjectingTelemetryManager, packets: Packets,
@@ -152,6 +162,7 @@ async def test_event_carries_its_details(manager: InjectingTelemetryManager, pac
     assert packet.mEventDetails is details
 
 
+@allure.story("Packet helpers")
 @FORMAT_SWEEP
 async def test_final_classification_sets_laps_per_car(manager: InjectingTelemetryManager, packets: Packets,
                                                       saves: SaveRecorder) -> None:
@@ -166,6 +177,7 @@ async def test_final_classification_sets_laps_per_car(manager: InjectingTelemetr
     assert len(saves.requests) == 1
 
 
+@allure.story("Packet helpers")
 async def test_drive_counts_frames_up(packets: Packets) -> None:
     lap_packets = packets.drive(0, lap=2, distances=[10.0, 20.0, 30.0], session_uid=UID)
 
@@ -175,6 +187,7 @@ async def test_drive_counts_frames_up(packets: Packets) -> None:
     assert {packet.m_lapData[0].m_currentLapNum for packet in lap_packets} == {2}
 
 
+@allure.story("Packet helpers")
 @FORMAT_SWEEP
 async def test_session_history_burst_covers_the_grid_on_one_frame(manager: InjectingTelemetryManager,
                                                                   packets: Packets) -> None:
@@ -192,6 +205,7 @@ def _write(path: str, *, mode: str) -> None:
     raise AssertionError("run_in_process must not run fn")
 
 
+@allure.story("Fake subsystem")
 async def test_run_in_process_records_the_call_and_resolves() -> None:
     subsystem = FakeSubsystem()
 
@@ -199,6 +213,7 @@ async def test_run_in_process_records_the_call_and_resolves() -> None:
     assert subsystem.process_calls == [ProcessCall(fn_name="_write", args=("out.pngt",), kwargs={"mode": "w"})]
 
 
+@allure.story("Fake subsystem")
 async def test_run_in_process_block_holds_calls_until_release() -> None:
     subsystem = FakeSubsystem()
     subsystem.block()
@@ -212,6 +227,7 @@ async def test_run_in_process_block_holds_calls_until_release() -> None:
     assert await subsystem.run_in_process(_write, "c", mode="w") is None, "release stops holding new calls"
 
 
+@allure.story("Fake subsystem")
 async def test_run_in_process_fail_with_raises_once() -> None:
     subsystem = FakeSubsystem()
     subsystem.fail_with(OSError("disk full"))

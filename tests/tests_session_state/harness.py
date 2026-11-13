@@ -23,31 +23,57 @@
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
 import asyncio
+import json
 from dataclasses import dataclass
+from logging import Logger
 from types import ModuleType
 from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
                     Sequence, Tuple)
 
+import allure
 import pytest
 
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
 from apps.backend.telemetry_layer.telemetry_handler import F1TelemetryHandler
-from lib.f1_types import F1PacketBase
+from lib.f1_types import F1PacketBase, TrackID
 from lib.telemetry_manager import F1TelemetryManagerBase
+
+# ------------------------- LABELS -------------------------------------------------------------------------------------
+
+def track_param(track: TrackID, kind: str) -> Any:
+    """A fixture param for track, with id kind ("normal", "weird", "unknown"). Tagged "<kind> track" in the
+    report, and selectable with --allure-label track=<kind>."""
+    return pytest.param(track, id=kind, marks=[allure.tag(f"{kind} track"), allure.label("track", kind)])
 
 # ------------------------- MANAGER ------------------------------------------------------------------------------------
 
 class InjectingTelemetryManager(F1TelemetryManagerBase):
     """Telemetry manager with no transport. Tests hand it parsed packets through inject()."""
 
+    def __init__(self, logger: Logger, frame_gate_enabled: bool = False) -> None:
+        """Same arguments as F1TelemetryManagerBase."""
+        super().__init__(logger, frame_gate_enabled=frame_gate_enabled)
+        self.injected: List[F1PacketBase] = []
+
     async def inject(self, packet: F1PacketBase) -> None:
         """Dispatch a parsed packet exactly as production does after parsing (frame gate, any-packet
         callback, typed callback). The raw-packet path is skipped.
 
+        Each packet is a report step, and is kept in injected for attach_trace().
+
         Args:
             packet (F1PacketBase): The packet to dispatch
         """
-        await self._dispatch(packet)
+        self.injected.append(packet)
+        header = packet.m_header
+        with allure.step(f"{header.m_packetId.name}, uid {header.m_sessionUID}, frame {header.m_frameIdentifier}"):
+            await self._dispatch(packet)
+
+    def attach_trace(self) -> None:
+        """Attach every injected packet, in order, to the report as one JSON file."""
+        trace = [packet.toJSON(include_header=True) for packet in self.injected]
+        allure.attach(json.dumps(trace, indent=2), name="injected packets",
+                      attachment_type=allure.attachment_type.JSON)
 
 # ------------------------- SUBSYSTEM ----------------------------------------------------------------------------------
 
