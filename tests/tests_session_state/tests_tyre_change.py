@@ -26,6 +26,8 @@ A tyre set change is driven by three packets that can interleave in any order: T
 set (T, detection), CAR_DAMAGE (D) and a LAP_DATA lap change (L). On a normal track (finish line before the
 pit garage) only D is awaited. On a weird one (pit garage before the finish line) L is awaited as well, and
 the old stint's final wear is rewritten on completion.
+
+The last section covers what a flashback over the line does to the tyre set history.
 """
 
 # Fixtures that take other fixtures as arguments are how pytest works, not shadowing
@@ -33,14 +35,14 @@ the old stint's final wear is rewritten on completion.
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from typing import Optional
+from typing import List, Optional, Tuple
 
 import pytest
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.data_per_driver import TyreSetHistoryEntry
 from apps.backend.state_mgmt_layer.data_per_driver.data_per_driver import DataPerDriver
-from lib.f1_types import PacketEventData, TrackID
+from lib.f1_types import PacketEventData, TelemetrySetting, TrackID
 
 from .harness import InjectingTelemetryManager
 from .packet_helpers import (FIRST_HARD_IDX, FIRST_MEDIUM_IDX, FIRST_SOFT_IDX,
@@ -114,10 +116,11 @@ class Race:
         if IS_WEIRD[self.track]:
             await self.lap_change()
 
-    async def on_old_set(self) -> None:
-        """Lap START_LAP on the old set, with its stint in history. Wear reaches OLD_TYRE_WEAR on that lap."""
+    async def on_old_set(self, telemetry: TelemetrySetting = TelemetrySetting.PUBLIC) -> None:
+        """Lap START_LAP on the old set, with its stint in history. Wear reaches OLD_TYRE_WEAR on that lap.
+        With RESTRICTED telemetry the same packets arrive, but no tyre history is kept."""
         await self.session()
-        await self.manager.inject(self.packets.participants(player("Player"), session_uid=UID))
+        await self.manager.inject(self.packets.participants(player("Player", telemetry), session_uid=UID))
         await self.lap(1)
 
         # Every packet copy the lap-0 snapshot needs. The second SESSION sets the max safety car status, which
@@ -140,13 +143,36 @@ class Race:
         await self.tyre_sets(OLD_SET_IDX)
 
         assert self.driver.m_lap_info.m_current_lap == START_LAP
+        if not telemetry:
+            assert self.stint_count() == 0
+            return
         assert self.driver.m_current_set_last_seen_lap == START_LAP
         assert self.stint_count() == 1
         assert self.latest_stint().m_fitted_index == OLD_SET_IDX
+        assert self.wear_history() == [(lap, WEAR_PER_LAP * lap) for lap in range(START_LAP)]
+
+    async def flashback(self, land_lap: int, wear: float) -> None:
+        """A FLBK event, then the landing LAP_DATA on land_lap and the rewound CAR_DAMAGE at wear."""
+        await self.manager.inject(self.packets.event(
+            PacketEventData.EventPacketType.FLASHBACK, PacketEventData.Flashback.from_values(frame_identifier=1),
+            session_uid=UID))
+        await self.lap(land_lap)
+        await self.car_damage(wear=wear)
+
+    async def change_tyres(self, fitted_idx: int) -> None:
+        """A completed tyre change to fitted_idx, on a normal track (car damage is the only wait)."""
+        await self.tyre_sets(fitted_idx)
+        await self.car_damage()
+        assert self.latest_stint().m_fitted_index == fitted_idx
 
     def stint_count(self) -> int:
         """Number of stints recorded in the tyre set history."""
         return self.driver.m_tyre_info.m_tyre_set_history_manager.length
+
+    def wear_history(self, stint_index: int = -1) -> List[Tuple[int, float]]:
+        """(lap number, front left wear) for each wear sample in a stint, oldest first."""
+        stint = self.driver.m_tyre_info.m_tyre_set_history_manager.getEntry(index=stint_index)
+        return [(sample.lap_number, sample.fl_tyre_wear) for sample in stint.m_tyre_wear_history]
 
     def latest_stint(self) -> Optional[TyreSetHistoryEntry]:
         """The most recently added stint, or None when the history is empty."""
@@ -168,6 +194,14 @@ async def normal_race(request: pytest.FixtureRequest, manager: InjectingTelemetr
     """A race on the normal track, or on an unrecognised one, on the old set at lap START_LAP."""
     on_track = Race(manager, packets, state, request.param)
     await on_track.on_old_set()
+    return on_track
+
+
+@pytest.fixture
+async def restricted_race(manager: InjectingTelemetryManager, packets: Packets, state: SessionState) -> Race:
+    """A race on the normal track at lap START_LAP, with the player's telemetry RESTRICTED, so no tyre history."""
+    on_track = Race(manager, packets, state, NORMAL_TRACK)
+    await on_track.on_old_set(TelemetrySetting.RESTRICTED)
     return on_track
 
 
@@ -364,3 +398,96 @@ async def test_flashback_discards_pending_change(race: Race) -> None:
     await race.lap(START_LAP - 1)   # the landing packet, a lap back
 
     assert race.driver.m_pending_tyre_change is None, "a pending change must not complete against rewound state"
+
+# ------------------------- FLASHBACK AND TYRE SET HISTORY -------------------------------------------------------------
+#
+# A flashback back over the line means the laps from the landing lap on are being redone. Their wear samples, and
+# any stint that started on one of them, must go. The landing lap is only recorded again once the car crosses the
+# line again, with the wear from then.
+
+# Known bugs on this branch: the xfails flip to XPASS (and fail, being strict) once they are fixed
+EARLY_RE_RECORD = ("The landing lap's wear is recorded again at the landing packet, from packet copies taken before "
+                   "the rewind: onLapChange runs straight after _handleFlashBack. feat/telemetry-analysis-base "
+                   "moves flashback handling into onFlashback.")
+SINGLE_SAMPLE_REMOVE = ("TyreSetHistoryManager.remove() pops only the last wear sample, so a rewind of two or more "
+                        "laps leaves the earlier laps' samples behind.")
+
+
+async def test_flashback_with_no_tyre_history_changes_nothing(restricted_race: Race) -> None:
+    await restricted_race.flashback(land_lap=START_LAP - 1, wear=OLD_TYRE_WEAR - WEAR_PER_LAP)
+
+    assert restricted_race.stint_count() == 0
+
+
+async def test_flashback_within_a_lap_keeps_tyre_history(race: Race) -> None:
+    """Landing on the same lap redoes no lap, so nothing is removed."""
+    before = race.wear_history()
+    await race.flashback(land_lap=START_LAP, wear=OLD_TYRE_WEAR - 2.0)
+
+    assert race.wear_history() == before
+
+
+@pytest.mark.xfail(strict=True, reason=EARLY_RE_RECORD)
+async def test_flashback_over_the_line_drops_the_redone_laps_wear(race: Race) -> None:
+    await race.flashback(land_lap=START_LAP - 1, wear=WEAR_PER_LAP * (START_LAP - 1))
+    assert race.wear_history() == [(lap, WEAR_PER_LAP * lap) for lap in range(START_LAP - 1)]
+
+    # The redone lap is recorded again when the car crosses the line, with the wear from then
+    await race.car_damage(wear=38.0)
+    await race.lap(START_LAP)
+    assert race.wear_history()[-1] == (START_LAP - 1, 38.0)
+
+
+async def test_flashback_keeps_the_stint_when_earlier_wear_remains(race: Race) -> None:
+    """Only the redone lap's sample goes. The stint started before the landing lap, so it stays."""
+    await race.flashback(land_lap=START_LAP - 1, wear=WEAR_PER_LAP * (START_LAP - 1))
+
+    assert race.stint_count() == 1
+    assert race.latest_stint().m_start_lap == 1
+    assert race.wear_history()[:START_LAP - 1] == [(lap, WEAR_PER_LAP * lap) for lap in range(START_LAP - 1)]
+
+
+@pytest.mark.xfail(strict=True, reason=f"{SINGLE_SAMPLE_REMOVE} {EARLY_RE_RECORD}")
+async def test_flashback_two_laps_back_drops_both_laps(race: Race) -> None:
+    await race.flashback(land_lap=START_LAP - 2, wear=WEAR_PER_LAP * (START_LAP - 2))
+
+    assert race.wear_history() == [(lap, WEAR_PER_LAP * lap) for lap in range(START_LAP - 2)]
+
+
+@pytest.mark.xfail(strict=True, reason=f"{SINGLE_SAMPLE_REMOVE} {EARLY_RE_RECORD}")
+async def test_two_flashbacks_in_a_row_each_trim_history(race: Race) -> None:
+    await race.flashback(land_lap=START_LAP - 1, wear=WEAR_PER_LAP * (START_LAP - 1))
+    await race.flashback(land_lap=START_LAP - 2, wear=WEAR_PER_LAP * (START_LAP - 2))
+
+    assert race.wear_history() == [(lap, WEAR_PER_LAP * lap) for lap in range(START_LAP - 2)]
+
+
+async def test_flashback_to_before_a_tyre_change_drops_the_new_set(normal_race: Race) -> None:
+    await normal_race.change_tyres(NEW_SET_IDX)                 # the medium stint starts on lap 10
+    await normal_race.car_damage(wear=NEW_TYRE_WEAR + WEAR_PER_LAP)
+    await normal_race.lap(START_LAP + 1)
+
+    await normal_race.flashback(land_lap=START_LAP - 1, wear=WEAR_PER_LAP * (START_LAP - 1))
+
+    assert normal_race.stint_count() == 1
+    assert normal_race.latest_stint().m_fitted_index == OLD_SET_IDX
+
+
+async def test_flashback_across_several_stints_trims_only_the_redone_laps(normal_race: Race) -> None:
+    await normal_race.change_tyres(NEW_SET_IDX)                 # medium from lap 10
+    await normal_race.car_damage(wear=NEW_TYRE_WEAR + WEAR_PER_LAP)
+    await normal_race.lap(START_LAP + 1)
+    await normal_race.car_damage(wear=NEW_TYRE_WEAR + 2 * WEAR_PER_LAP)
+    await normal_race.lap(START_LAP + 2)
+    await normal_race.change_tyres(THIRD_SET_IDX)               # hard from lap 12
+    await normal_race.car_damage(wear=NEW_TYRE_WEAR + WEAR_PER_LAP)
+    await normal_race.lap(START_LAP + 3)
+    assert [stint.m_start_lap for stint in normal_race.driver.m_tyre_info.m_tyre_set_history_manager.m_history] \
+        == [1, START_LAP, START_LAP + 2]
+
+    # Back into lap 12: only the hard stint, which started on it, goes
+    await normal_race.flashback(land_lap=START_LAP + 2, wear=NEW_TYRE_WEAR + 2 * WEAR_PER_LAP)
+
+    assert [stint.m_start_lap for stint in normal_race.driver.m_tyre_info.m_tyre_set_history_manager.m_history] \
+        == [1, START_LAP]
+    assert normal_race.latest_stint().m_fitted_index == NEW_SET_IDX
