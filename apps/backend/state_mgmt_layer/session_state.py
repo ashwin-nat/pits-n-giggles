@@ -665,8 +665,11 @@ class SessionState:
 
         # --- Handle speed trap records
         if is_speed_trap_supported:
+            # A driver with no LAP_DATA yet has no speed trap reading (None) - those sort last
             final_json["speed-trap-records"] = sorted(
-                speed_trap_records, key=lambda x: x["speed-trap-record-kmph"], reverse=True
+                speed_trap_records,
+                key=lambda x: (x["speed-trap-record-kmph"] is not None, x["speed-trap-record-kmph"] or 0.0),
+                reverse=True
             )
         else:
             final_json["speed-trap-records"] = []

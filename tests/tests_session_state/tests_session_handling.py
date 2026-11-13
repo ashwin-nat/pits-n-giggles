@@ -86,3 +86,19 @@ async def test_uid_change_after_final_classification_skips_just_in_case(manager:
     assert tokens.records == []
     assert handler.m_last_session_uid == 200
     assert all(driver is None for driver in state.m_driver_data)
+
+@pytest.mark.parametrize("packet_format", ALL_FORMATS, indirect=True)
+async def test_final_classification_before_any_lap_data(manager: InjectingTelemetryManager,
+                                                        packets: Packets,
+                                                        state: SessionState,
+                                                        saves: SaveRecorder) -> None:
+    """No car has sent LAP_DATA, so none has a speed trap reading. The final classification save still works."""
+    await manager.inject(packets.session(session_uid=100, session_type="RACE", track=TrackID.Silverstone,
+                                         total_laps=5, track_length=5891))
+    await manager.inject(packets.participants(player("Player"), ai("Opponent"), session_uid=100))
+    await manager.inject(packets.final_classification(classified(position=1, num_laps=5),
+                                                      classified(position=2, num_laps=5), session_uid=100))
+
+    assert saves.requests == [SaveRequestRecord(kind="final_classification", session_uid=100, reason=None)]
+    expected = [] if packets.packet_format == 2023 else ["Player", "Opponent"]   # 2023 has no speed trap records
+    assert [r["name"] for r in state.buildFinalClassificationJSON()["speed-trap-records"]] == expected
