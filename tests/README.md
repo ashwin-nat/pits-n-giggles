@@ -146,11 +146,51 @@ allure serve reports/allure-results
 | `tests_config/` | Config validation tests |
 | `tests_delta/` | Lap delta tests |
 | `tests_data_per_driver/` | Per-driver data structure tests |
+| `tests_session_state/` | Session state scenarios - typed packets through the real handler and `SessionState` (see below) |
 | `tests_wdt/` | Watchdog timer tests (async + sync) |
 | `tests_event_counter/` | Event counter and latency stat tests |
 | `ipc/` | IPC tests — ZeroMQ pub/sub, router/dealer, parent/child (serial) |
 | `tests_openf1/` | OpenF1 API tests — mock-based flow tests + live schema validation (`-m openf1`) |
 | `integration_test/` | Integration runner — starts the full app, not collected by pytest. See [its README](integration_test/README.md) |
+
+## Session State Scenarios
+
+`tests_session_state/` tests the backend's state layer as a whole. A scenario builds typed packets,
+injects them into the real `F1TelemetryHandler` and `SessionState`, and asserts on the resulting
+state and on what the handler asked the outside world to do. Socket, parser and raw-packet path
+are skipped. Everything from the frame gate onward is production code.
+
+```text
+Packets (packet_helpers.py) -> InjectingTelemetryManager.inject() -> F1TelemetryHandler -> SessionState
+```
+
+Fixtures (`conftest.py`):
+
+| Fixture | What it is |
+|---------|------------|
+| `manager` | `InjectingTelemetryManager` with the handler's callbacks registered. `await manager.inject(packet)` |
+| `packets` | Packet helpers bound to `packet_format` (default 2026). Frames count up on their own |
+| `state`, `handler` | The real `SessionState` and `F1TelemetryHandler` |
+| `saves` | Records save requests (just-in-case, final classification) instead of writing files |
+| `tokens` | Records the handler's `report_*_from_child` tokens |
+| `fake_subsystem` | Records `fire_and_forget` names and `dealer.fire` calls, runs nothing |
+| `caplog` | Wired to the real `PngLogger` the state layer uses |
+
+A scenario:
+
+```python
+async def test_something(manager, packets, state, saves):
+    await manager.inject(packets.session(session_uid=100, session_type="RACE", track=TrackID.Silverstone,
+                                         total_laps=5, track_length=5891))
+    await manager.inject(packets.lap(car(0, lap=1, lap_distance=1000), session_uid=100))
+    assert state.m_session_info.m_total_laps == 5
+```
+
+To run a scenario on every packet format, add
+`@pytest.mark.parametrize("packet_format", ALL_FORMATS, indirect=True)`.
+
+Packet helper arguments are only the fields some scenario sets. When a scenario needs another field,
+add it as an explicit argument in that change rather than reaching into the packet afterwards.
 
 ## Serial vs Parallel
 
