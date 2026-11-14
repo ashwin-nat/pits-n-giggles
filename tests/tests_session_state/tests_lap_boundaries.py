@@ -32,25 +32,19 @@ later run's out lap.
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import allure
 import pytest
 
 from apps.backend.state_mgmt_layer import SessionState
-from apps.backend.state_mgmt_layer.data_per_driver.data_per_driver import DataPerDriver
 from lib.f1_types import TrackID
 from lib.f1_types.packet_2_lap_data import LapData
 
-from .harness import InjectingTelemetryManager, track_param
-from .packet_helpers import ALL_FORMATS, Packets, player
+from .harness import LAP_TRACKS, Run, title
+from .packet_helpers import ALL_FORMATS
 
 # ------------------------- CONSTANTS ----------------------------------------------------------------------------------
-
-UID = 100
-NORMAL_TRACK = TrackID.Silverstone     # finish line before the pit garage
-WEIRD_TRACK = TrackID.Monaco           # pit garage before the finish line
-TRACK_LENGTHS = {NORMAL_TRACK: 5891, WEIRD_TRACK: 3337}
 
 GARAGE, OUT_LAP, FLYING, IN_LAP, ON_TRACK = (LapData.DriverStatus.IN_GARAGE, LapData.DriverStatus.OUT_LAP,
                                              LapData.DriverStatus.FLYING_LAP, LapData.DriverStatus.IN_LAP,
@@ -61,68 +55,10 @@ pytestmark = [allure.feature("Lap boundaries"),
 
 # ------------------------- FIXTURES -----------------------------------------------------------------------------------
 
-@pytest.fixture(params=[track_param(NORMAL_TRACK, "normal"), track_param(WEIRD_TRACK, "weird")])
+@pytest.fixture(params=LAP_TRACKS)
 def track(request: pytest.FixtureRequest) -> TrackID:
     """Both track topologies."""
     return request.param
-
-
-@pytest.fixture
-def run(manager: InjectingTelemetryManager, packets: Packets, state: SessionState, track: TrackID) -> "Run":
-    """The player's car on track. Start the session with await run.session(...)."""
-    return Run(manager, packets, state, track)
-
-# ------------------------- HELPERS ------------------------------------------------------------------------------------
-
-class Run:
-    """The player's car in one session. drive() sends one LAP_DATA per distance."""
-
-    def __init__(self, manager: InjectingTelemetryManager, packets: Packets, state: SessionState,
-                 track: TrackID) -> None:
-        self.manager = manager
-        self.packets = packets
-        self.state = state
-        self.track = track
-
-    @property
-    def driver(self) -> DataPerDriver:
-        """The player's DataPerDriver."""
-        return self.state.m_driver_data[0]
-
-    async def session(self, session_type: str) -> None:
-        """SESSION and PARTICIPANTS for a session_type session on this track."""
-        with allure.step(f"{session_type} at {self.track.name}"):
-            await self.manager.inject(self.packets.session(
-                session_uid=UID, session_type=session_type, track=self.track, total_laps=5,
-                track_length=TRACK_LENGTHS[self.track]))
-            await self.manager.inject(self.packets.participants(player("Player"), session_uid=UID))
-
-    async def drive(self, status: LapData.DriverStatus, lap: int, *distances: float) -> None:
-        """One LAP_DATA per distance, in status on lap."""
-        with allure.step(f"{status.name} lap {lap}: {', '.join(str(d) for d in distances)}"):
-            for packet in self.packets.drive(0, lap=lap, distances=list(distances), session_uid=UID, status=status):
-                await self.manager.inject(packet)
-
-    def completed_laps(self) -> Dict[int, List[float]]:
-        """The recorder's completed laps, as lap number -> lap distances (to 0.1 m)."""
-        return {lap.metadata.lap_number: _distances(lap.telemetry)
-                for lap in self.driver.m_tel_rec.export().completed_laps}
-
-    def in_progress_lap(self) -> Optional[Tuple[int, List[float]]]:
-        """The recorder's in-progress lap as (lap number, lap distances to 0.1 m), or None if it holds no
-        samples."""
-        lap = self.driver.m_tel_rec.export().in_progress_lap
-        return None if lap is None else (lap.metadata.lap_number, _distances(lap.telemetry))
-
-
-def _distances(telemetry: Dict[str, list]) -> List[float]:
-    # Lap distance is a float32 on the wire: 0.6 comes back as 0.6000000238
-    return [round(distance, 1) for distance in telemetry["lap_distance"]]
-
-
-def title(text: str) -> Any:
-    """allure.title for a test in this file: text, then the track and packet format the case ran on."""
-    return allure.title(text + " ({track.name}, {packet_format})")
 
 # ------------------------- OUT LAP TO FLYING LAP ----------------------------------------------------------------------
 

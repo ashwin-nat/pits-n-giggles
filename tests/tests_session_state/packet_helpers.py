@@ -173,8 +173,8 @@ def world_position(index: int, x: float, y: float, z: float, yaw: float) -> Posi
 # ------------------------- PACKETS ------------------------------------------------------------------------------------
 
 class Packets:
-    """Builds packets for one packet format. Every header gets the next frame number (frame and overall
-    frame both count up from 1) unless the call overrides them."""
+    """Builds packets for one packet format. Every header takes the next number from a counter starting at 1, as
+    both its frame and overall frame, unless the call overrides one of them."""
 
     def __init__(self, packet_format: int, player_index: int = 0) -> None:
         self.packet_format = packet_format
@@ -183,10 +183,12 @@ class Packets:
 
     def header(self, packet_type: F1PacketType, session_uid: int,
                frame: Optional[int] = None, overall_frame: Optional[int] = None) -> PacketHeader:
-        """A header for packet_type. Frame and overall frame default to the next frame number."""
-        if frame is None:
-            frame = self._next_frame
-            self._next_frame += 1
+        """A header for packet_type. Frame and overall frame default to the next frame number. Pass frame alone
+        for a packet after a flashback: the sim's frame goes back, its overall frame keeps counting up."""
+        next_frame = self._next_frame
+        self._next_frame += 1
+        frame = next_frame if frame is None else frame
+        overall_frame = next_frame if overall_frame is None else overall_frame
         return PacketHeader.from_values(
             packet_format=self.packet_format,
             game_year=self.packet_format % 100,
@@ -197,7 +199,7 @@ class Packets:
             session_uid=session_uid,
             session_time=frame / 60.0,
             frame_identifier=frame,
-            overall_frame_identifier=frame if overall_frame is None else overall_frame,
+            overall_frame_identifier=overall_frame,
             player_car_index=self.player_index,
             secondary_player_car_index=255,
         )

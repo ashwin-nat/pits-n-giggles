@@ -41,11 +41,12 @@ from apps.backend.telemetry_layer import telemetry_handler as telemetry_handler_
 from apps.backend.telemetry_layer.telemetry_handler import F1TelemetryHandler
 from lib.config import (CaptureSettings, LapAnalyzerSensorSettings,
                         LapAnalyzerSettings, PngSettings)
+from lib.f1_types import TrackID
 from lib.logger import PngLogger
 
 from .packet_helpers import Packets
-from .harness import (FakeSubsystem, InjectingTelemetryManager, SaveRecorder,
-                      TokenRecorder)
+from .harness import (FakeSubsystem, InjectingTelemetryManager, Run,
+                      SaveRecorder, TokenRecorder)
 
 # ------------------------- CONSTANTS ----------------------------------------------------------------------------------
 
@@ -184,6 +185,13 @@ def manager(request: pytest.FixtureRequest, handler: F1TelemetryHandler) -> Iter
     call_report = request.node.stash.get(CALL_REPORT, None)
     if call_report is None or not call_report.passed:
         handler.m_manager.attach_trace()
+
+
+@pytest.fixture
+def run(manager: InjectingTelemetryManager, packets: Packets, state: SessionState, track: TrackID) -> Run:
+    """The player's car on track. The test module provides track, e.g. a fixture with params=LAP_TRACKS. Start
+    the session with await run.session(...)."""
+    return Run(manager, packets, state, track)
 
 
 @pytest.fixture

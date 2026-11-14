@@ -34,10 +34,15 @@ from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
 import allure
 import pytest
 
+from apps.backend.state_mgmt_layer import SessionState
+from apps.backend.state_mgmt_layer.data_per_driver.data_per_driver import DataPerDriver
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
 from apps.backend.telemetry_layer.telemetry_handler import F1TelemetryHandler
-from lib.f1_types import F1PacketBase, TrackID
+from lib.f1_types import F1PacketBase, PacketEventData, TrackID
+from lib.f1_types.packet_2_lap_data import LapData
 from lib.telemetry_manager import F1TelemetryManagerBase
+
+from .packet_helpers import Packets, car, player
 
 # ------------------------- LABELS -------------------------------------------------------------------------------------
 
@@ -48,6 +53,12 @@ def track_param(track: TrackID, kind: str) -> Any:
     # (e.g. VSCode discovery), which breaks pytest.param.
     return pytest.param(track, id=kind, marks=[pytest.mark.allure_label(f"{kind} track", label_type="tag"),
                                                pytest.mark.allure_label(kind, label_type="track")])
+
+
+def title(text: str) -> Any:
+    """allure.title for a test that takes track and packet_format: text, then the track and format the case
+    ran on."""
+    return allure.title(text + " ({track.name}, {packet_format})")
 
 # ------------------------- MANAGER ------------------------------------------------------------------------------------
 
@@ -229,3 +240,73 @@ class TokenRecorder:
         def record(arg: Any = None) -> None:
             self.records.append((name, arg))
         return record
+
+# ------------------------- LAP SCENARIOS ------------------------------------------------------------------------------
+
+# Silverstone: finish line before the pit garage. Monaco: pit garage before the finish line
+LAP_TRACKS = [track_param(TrackID.Silverstone, "normal"), track_param(TrackID.Monaco, "weird")]
+LAP_TRACK_LENGTHS = {TrackID.Silverstone: 5891, TrackID.Monaco: 3337}
+
+
+class Run:
+    """The player's car (index 0) in one session on a LAP_TRACKS track. Lap distances read back are rounded to
+    0.1 m: they're float32 on the wire, so 0.6 comes back as 0.6000000238."""
+
+    def __init__(self, manager: InjectingTelemetryManager, packets: Packets, state: SessionState, track: TrackID,
+                 session_uid: int = 100) -> None:
+        self.manager = manager
+        self.packets = packets
+        self.state = state
+        self.track = track
+        self.session_uid = session_uid
+
+    @property
+    def driver(self) -> DataPerDriver:
+        """The player's DataPerDriver."""
+        return self.state.m_driver_data[0]
+
+    async def session(self, session_type: str) -> None:
+        """SESSION and PARTICIPANTS for a session_type session (a SessionType member name) on this track."""
+        with allure.step(f"{session_type} at {self.track.name}"):
+            await self.manager.inject(self.packets.session(
+                session_uid=self.session_uid, session_type=session_type, track=self.track, total_laps=5,
+                track_length=LAP_TRACK_LENGTHS[self.track]))
+            await self.manager.inject(self.packets.participants(player("Player"), session_uid=self.session_uid))
+
+    async def drive(self, status: LapData.DriverStatus, lap: int, *distances: float) -> None:
+        """One LAP_DATA per distance, in status on lap."""
+        with allure.step(f"{status.name} lap {lap}: {', '.join(str(d) for d in distances)}"):
+            for packet in self.packets.drive(0, lap=lap, distances=list(distances), session_uid=self.session_uid,
+                                             status=status):
+                await self.manager.inject(packet)
+
+    async def flashback(self, status: LapData.DriverStatus, lap: int, distance: float) -> None:
+        """A FLBK event, then the LAP_DATA the car lands in: status, on lap, at distance. The landing's frame
+        goes back to just after the flashback's target frame. Its overall frame keeps counting up."""
+        target_frame = self.manager.injected[-1].m_header.m_frameIdentifier // 2
+        with allure.step(f"Flashback, landing {status.name} lap {lap} at {distance}"):
+            await self.manager.inject(self.packets.event(
+                PacketEventData.EventPacketType.FLASHBACK,
+                PacketEventData.Flashback.from_values(frame_identifier=target_frame), session_uid=self.session_uid))
+            await self.manager.inject(self.packets.lap(car(0, lap=lap, lap_distance=distance, status=status),
+                                                       session_uid=self.session_uid, frame=target_frame + 1))
+
+    def completed_laps(self) -> Dict[int, List[float]]:
+        """The lap recorder's completed laps, as lap number -> lap distances."""
+        return {lap.metadata.lap_number: _distances(lap.telemetry["lap_distance"])
+                for lap in self.driver.m_tel_rec.export().completed_laps}
+
+    def in_progress_lap(self) -> Optional[Tuple[int, List[float]]]:
+        """The lap recorder's in-progress lap as (lap number, lap distances), or None if it holds no samples."""
+        lap = self.driver.m_tel_rec.export().in_progress_lap
+        return None if lap is None else (lap.metadata.lap_number, _distances(lap.telemetry["lap_distance"]))
+
+    def delta_laps(self) -> Dict[int, List[float]]:
+        """The delta manager's laps, as lap number -> lap distances."""
+        # Its only read of the stored laps is this debug dump
+        dump = self.driver.m_delta_mgr._dump_state()  # pylint: disable=protected-access
+        return {lap: _distances([distance for distance, _ in points]) for lap, points in dump.items()}
+
+
+def _distances(distances: List[float]) -> List[float]:
+    return [round(distance, 1) for distance in distances]
