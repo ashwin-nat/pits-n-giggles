@@ -23,8 +23,8 @@
 """Lap boundary scenarios: which samples the lap recorder keeps, and under which lap, as the driver status and
 lap number change. Recorder state is read from driver.m_tel_rec.export().
 
-Lap distances are the raw ones from F1 26 Suzuka captures: negative on a first run's out lap, counting up past the
-line on a later run's out lap.
+Lap distances are raw ones from F1 26 captures: negative on a first run's out lap, counting up past the line on a
+later run's out lap.
 """
 
 # Fixtures that take other fixtures as arguments are how pytest works, not shadowing
@@ -48,9 +48,9 @@ from .packet_helpers import ALL_FORMATS, Packets, player
 # ------------------------- CONSTANTS ----------------------------------------------------------------------------------
 
 UID = 100
-NORMAL_TRACK = TrackID.Suzuka          # finish line before the pit garage
-WEIRD_TRACK = TrackID.Paul_Ricard      # pit garage before the finish line, and about as long as Suzuka
-TRACK_LENGTHS = {NORMAL_TRACK: 5807, WEIRD_TRACK: 5842}
+NORMAL_TRACK = TrackID.Silverstone     # finish line before the pit garage
+WEIRD_TRACK = TrackID.Monaco           # pit garage before the finish line
+TRACK_LENGTHS = {NORMAL_TRACK: 5891, WEIRD_TRACK: 3337}
 
 GARAGE, OUT_LAP, FLYING, IN_LAP, ON_TRACK = (LapData.DriverStatus.IN_GARAGE, LapData.DriverStatus.OUT_LAP,
                                              LapData.DriverStatus.FLYING_LAP, LapData.DriverStatus.IN_LAP,
