@@ -154,6 +154,11 @@ The report tree groups tests by epic > feature > story > track (`groupBy` in `sc
 set Allure labels, such as `tests_session_state/`, get their own tree. For every other test, `tests/conftest.py`
 fills in folder > file > class.
 
+A test's docstring is its description in the report. `tests/conftest.py` dedents it, since Markdown would render the
+source indent as a code block. New tests also get an `@allure.title`, a sentence saying what the test shows. Its
+`{placeholders}` take any test argument, parameters and fixtures included, e.g. `"Lap analyzer switched {switch}
+mid-lap ({track.name}, {packet_format})"`. Without one, the report shows the function name.
+
 Allure 3 identifies a test by its name plus its *displayed* parameter values (`repr()`, not the pytest `ids`). So
 parametrize over plain values (`str`, numbers, enums):
 - `bytes` all display as `<class 'bytes'>`, which merges the cases into one test with "retries". Use `str` and
@@ -228,7 +233,11 @@ collection fails for a test without one:
 pytestmark = allure.feature("Tyre change")
 
 @allure.story("Flashback and tyre set history")   # one story per section of the file
-async def test_something(race): ...
+@allure.title("A flashback over the line drops the redone lap's wear ({track.name}, {packet_format})")
+async def test_something(race):
+    """What the scenario injects.
+
+    Expected: what the state ends up as."""
 ```
 
 A test that runs on several track types takes its track from a fixture built with `track_param(track, kind)`

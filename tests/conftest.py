@@ -1,3 +1,4 @@
+import inspect
 import os
 import random
 from pathlib import Path
@@ -49,3 +50,8 @@ def pytest_collection_finish(session):
             item.add_marker(allure.feature(item.path.name))
         if LabelType.STORY not in labelled and item.cls is not None:
             item.add_marker(allure.story(item.cls.__name__))
+
+        # The docstring is the report's description. Dedented: Markdown renders its source indent as a code block
+        doc = getattr(getattr(item, "function", None), "__doc__", None)
+        if doc and item.get_closest_marker("allure_description") is None:
+            item.add_marker(allure.description(inspect.cleandoc(doc)))
