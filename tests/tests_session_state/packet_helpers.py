@@ -181,6 +181,10 @@ class Packets:
         self.player_index = player_index
         self._next_frame = 1
 
+    def restart_frames(self) -> None:
+        """The next header's frames are 0, counting up from there, as after a restart on the same session UID."""
+        self._next_frame = 0
+
     def header(self, packet_type: F1PacketType, session_uid: int,
                frame: Optional[int] = None, overall_frame: Optional[int] = None) -> PacketHeader:
         """A header for packet_type. Frame and overall frame default to the next frame number. Pass frame alone

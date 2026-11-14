@@ -62,11 +62,6 @@ def track(request: pytest.FixtureRequest) -> TrackID:
 
 # ------------------------- HELPERS ------------------------------------------------------------------------------------
 
-def fuel(player_car: PlayerCar, lap: int) -> float:
-    """Fuel in the per-lap snapshot of lap, in kg to 0.001."""
-    return round(player_car.driver.m_per_lap_snapshots[lap].m_car_status_packet.m_fuelInTank, 3)
-
-
 async def first_run(player_car: PlayerCar, session: SessionType24) -> None:
     """Run 1 on RUN_1_SET, in a session of type session: garage, out lap, flying lap 1, then the in lap on lap 2 and
     back to the garage. Lap 1 ends at 3.359 % wear."""
@@ -95,14 +90,14 @@ async def test_lap_1_baseline_is_taken_at_the_line(player_car: PlayerCar, sessio
     await player_car.baseline(GARAGE, 188.4, fuel=5.0, wear=0.0, fitted_idx=RUN_1_SET)
     await player_car.car_status(fuel=7.0)
     await player_car.drive(OUT_LAP, 1, -5588.3, -2900.0, -1.2)
-    assert fuel(player_car, 0) == 5.0
+    assert player_car.fuel(0) == 5.0
 
     await player_car.car_status(fuel=5.685)
     await player_car.drive(FLYING, 1, 0.4, 2900.0, 5800.0)
     await player_car.car_status(fuel=4.364)
     await player_car.drive(FLYING, 2, 0.3)
-    assert fuel(player_car, 0) == 5.685
-    assert round(fuel(player_car, 0) - fuel(player_car, 1), 3) == 1.321
+    assert player_car.fuel(0) == 5.685
+    assert round(player_car.fuel(0) - player_car.fuel(1), 3) == 1.321
 
 
 @allure.story("Lap-0 snapshot")
@@ -120,8 +115,8 @@ async def test_race_lap_1_baseline_stays_the_grid(player_car: PlayerCar, session
     await player_car.car_status(fuel=9.11)
     await player_car.drive(ON_TRACK, 2, 1.5)
 
-    assert fuel(player_car, 0) == 10.0
-    assert fuel(player_car, 1) == 9.11
+    assert player_car.fuel(0) == 10.0
+    assert player_car.fuel(1) == 9.11
 
 # ------------------------- TYRE STINT START ---------------------------------------------------------------------------
 
@@ -241,7 +236,7 @@ async def test_second_crossing_rebaselines_again(player_car: PlayerCar, session:
     await player_car.car_status(fuel=5.685)
     await player_car.car_damage(1.429)
     await player_car.drive(FLYING, 1, 0.4, 149.0)
-    assert fuel(player_car, 0) == 5.685
+    assert player_car.fuel(0) == 5.685
 
     await player_car.flashback(OUT_LAP, 1, -248.8)
     await player_car.drive(OUT_LAP, 1, -100.0, -1.2)
@@ -249,5 +244,5 @@ async def test_second_crossing_rebaselines_again(player_car: PlayerCar, session:
     await player_car.car_damage(1.411)
     await player_car.drive(FLYING, 1, 0.4)
 
-    assert fuel(player_car, 0) == 5.702
+    assert player_car.fuel(0) == 5.702
     assert player_car.stints() == [(RUN_1_SET, [(0, 1.411)])]

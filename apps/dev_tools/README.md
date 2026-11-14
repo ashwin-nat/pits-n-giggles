@@ -22,10 +22,11 @@ lap, a garage tyre change) before writing a test for it.
 - One line per change of lap number or driver status: overall frame, frame, lap distance, lap time, pit status,
   and the latest fuel, MGU-K harvest this lap, average tyre wear and fitted set
 - Fitted set changes and the key events (flashback, session start/end, lights, chequered flag, retirement) in between
+- Session UID changes (menu packets on UID 0 aside) and the first `FINAL_CLASSIFICATION` on each UID
 - `--car N` traces car N, and can be repeated. Default: the player
 - `--all-events` prints every event, not just the key ones
 - `--json` prints one JSON object per line instead of the table, for scripts. Each has a `kind`: `info`, `event`,
-  `tyre_sets` or `lap`
+  `session_uid`, `final_classification`, `tyre_sets` or `lap`
 
 ## Save Invariant Checker
 

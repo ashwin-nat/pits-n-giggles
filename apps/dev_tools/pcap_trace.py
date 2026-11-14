@@ -26,8 +26,9 @@
 
 One record per change of lap number or driver status, for each traced car (the player by default). Each carries the
 overall frame, the frame, lap distance, lap time, pit status, and the latest fuel, MGU-K harvest this lap, average
-tyre wear and fitted set. A fitted set change and the key events (flashback, session start/end, lights, chequered
-flag, retirement) come in between. Printed as a table, or with --json as one JSON object per line.
+tyre wear and fitted set. A fitted set change, the key events (flashback, session start/end, lights, chequered
+flag, retirement), a session UID change (menu packets on UID 0 aside) and the first FINAL_CLASSIFICATION on each
+UID come in between. Printed as a table, or with --json as one JSON object per line.
 """
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
@@ -36,7 +37,7 @@ import argparse
 import json
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from lib.f1_types import F1PacketBase, F1PacketType, PacketEventData
 from lib.packet_cap import F1PacketCapture
@@ -69,19 +70,30 @@ class CarState:
 
 def trace(file_name: str, cars: List[int], all_events: bool) -> List[Dict[str, Any]]:
     """The timeline records for cars (empty: the player) in file_name. Each has a "kind": "info", "event",
-    "tyre_sets" or "lap"."""
+    "session_uid", "final_classification", "tyre_sets" or "lap"."""
     factory = PacketParserFactory(set(F1PacketType), logging.getLogger("pcap_trace"))
     states: Dict[int, CarState] = {car: CarState() for car in cars}
     records: List[Dict[str, Any]] = []
+    session_uid: Optional[int] = None
+    classified_uids: Set[int] = set()
 
     for _, raw in F1PacketCapture(file_name=file_name).getPackets():
         packet = factory.parse(raw)
         if packet is None:
             continue
+        header = packet.m_header
         if not states:
-            player = packet.m_header.m_playerCarIndex
+            player = header.m_playerCarIndex
             states[player] = CarState()
-            records.append({"kind": "info", "packet_format": packet.m_header.m_packetFormat, "player_car": player})
+            records.append({"kind": "info", "packet_format": header.m_packetFormat, "player_car": player})
+        frames = {"overall_frame": header.m_overallFrameIdentifier, "frame": header.m_frameIdentifier}
+        if header.m_sessionUID not in (0, session_uid):
+            records.append({"kind": "session_uid", **frames, "from": session_uid, "to": header.m_sessionUID,
+                            "packet": header.m_packetId.name})
+            session_uid = header.m_sessionUID
+        if header.m_packetId == F1PacketType.FINAL_CLASSIFICATION and header.m_sessionUID not in classified_uids:
+            classified_uids.add(header.m_sessionUID)
+            records.append({"kind": "final_classification", **frames, "session_uid": header.m_sessionUID})
         _apply(packet, states, all_events, records)
     return records
 
@@ -131,6 +143,10 @@ def as_table_line(record: Dict[str, Any]) -> str:
     frames = f"{record['overall_frame']:>7} {record['frame']:>7}"
     if record["kind"] == "event":
         return f"{frames}  EVENT {record['event']} {record['details']}"
+    if record["kind"] == "session_uid":
+        return f"{frames}  SESSION UID {record['from']} -> {record['to']} on {record['packet']}"
+    if record["kind"] == "final_classification":
+        return f"{frames}  FINAL_CLASSIFICATION on UID {record['session_uid']}"
     if record["kind"] == "tyre_sets":
         return f"{frames}  car {record['car']:>2} TYRE_SETS fitted {record['fitted_from']} -> {record['fitted_to']}"
     return (f"{frames}  car {record['car']:>2} lap {record['lap']:>2} {record['status']:<11} "

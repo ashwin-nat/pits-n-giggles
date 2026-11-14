@@ -205,28 +205,35 @@ class SaveRequestRecord:
 class SaveRecorder:
     """Records the handler's save requests on the separate-files path without writing anything. Everything
     the handler does synchronously before the write (ManualSaveRsp, prepareLapTelemetryWrite) stays real.
-    Unified saves are recorded by FakeSubsystem.run_in_process instead."""
+    Unified saves are recorded by FakeSubsystem.run_in_process instead.
+
+    requests are recorded when each save task is created. json_debug (the final classification JSON's debug
+    block) and pngt_names (the .pngt file name) are recorded when the task runs, after the test yields."""
 
     def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self.requests: List[SaveRequestRecord] = []
+        self.json_debug: List[Dict[str, Any]] = []
+        self.pngt_names: List[str] = []
         recorder = self
 
         # Patched as plain functions, so the request is recorded when the task is created, not when it runs
-        def auto_json(handler: F1TelemetryHandler, _final_json: Dict[str, Any], _file_name: str,
+        def auto_json(handler: F1TelemetryHandler, final_json: Dict[str, Any], _file_name: str,
                       session_uid: int) -> Coroutine:
             recorder.requests.append(SaveRequestRecord("final_classification", "json", session_uid))
-            return _clear_task_slot(handler, "m_json_save_task")
+            return _clear_task_slot(handler, "m_json_save_task",
+                                    lambda: recorder.json_debug.append(dict(final_json["debug"])))
 
         def just_in_case_json(handler: F1TelemetryHandler, session_uid: int, _save_rsp: ManualSaveRsp) -> Coroutine:
             recorder.requests.append(SaveRequestRecord("just_in_case", "json", session_uid))
             return _clear_task_slot(handler, "m_json_save_task")
 
-        def auto_lap_telemetry(handler: F1TelemetryHandler, _dest_path: Path, _args: tuple,
+        def auto_lap_telemetry(handler: F1TelemetryHandler, dest_path: Path, _args: tuple,
                                session_uid: int) -> Coroutine:
             # Final classification sets the flag before scheduling this; just-in-case only runs without it
             trigger = "final_classification" if handler.m_final_classification_processed else "just_in_case"
             recorder.requests.append(SaveRequestRecord(trigger, "pngt", session_uid))
-            return _clear_task_slot(handler, "m_lap_telemetry_save_task")
+            return _clear_task_slot(handler, "m_lap_telemetry_save_task",
+                                    lambda: recorder.pngt_names.append(dest_path.name))
 
         def manual_lap_telemetry(_handler: F1TelemetryHandler, lap_telemetry_write: Optional[Tuple[Path, tuple]],
                                  session_uid: int) -> None:
@@ -239,8 +246,11 @@ class SaveRecorder:
         monkeypatch.setattr(F1TelemetryHandler, "fireLapTelemetryWrite", manual_lap_telemetry)
 
 
-async def _clear_task_slot(handler: F1TelemetryHandler, slot: str) -> None:
+async def _clear_task_slot(handler: F1TelemetryHandler, slot: str,
+                           on_run: Optional[Callable[[], None]] = None) -> None:
     # The real task clears its handle when it finishes, which is what lets the next save start
+    if on_run is not None:
+        on_run()
     setattr(handler, slot, None)
 
 
@@ -365,6 +375,10 @@ class PlayerCar:
         """The lap recorder's in-progress lap as (lap number, lap distances), or None if it holds no samples."""
         lap = self.driver.m_tel_rec.export().in_progress_lap
         return None if lap is None else (lap.metadata.lap_number, _distances(lap.telemetry["lap_distance"]))
+
+    def fuel(self, lap: int) -> float:
+        """Fuel in the per-lap snapshot of lap, in kg to 0.001."""
+        return round(self.driver.m_per_lap_snapshots[lap].m_car_status_packet.m_fuelInTank, 3)
 
     def stints(self) -> List[Tuple[int, List[Tuple[int, float]]]]:
         """The tyre set history: (fitted index, [(lap number, front left wear)]) per stint, oldest first. Wear is
