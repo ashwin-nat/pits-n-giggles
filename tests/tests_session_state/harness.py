@@ -44,7 +44,10 @@ from lib.telemetry_manager import F1TelemetryManagerBase
 def track_param(track: TrackID, kind: str) -> Any:
     """A fixture param for track, with id kind ("normal", "weird", "unknown"). Tagged "<kind> track" in the
     report, and selectable with --allure-label track=<kind>."""
-    return pytest.param(track, id=kind, marks=[allure.tag(f"{kind} track"), allure.label("track", kind)])
+    # Raw allure marks: allure.tag()/label() return plain functions, not marks, when --alluredir is unset
+    # (e.g. VSCode discovery), which breaks pytest.param.
+    return pytest.param(track, id=kind, marks=[pytest.mark.allure_label(f"{kind} track", label_type="tag"),
+                                               pytest.mark.allure_label(kind, label_type="track")])
 
 # ------------------------- MANAGER ------------------------------------------------------------------------------------
 
