@@ -214,11 +214,14 @@ class SaveRecorder:
     the handler does synchronously before the write (ManualSaveRsp, prepareLapTelemetryWrite) stays real.
     Unified saves are recorded by FakeSubsystem.run_in_process instead.
 
-    requests are recorded when each save task is created. json_debug (the final classification JSON's debug
-    block) and pngt_names (the .pngt file name) are recorded when the task runs, after the test yields."""
+    requests are recorded when each save task is created (a manual JSON when it's written), and so is pngt_args,
+    each .pngt save's write_session() args (dest_path, session, sensors, drivers, driver_data). json_debug (the
+    final classification JSON's debug block) and pngt_names (the .pngt file name) are recorded when the task
+    runs, after the test yields."""
 
     def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self.requests: List[SaveRequestRecord] = []
+        self.pngt_args: List[tuple] = []
         self.json_debug: List[Dict[str, Any]] = []
         self.pngt_names: List[str] = []
         recorder = self
@@ -234,22 +237,30 @@ class SaveRecorder:
             recorder.requests.append(SaveRequestRecord("just_in_case", "json", session_uid))
             return _clear_task_slot(handler, "m_json_save_task")
 
-        def auto_lap_telemetry(handler: F1TelemetryHandler, dest_path: Path, _args: tuple,
+        def auto_lap_telemetry(handler: F1TelemetryHandler, dest_path: Path, args: tuple,
                                session_uid: int) -> Coroutine:
             # Final classification sets the flag before scheduling this; just-in-case only runs without it
             trigger = "final_classification" if handler.m_final_classification_processed else "just_in_case"
             recorder.requests.append(SaveRequestRecord(trigger, "pngt", session_uid))
+            recorder.pngt_args.append(args)
             return _clear_task_slot(handler, "m_lap_telemetry_save_task",
                                     lambda: recorder.pngt_names.append(dest_path.name))
+
+        async def manual_json(save_rsp: ManualSaveRsp) -> Dict[str, Any]:
+            # Only a manual save awaits saveToDisk() here: just-in-case calls it inside its patched task
+            recorder.requests.append(SaveRequestRecord("manual", "json", save_rsp.m_final_json["debug"]["session-uid"]))
+            return {"status": "success", "message": save_rsp.m_file_name}
 
         def manual_lap_telemetry(_handler: F1TelemetryHandler, lap_telemetry_write: Optional[Tuple[Path, tuple]],
                                  session_uid: int) -> None:
             if lap_telemetry_write is not None:
                 recorder.requests.append(SaveRequestRecord("manual", "pngt", session_uid))
+                recorder.pngt_args.append(lap_telemetry_write[1])
 
         monkeypatch.setattr(F1TelemetryHandler, "_autoSaveJsonTask", auto_json)
         monkeypatch.setattr(F1TelemetryHandler, "_saveJustInCaseJsonTask", just_in_case_json)
         monkeypatch.setattr(F1TelemetryHandler, "_autoSaveLapTelemetryTask", auto_lap_telemetry)
+        monkeypatch.setattr(ManualSaveRsp, "saveToDisk", manual_json)
         monkeypatch.setattr(F1TelemetryHandler, "fireLapTelemetryWrite", manual_lap_telemetry)
 
 
