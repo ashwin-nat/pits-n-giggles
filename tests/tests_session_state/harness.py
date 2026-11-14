@@ -23,6 +23,7 @@
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
 import asyncio
+import inspect
 import json
 from dataclasses import dataclass
 from logging import Logger
@@ -40,6 +41,7 @@ from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
 from apps.backend.telemetry_layer.telemetry_handler import F1TelemetryHandler
 from lib.f1_types import F1PacketBase, PacketEventData, SessionType24, TrackID
 from lib.f1_types.packet_2_lap_data import LapData
+from lib.subsystem import AsyncSubsystem
 from lib.telemetry_manager import F1TelemetryManagerBase
 
 from .packet_helpers import (Packets, car, damage, fuel_and_ers, player,
@@ -181,6 +183,11 @@ class FakeSubsystem:
     def add_task(self, *_args: Any, **_kwargs: Any) -> None:
         """Tests never call register_tasks, so nothing may register a task."""
         raise AssertionError("FakeSubsystem.add_task called - tests must not register tasks")
+
+
+# A fake that drifts from the real call would let the save scenarios pass against a call production no longer makes
+assert inspect.signature(FakeSubsystem.run_in_process) == inspect.signature(AsyncSubsystem.run_in_process), \
+    "FakeSubsystem.run_in_process no longer matches AsyncSubsystem.run_in_process"
 
 
 async def _noop() -> None:
