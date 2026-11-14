@@ -342,14 +342,17 @@ class PlayerCar:
                                              status=status):
                 await self.manager.inject(packet)
 
-    async def flashback(self, status: LapData.DriverStatus, lap: int, distance: float) -> None:
-        """A FLBK event, then the LAP_DATA the car lands in: status, on lap, at distance. The landing's frame
-        goes back to just after the flashback's target frame. Its overall frame keeps counting up."""
+    async def flashback(self, status: LapData.DriverStatus, lap: int, distance: float,
+                        overall_frame: Optional[int] = None) -> None:
+        """A FLBK event, on overall_frame if given, then the LAP_DATA the car lands in: status, on lap, at distance.
+        The landing's frame goes back to just after the flashback's target frame. Its overall frame keeps counting
+        up."""
         target_frame = self.manager.injected[-1].m_header.m_frameIdentifier // 2
         with allure.step(f"Flashback, landing {status.name} lap {lap} at {distance}"):
             await self.manager.inject(self.packets.event(
                 PacketEventData.EventPacketType.FLASHBACK,
-                PacketEventData.Flashback.from_values(frame_identifier=target_frame), session_uid=self.session_uid))
+                PacketEventData.Flashback.from_values(frame_identifier=target_frame), session_uid=self.session_uid,
+                overall_frame=overall_frame))
             await self.manager.inject(self.packets.lap(car(0, lap=lap, lap_distance=distance, status=status),
                                                        session_uid=self.session_uid, frame=target_frame + 1))
 
