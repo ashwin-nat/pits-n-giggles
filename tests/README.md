@@ -246,6 +246,21 @@ A test that runs on several track types takes its track from a fixture built wit
 with `--allure-label track=weird`, or with `-k weird`. Features and stories can also be selected, with
 `--allure-features` and `--allure-stories`.
 
+A lap scenario also takes a `session`: `@pytest.mark.parametrize("session", [FP, QUALI])`, with `FP`, `QUALI`,
+`RACE`, `TT` and `ALL_SESSIONS` from `harness.py`. These are `SessionType24` members. `Run.session()` passes the
+name on, and `Packets` picks `SessionType23`'s value for 2023, where RACE and TIME_TRIAL are numbered differently.
+List only the session types the mechanism under test exists in, as the recordings show it:
+
+| Session type | Garage | Out lap -> flying lap | Flashbacks |
+| --- | --- | --- | --- |
+| `FP` (Practice 1) | yes | yes | yes |
+| `QUALI` (Short Qualifying) | yes | yes | yes |
+| `RACE` | no | no: ON_TRACK from the grid on | yes |
+| `TT` (Time Trial) | at the start | no: the garage goes straight to FLYING_LAP at a negative distance | none recorded |
+
+`racing_status(session)` and `leaving_garage_status(session)` give the statuses that differ between session types.
+Select one with `-k "Practice 1"`.
+
 Each injected packet is a report step, nested under the scenario step that sent it (`Race.change_tyres`,
 `Race.flashback`, ...). A test that does not pass also gets every packet it injected attached as one JSON file,
 "injected packets".

@@ -38,11 +38,12 @@ from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.data_per_driver.data_per_driver import DataPerDriver
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
 from apps.backend.telemetry_layer.telemetry_handler import F1TelemetryHandler
-from lib.f1_types import F1PacketBase, PacketEventData, TrackID
+from lib.f1_types import F1PacketBase, PacketEventData, SessionType24, TrackID
 from lib.f1_types.packet_2_lap_data import LapData
 from lib.telemetry_manager import F1TelemetryManagerBase
 
-from .packet_helpers import Packets, car, player
+from .packet_helpers import (Packets, car, damage, fuel_and_ers, player,
+                             speed)
 
 # ------------------------- LABELS -------------------------------------------------------------------------------------
 
@@ -56,9 +57,25 @@ def track_param(track: TrackID, kind: str) -> Any:
 
 
 def title(text: str) -> Any:
-    """allure.title for a test that takes track and packet_format: text, then the track and format the case
-    ran on."""
-    return allure.title(text + " ({track.name}, {packet_format})")
+    """allure.title for a lap scenario (one that takes session, track and packet_format): text, then the session,
+    track and format the case ran on."""
+    return allure.title(text + " ({session}, {track.name}, {packet_format})")
+
+
+# Run.session() hands these to Packets by name, which picks SessionType23's values for 2023
+FP, QUALI, RACE, TT = (SessionType24.PRACTICE_1, SessionType24.SHORT_QUALIFYING, SessionType24.RACE,
+                       SessionType24.TIME_TRIAL)
+ALL_SESSIONS = [FP, QUALI, RACE, TT]
+
+
+def racing_status(session: SessionType24) -> LapData.DriverStatus:
+    """A timed lap's driver status: ON_TRACK in a race, FLYING_LAP otherwise."""
+    return LapData.DriverStatus.ON_TRACK if session.isRaceTypeSession() else LapData.DriverStatus.FLYING_LAP
+
+
+def leaving_garage_status(session: SessionType24) -> LapData.DriverStatus:
+    """The status after the garage: FLYING_LAP in time trial, which has no out lap status, OUT_LAP otherwise."""
+    return LapData.DriverStatus.FLYING_LAP if session.isTimeTrialTypeSession() else LapData.DriverStatus.OUT_LAP
 
 # ------------------------- MANAGER ------------------------------------------------------------------------------------
 
@@ -259,19 +276,64 @@ class Run:
         self.state = state
         self.track = track
         self.session_uid = session_uid
+        self.session_type = ""
 
     @property
     def driver(self) -> DataPerDriver:
         """The player's DataPerDriver."""
         return self.state.m_driver_data[0]
 
-    async def session(self, session_type: str) -> None:
-        """SESSION and PARTICIPANTS for a session_type session (a SessionType member name) on this track."""
+    async def session(self, session_type: SessionType24) -> None:
+        """SESSION and PARTICIPANTS for a session_type session on this track."""
+        self.session_type = session_type.name
         with allure.step(f"{session_type} at {self.track.name}"):
-            await self.manager.inject(self.packets.session(
-                session_uid=self.session_uid, session_type=session_type, track=self.track, total_laps=5,
-                track_length=LAP_TRACK_LENGTHS[self.track]))
+            await self._session_packet()
             await self.manager.inject(self.packets.participants(player("Player"), session_uid=self.session_uid))
+
+    async def baseline(self, status: LapData.DriverStatus, distance: float, *, fuel: float, wear: float,
+                       fitted_idx: int) -> None:
+        """Every packet copy the lap-0 snapshot needs, on lap 1 in status at distance: the snapshot is taken with
+        fuel and wear, and the tyre stint on fitted_idx starts from it. Call after session()."""
+        with allure.step(f"Lap-0 baseline: {status.name} at {distance}, fuel {fuel} kg, wear {wear}%, "
+                         f"set {fitted_idx}"):
+            await self.drive(status, 1, distance)
+            await self.speed(0)
+            await self.car_status(fuel=fuel)
+            if self.packets.packet_format >= 2026:
+                await self.manager.inject(self.packets.car_telemetry_2(session_uid=self.session_uid))
+            await self.car_damage(wear)
+            await self.tyre_sets(fitted_idx)
+            await self._session_packet()     # the max safety car status, for a driver with a position and a name
+            await self.drive(status, 1, distance)      # lap-0 snapshot
+            await self.tyre_sets(fitted_idx)            # the stint starts from it
+        assert 0 in self.driver.m_per_lap_snapshots
+        assert self.stints() == [(fitted_idx, [(0, wear)])]
+
+    async def car_status(self, *, fuel: float, mguk_mj: float = 0.0) -> None:
+        """CAR_STATUS: fuel in kg, MGU-K harvested this lap in MJ."""
+        with allure.step(f"Car status: fuel {fuel} kg, MGU-K {mguk_mj} MJ"):
+            await self.manager.inject(self.packets.car_status(
+                fuel_and_ers(0, fuel_in_tank=fuel, ers_harvested_mguk=mguk_mj * 1e6), session_uid=self.session_uid))
+
+    async def car_damage(self, wear: float) -> None:
+        """CAR_DAMAGE with all four tyres at wear percent."""
+        with allure.step(f"Car damage: tyre wear {wear}%"):
+            await self.manager.inject(self.packets.car_damage(damage(0, tyre_wear=wear), session_uid=self.session_uid))
+
+    async def tyre_sets(self, fitted_idx: int) -> None:
+        """TYRE_SETS with fitted_idx fitted."""
+        with allure.step(f"Tyre sets: set {fitted_idx} fitted"):
+            await self.manager.inject(self.packets.tyre_sets(car_idx=0, fitted_idx=fitted_idx,
+                                                             session_uid=self.session_uid))
+
+    async def speed(self, kmph: int) -> None:
+        """CAR_TELEMETRY at kmph."""
+        await self.manager.inject(self.packets.car_telemetry(speed(0, kmph), session_uid=self.session_uid))
+
+    async def _session_packet(self) -> None:
+        await self.manager.inject(self.packets.session(
+            session_uid=self.session_uid, session_type=self.session_type, track=self.track, total_laps=5,
+            track_length=LAP_TRACK_LENGTHS[self.track]))
 
     async def drive(self, status: LapData.DriverStatus, lap: int, *distances: float) -> None:
         """One LAP_DATA per distance, in status on lap."""
@@ -301,10 +363,17 @@ class Run:
         lap = self.driver.m_tel_rec.export().in_progress_lap
         return None if lap is None else (lap.metadata.lap_number, _distances(lap.telemetry["lap_distance"]))
 
+    def stints(self) -> List[Tuple[int, List[Tuple[int, float]]]]:
+        """The tyre set history: (fitted index, [(lap number, front left wear)]) per stint, oldest first. Wear is
+        rounded to 0.001 %."""
+        return [(stint.m_fitted_index, [(sample.lap_number, round(sample.fl_tyre_wear, 3))
+                                        for sample in stint.m_tyre_wear_history])
+                for stint in self.driver.m_tyre_info.m_tyre_set_history_manager.m_history]
+
     def delta_laps(self) -> Dict[int, List[float]]:
         """The delta manager's laps, as lap number -> lap distances."""
         # Its only read of the stored laps is this debug dump
-        dump = self.driver.m_delta_mgr._dump_state()  # pylint: disable=protected-access
+        dump = self.driver.m_delta_mgr._dump_state()
         return {lap: _distances([distance for distance, _ in points]) for lap, points in dump.items()}
 
 
