@@ -208,7 +208,7 @@ Fixtures (`conftest.py`):
 | `tokens` | Records the handler's `report_*_from_child` tokens (save skipped, session saved, `.pngt` save start and end) |
 | `fake_subsystem` | Records `fire_and_forget` names, `dealer.fire` calls and `run_in_process` calls (where unified saves land), runs nothing. `block()` / `release()` / `fail_with()` control when a `run_in_process` call finishes |
 | `user_data_dir` | Autouse. `resolve_user_file` points into `tmp_path`, so nothing is written under the real `data/` |
-| `run` | `harness.Run`, the player's car on `track`, which the test module provides (`@pytest.fixture(params=LAP_TRACKS)`). `session()`, `drive(status, lap, *distances)` and `flashback(status, lap, distance)` send packets. `completed_laps()`, `in_progress_lap()` and `delta_laps()` read the lap recorder and the delta manager |
+| `player_car` | `harness.PlayerCar`, the player's car on `track`, which the test module provides (`@pytest.fixture(params=LAP_TRACKS)`). `session()`, `baseline()`, `drive(status, lap, *distances)`, `flashback(status, lap, distance)`, `car_status()`, `car_damage()`, `tyre_sets()` and `speed()` send packets. `completed_laps()`, `in_progress_lap()`, `delta_laps()` and `stints()` read the lap recorder, the delta manager and the tyre set history |
 | `caplog` | Wired to the real `PngLogger` the state layer uses |
 
 A scenario:

@@ -45,7 +45,7 @@ from lib.f1_types import TrackID
 from lib.logger import PngLogger
 
 from .packet_helpers import Packets
-from .harness import (FakeSubsystem, InjectingTelemetryManager, Run,
+from .harness import (FakeSubsystem, InjectingTelemetryManager, PlayerCar,
                       SaveRecorder, TokenRecorder)
 
 # ------------------------- CONSTANTS ----------------------------------------------------------------------------------
@@ -188,10 +188,11 @@ def manager(request: pytest.FixtureRequest, handler: F1TelemetryHandler) -> Iter
 
 
 @pytest.fixture
-def run(manager: InjectingTelemetryManager, packets: Packets, state: SessionState, track: TrackID) -> Run:
+def player_car(manager: InjectingTelemetryManager, packets: Packets, state: SessionState,
+               track: TrackID) -> PlayerCar:
     """The player's car on track. The test module provides track, e.g. a fixture with params=LAP_TRACKS. Start
-    the session with await run.session(...)."""
-    return Run(manager, packets, state, track)
+    the session with await player_car.session(...)."""
+    return PlayerCar(manager, packets, state, track)
 
 
 @pytest.fixture

@@ -62,7 +62,7 @@ def title(text: str) -> Any:
     return allure.title(text + " ({session}, {track.name}, {packet_format})")
 
 
-# Run.session() hands these to Packets by name, which picks SessionType23's values for 2023
+# PlayerCar.session() hands these to Packets by name, which picks SessionType23's values for 2023
 FP, QUALI, RACE, TT = (SessionType24.PRACTICE_1, SessionType24.SHORT_QUALIFYING, SessionType24.RACE,
                        SessionType24.TIME_TRIAL)
 ALL_SESSIONS = [FP, QUALI, RACE, TT]
@@ -265,7 +265,7 @@ LAP_TRACKS = [track_param(TrackID.Silverstone, "normal"), track_param(TrackID.Mo
 LAP_TRACK_LENGTHS = {TrackID.Silverstone: 5891, TrackID.Monaco: 3337}
 
 
-class Run:
+class PlayerCar:
     """The player's car (index 0) in one session on a LAP_TRACKS track. Lap distances read back are rounded to
     0.1 m: they're float32 on the wire, so 0.6 comes back as 0.6000000238."""
 
