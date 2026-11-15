@@ -37,7 +37,7 @@ from apps.backend.telemetry_layer.telemetry_handler import F1TelemetryHandler
 from lib.f1_types import PacketEventData, SessionType24, TrackID
 from lib.f1_types.packet_2_lap_data import LapData
 
-from .harness import (ALL_SESSIONS, FP, LAP_TRACKS, QUALI, RACE,
+from .harness import (ALL_SESSIONS, FP, LAP_TRACKS, QUALI, RACE, SAVE_FORMATS,
                       InjectingTelemetryManager, PlayerCar, SaveRecorder,
                       SaveRequestRecord, TokenRecorder, racing_status, title)
 from .packet_helpers import (ALL_FORMATS, FIRST_SOFT_IDX, Packets, ai, car,
@@ -54,7 +54,7 @@ FINAL_SAVES = [SaveRequestRecord("final_classification", "json", UID),
 JUST_IN_CASE_SAVES = [SaveRequestRecord("just_in_case", "json", UID),
                       SaveRequestRecord("just_in_case", "pngt", UID)]
 
-pytestmark = allure.feature("Session handling")
+pytestmark = [allure.feature("Session handling"), SAVE_FORMATS]
 
 # ------------------------- FIXTURES -----------------------------------------------------------------------------------
 
@@ -96,6 +96,11 @@ async def _session_end(manager: InjectingTelemetryManager, packets: Packets, ses
                                                       session_uid=session_uid, overall_frame=0))
 
 
+def _skipped(tokens: TokenRecorder) -> list:
+    """The save-skipped tokens reported. A unified save's write also reports its own start and end."""
+    return [arg for name, arg in tokens.records if name == "report_session_save_skipped_from_child"]
+
+
 def _is_cleared(state: SessionState) -> bool:
     return state.m_session_info.m_session_uid is None and all(driver is None for driver in state.m_driver_data)
 
@@ -117,7 +122,7 @@ async def test_uid_change_clears_and_saves_just_in_case(manager: InjectingTeleme
     await manager.inject(packets.lap(car(0, lap=1, lap_distance=10), session_uid=NEXT_UID))
 
     assert saves.requests == JUST_IN_CASE_SAVES
-    assert tokens.records == []
+    assert _skipped(tokens) == []
     assert handler.m_last_session_uid == NEXT_UID
     assert _is_cleared(state)
 
@@ -139,7 +144,7 @@ async def test_uid_change_after_final_classification_skips_just_in_case(
     await manager.inject(packets.lap(car(0, lap=1, lap_distance=10), session_uid=NEXT_UID))
 
     assert saves.requests == FINAL_SAVES
-    assert tokens.records == []
+    assert _skipped(tokens) == []
     assert handler.m_last_session_uid == NEXT_UID
     assert all(driver is None for driver in state.m_driver_data)
 

@@ -183,8 +183,9 @@ async def test_unified_autosave_writes_one_container(manager: InjectingTelemetry
     """Any session type to FINAL_CLASSIFICATION, both gates on, the clock frozen.
 
     Expected: one container at data/<date>/<event><timestamp>.pngt, holding lap telemetry and the session data as
-    <stem>.json. No loose JSON or .pngt is requested. The JSON's debug block names the auto-save reason, the
-    container and its own file name. The session-saved token reports the container."""
+    <stem>.json. No separate JSON or .pngt task is started: the recorder sees the container's two halves. The
+    JSON's debug block names the auto-save reason, the container and its own file name. The session-saved token
+    reports the container."""
     await _session(manager, packets, session)
     stem = f"{state.getEventInfoStr()}{STAMP}"
     await _final_classification(manager, packets)
@@ -196,7 +197,9 @@ async def test_unified_autosave_writes_one_container(manager: InjectingTelemetry
     debug = write.session_data["debug"]
     assert (debug["reason"], debug["container"], debug["file-name"]) == \
         ("Auto-save after final classification", f"{stem}.pngt", f"{stem}.json")
-    assert saves.requests == []
+    assert (handler.m_json_save_task, handler.m_lap_telemetry_save_task) == (None, None)
+    assert saves.requests == [SaveRequestRecord("final_classification", "json", UID),
+                              SaveRequestRecord("final_classification", "pngt", UID)]
     assert _tokens(tokens, SAVED) == [str(dest)]
 
 
@@ -405,14 +408,14 @@ async def test_jic_runs_while_a_manual_save_is_writing(manager: InjectingTelemet
 @allure.story("Just-in-case")
 @pytest.mark.parametrize("unified_save", [False], indirect=True)
 @pytest.mark.parametrize("session", [RACE])
-@allure.title("With the knob off, a just-in-case save is skipped while a legacy save runs ({session})")
-async def test_jic_skipped_while_a_legacy_save_runs(manager: InjectingTelemetryManager, packets: Packets,
-                                                    fake_subsystem: FakeSubsystem, saves: SaveRecorder,
-                                                    session: SessionType24) -> None:
-    """Knob off. Race on UID 100, then UID 200: its just-in-case JSON and .pngt tasks are created but haven't run.
-    UID 200 gets a session with lap data, then UID 300 arrives before those tasks run.
+@allure.title("With unified save off, a just-in-case save is skipped while a separate-files save runs ({session})")
+async def test_jic_skipped_while_a_separate_files_save_runs(manager: InjectingTelemetryManager, packets: Packets,
+                                                            fake_subsystem: FakeSubsystem, saves: SaveRecorder,
+                                                            session: SessionType24) -> None:
+    """Unified save off (the default). Race on UID 100, then UID 200: its just-in-case JSON and .pngt tasks are
+    created but haven't run. UID 200 gets a session with lap data, then UID 300 arrives before those tasks run.
 
-    Expected: only UID 100's just-in-case saves. UID 200's is skipped by the legacy "a save task is already
+    Expected: only UID 100's just-in-case saves. UID 200's is skipped by the separate-files "a save task is already
     running" guard, and nothing goes through the unified path."""
     await _session(manager, packets, session)
     await _uid_change(manager, packets)
@@ -659,21 +662,23 @@ async def test_stop_cancels_a_save_that_exceeds_the_wait(manager: InjectingTelem
     assert handler.m_save_tasks == set()
     assert len(_tokens(tokens, SAVE_END)) == 1
 
-# ------------------------- KNOB OFF -----------------------------------------------------------------------------------
+# ------------------------- UNIFIED SAVE OFF (THE DEFAULT) -------------------------------------------------------------
 
-@allure.story("Knob off")
+@allure.story("Unified save off")
 @pytest.mark.parametrize("unified_save", [False], indirect=True)
 @pytest.mark.parametrize("trigger", ["final_classification", "just_in_case", "manual"])
 @pytest.mark.parametrize("session", ALL_SESSIONS)
-@allure.title("With the knob off, {trigger} uses the legacy writers ({session})")
-async def test_knob_off_uses_the_legacy_writers(manager: InjectingTelemetryManager, packets: Packets,
-                                                handler: F1TelemetryHandler, fake_subsystem: FakeSubsystem,
-                                                saves: SaveRecorder, user_data_dir: Path, session: SessionType24,
-                                                trigger: str) -> None:
-    """Knob off. Any session type, then FINAL_CLASSIFICATION, a LAP_DATA on UID 200, or a manual save.
+@allure.title("With unified save off, {trigger} uses the separate-files writers ({session})")
+async def test_unified_off_uses_the_separate_files_writers(manager: InjectingTelemetryManager, packets: Packets,
+                                                           handler: F1TelemetryHandler,
+                                                           fake_subsystem: FakeSubsystem, saves: SaveRecorder,
+                                                           user_data_dir: Path, session: SessionType24,
+                                                           trigger: str) -> None:
+    """Unified save off (the default). Any session type, then FINAL_CLASSIFICATION, a LAP_DATA on UID 200, or a
+    manual save.
 
-    Expected: no unified write and no save task in m_save_tasks. The loose JSON and .pngt are requested as before,
-    and the .pngt goes flat in data/<date>/."""
+    Expected: no unified write and no save task in m_save_tasks. A separate JSON and .pngt are requested, and the
+    .pngt goes flat in data/<date>/."""
     await _session(manager, packets, session)
     if trigger == "final_classification":
         await _final_classification(manager, packets)
@@ -686,3 +691,44 @@ async def test_knob_off_uses_the_legacy_writers(manager: InjectingTelemetryManag
     assert handler.m_save_tasks == set()
     assert saves.requests == [SaveRequestRecord(trigger, "json", UID), SaveRequestRecord(trigger, "pngt", UID)]
     assert saves.pngt_args[0][0].parent.parent == user_data_dir / "data"
+
+
+@allure.story("Unified save off")
+@pytest.mark.parametrize("unified_save", [False], indirect=True)
+@pytest.mark.parametrize("trigger, token", [("final_classification", ""), ("just_in_case", "Just_in_case_"),
+                                            ("manual", "Manual_")])
+@pytest.mark.parametrize("session", [RACE])
+@allure.title("With unified save off, the {trigger} save tasks write their files ({session})")
+async def test_unified_off_save_tasks_write_their_files(manager: InjectingTelemetryManager, packets: Packets,
+                                                        state: SessionState, handler: F1TelemetryHandler,
+                                                        fake_subsystem: FakeSubsystem, tokens: TokenRecorder,
+                                                        user_data_dir: Path, session: SessionType24,
+                                                        trigger: str, token: str) -> None:
+    """Unified save off (the default), and no save recorder, so the real save tasks run. A race on UID 100, then
+    FINAL_CLASSIFICATION, a LAP_DATA on UID 200, or a manual save.
+
+    Expected: the JSON is written under data/<date>/, named for the session and the save's token, with UID 100 in
+    its debug block. Final classification and just-in-case write the .pngt through run_in_process(write_session) and
+    clear both task slots. A manual save fires its .pngt write instead."""
+    await _session(manager, packets, session)
+    name = state.getEventInfoStr()
+    if trigger == "final_classification":
+        await _final_classification(manager, packets)
+    elif trigger == "just_in_case":
+        await _uid_change(manager, packets)
+    else:
+        await _manual_save(handler)
+    await asyncio.wait_for(asyncio.gather(*(task for task in (handler.m_json_save_task,
+                                                              handler.m_lap_telemetry_save_task) if task)), 2.0)
+
+    [json_file] = user_data_dir.glob("data/*/*.json")
+    assert json_file.name.startswith(f"{name}{token}")
+    assert json.loads(json_file.read_text(encoding="utf-8"))["debug"]["session-uid"] == UID
+    if trigger == "manual":
+        assert "Manual Save Lap Telemetry Write" in fake_subsystem.fired_names
+        return
+    [call] = fake_subsystem.process_calls
+    assert (call.fn_name, call.args[0].suffix, call.args[0].parent) == ("write_session", ".pngt", json_file.parent)
+    assert (handler.m_json_save_task, handler.m_lap_telemetry_save_task) == (None, None)
+    assert [name_ for name_, _ in tokens.records if name_ != SKIPPED] == [
+        "report_pngt_save_start_from_child", SAVE_END]

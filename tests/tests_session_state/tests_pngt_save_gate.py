@@ -41,7 +41,7 @@ from lib.config import LapAnalyzerSensorSettings, PngSettings
 from lib.f1_types import PacketSessionData, SessionType24, TelemetrySetting, TrackID
 
 from .harness import (ALL_SESSIONS, FP, LAP_TRACK_LENGTHS, LAP_TRACKS, QUALI,
-                      RACE, TT, InjectingTelemetryManager, SaveRecorder,
+                      RACE, SAVE_FORMATS, TT, InjectingTelemetryManager, SaveRecorder,
                       SaveRequestRecord, racing_status, title)
 from .packet_helpers import (ALL_FORMATS, DriverSpec, Packets, ai, car,
                              classified, lap_time, player)
@@ -53,7 +53,7 @@ TRIGGERS = ["final_classification", "just_in_case", "manual"]
 RECORD_IN = {FP: "record_in_fp", QUALI: "record_in_quali", RACE: "record_in_race", TT: "record_in_tt"}
 FormulaType = PacketSessionData.FormulaType
 
-pytestmark = allure.feature("pngt save gate")
+pytestmark = [allure.feature("pngt save gate"), SAVE_FORMATS]
 
 # ------------------------- FIXTURES -----------------------------------------------------------------------------------
 

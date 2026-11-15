@@ -38,6 +38,7 @@ import pytest
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.data_per_driver.data_per_driver import DataPerDriver
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
+from apps.backend.state_mgmt_layer.save_request import SaveReason, SaveRequest
 from apps.backend.telemetry_layer.telemetry_handler import F1TelemetryHandler
 from lib.f1_types import F1PacketBase, PacketEventData, SessionType24, TrackID
 from lib.f1_types.packet_2_lap_data import LapData
@@ -68,6 +69,9 @@ def title(text: str) -> Any:
 FP, QUALI, RACE, TT = (SessionType24.PRACTICE_1, SessionType24.SHORT_QUALIFYING, SessionType24.RACE,
                        SessionType24.TIME_TRIAL)
 ALL_SESSIONS = [FP, QUALI, RACE, TT]
+
+# Both save formats: separate JSON and .pngt files, and one container (Capture.unified_save_format)
+SAVE_FORMATS = pytest.mark.parametrize("unified_save", [False, True], indirect=True, ids=["separate files", "unified"])
 
 
 def racing_status(session: SessionType24) -> LapData.DriverStatus:
@@ -197,7 +201,7 @@ async def _noop() -> None:
 
 @dataclass(frozen=True)
 class SaveRequestRecord:
-    """One save the handler asked for, on the separate-files path (Capture.unified_save_format off).
+    """One save the handler asked for: a JSON or .pngt file, or that half of a unified container.
 
     Attributes:
         trigger (str): "final_classification", "just_in_case" or "manual"
@@ -209,15 +213,22 @@ class SaveRequestRecord:
     session_uid: int
 
 
-class SaveRecorder:
-    """Records the handler's save requests on the separate-files path without writing anything. Everything
-    the handler does synchronously before the write (ManualSaveRsp, prepareLapTelemetryWrite) stays real.
-    Unified saves are recorded by FakeSubsystem.run_in_process instead.
+# The unified save's reason, as the trigger the separate-files path records
+UNIFIED_TRIGGERS = {SaveReason.AUTO: "final_classification", SaveReason.JUST_IN_CASE: "just_in_case",
+                    SaveReason.MANUAL: "manual"}
 
-    requests are recorded when each save task is created (a manual JSON when it's written), and so is pngt_args,
-    each .pngt save's write_session() args (dest_path, session, sensors, drivers, driver_data). json_debug (the
-    final classification JSON's debug block) and pngt_names (the .pngt file name) are recorded when the task
-    runs, after the test yields."""
+
+class SaveRecorder:
+    """Records the handler's save requests, on either save format, so one assertion reads the same with
+    Capture.unified_save_format on or off. Separate-files saves write nothing: their tasks are replaced, and
+    everything the handler does synchronously before the write (ManualSaveRsp, prepareLapTelemetryWrite) stays
+    real. A unified save runs for real, into FakeSubsystem.run_in_process, and each half of its container is
+    recorded as a JSON or .pngt request.
+
+    requests are recorded when each save task is created (a separate-files manual JSON when it's written), and so
+    is pngt_args, each .pngt save's write_session() args (dest_path, session, sensors, drivers, driver_data).
+    json_debug (the JSON's debug block: final classification only on separate files) and pngt_names (the .pngt
+    file name) are recorded when the task runs, after the test yields."""
 
     def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self.requests: List[SaveRequestRecord] = []
@@ -257,6 +268,32 @@ class SaveRecorder:
                 recorder.requests.append(SaveRequestRecord("manual", "pngt", session_uid))
                 recorder.pngt_args.append(lap_telemetry_write[1])
 
+        real_start_unified_save = F1TelemetryHandler.startUnifiedSave
+        real_run_save = F1TelemetryHandler._runSave
+
+        def start_unified_save(handler: F1TelemetryHandler, reason: SaveReason, include_session_data: bool,
+                               include_lap_telemetry: bool,
+                               final_json: Optional[Dict[str, Any]] = None) -> Optional[SaveRequest]:
+            request = real_start_unified_save(handler, reason, include_session_data, include_lap_telemetry,
+                                              final_json)
+            if request is not None:
+                trigger = UNIFIED_TRIGGERS[reason]
+                if request.session_data is not None:
+                    recorder.requests.append(SaveRequestRecord(trigger, "json", request.session_uid))
+                if request.lap_telemetry_args is not None:
+                    recorder.requests.append(SaveRequestRecord(trigger, "pngt", request.session_uid))
+                    recorder.pngt_args.append(request.lap_telemetry_args)
+            return request
+
+        async def run_save(handler: F1TelemetryHandler, request: SaveRequest) -> None:
+            if request.session_data is not None:
+                recorder.json_debug.append(dict(request.session_data["debug"]))
+            if request.lap_telemetry_args is not None:
+                recorder.pngt_names.append(request.dest_path.name)
+            await real_run_save(handler, request)
+
+        monkeypatch.setattr(F1TelemetryHandler, "startUnifiedSave", start_unified_save)
+        monkeypatch.setattr(F1TelemetryHandler, "_runSave", run_save)
         monkeypatch.setattr(F1TelemetryHandler, "_autoSaveJsonTask", auto_json)
         monkeypatch.setattr(F1TelemetryHandler, "_saveJustInCaseJsonTask", just_in_case_json)
         monkeypatch.setattr(F1TelemetryHandler, "_autoSaveLapTelemetryTask", auto_lap_telemetry)

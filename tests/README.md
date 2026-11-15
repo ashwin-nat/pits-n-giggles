@@ -213,8 +213,8 @@ Fixtures (`conftest.py`):
 | `frame_gate_enabled` | False by default. `@pytest.mark.parametrize("frame_gate_enabled", [True], indirect=True)` turns the frame gate on |
 | `state`, `handler` | The real `SessionState` and `F1TelemetryHandler` |
 | `settings` | Every session type autosaves and records laps, every lap analyzer sensor on, just-in-case saves on |
-| `unified_save` | False by default. `@pytest.mark.parametrize("unified_save", [True], indirect=True)` turns on `Capture.unified_save_format` |
-| `saves` | Records separate-files save requests as (trigger, content, session UID), e.g. `("just_in_case", "pngt", 100)`, instead of writing files. Triggers are `final_classification`, `just_in_case` and `manual`. Also keeps each `.pngt` save's `write_session()` args (`pngt_args`), and, once the task runs, the JSON's debug block (`json_debug`) and the `.pngt` name (`pngt_names`) |
+| `unified_save` | False by default (separate JSON and `.pngt` files, as the app ships). `@pytest.mark.parametrize("unified_save", [True], indirect=True)` turns on `Capture.unified_save_format`, and `harness.SAVE_FORMATS` runs a test on both |
+| `saves` | Records save requests as (trigger, content, session UID), e.g. `("just_in_case", "pngt", 100)`, the same on either save format: separate-files saves write nothing, and each half of a unified container counts as a JSON or `.pngt` request. Triggers are `final_classification`, `just_in_case` and `manual`. Also keeps each `.pngt` save's `write_session()` args (`pngt_args`), and, once the task runs, the JSON's debug block (`json_debug`) and the `.pngt` name (`pngt_names`) |
 | `tokens` | Records the handler's `report_*_from_child` tokens (save skipped, session saved, `.pngt` save start and end) |
 | `fake_subsystem` | Records `fire_and_forget` names, `dealer.fire` calls and `run_in_process` calls (where unified saves land), runs nothing. `block()` / `release()` / `fail_with()` control when a `run_in_process` call finishes |
 | `user_data_dir` | Autouse. `lib.file_path.get_app_base_dir` points at `tmp_path`, so every `resolve_user_file` lands there and nothing is written under the real `data/` |
