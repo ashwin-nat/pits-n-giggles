@@ -135,13 +135,15 @@ class StatusSpec:
     fuel_in_tank: float
     ers_harvested_mguk: float
     ers_deployed: float
+    tyres_age_laps: int
 
 
 def fuel_and_ers(index: int, *, fuel_in_tank: float = 0.0, ers_harvested_mguk: float = 0.0,
-                 ers_deployed: float = 0.0) -> StatusSpec:
-    """A car's fuel in kg and its MGU-K harvest and ERS deployment this lap in joules. Unset values are 0."""
+                 ers_deployed: float = 0.0, tyres_age_laps: int = 0) -> StatusSpec:
+    """A car's fuel in kg, its MGU-K harvest and ERS deployment this lap in joules, and its tyres' age in laps.
+    Unset values are 0."""
     return StatusSpec(index=index, fuel_in_tank=fuel_in_tank, ers_harvested_mguk=ers_harvested_mguk,
-                      ers_deployed=ers_deployed)
+                      ers_deployed=ers_deployed, tyres_age_laps=tyres_age_laps)
 
 
 @dataclass(frozen=True)
@@ -298,8 +300,8 @@ class Packets:
             self.header(F1PacketType.TYRE_SETS, session_uid, **header_kwargs), car_idx, sets, fitted_idx)
 
     def car_status(self, *cars: StatusSpec, session_uid: int, **header_kwargs: Optional[int]) -> PacketCarStatusData:
-        """A CAR_STATUS packet. Every car is on C3 / MEDIUM. Fuel and ERS come from cars, and are zero for any
-        car index not in cars, as is everything else."""
+        """A CAR_STATUS packet. Every car is on C3 / MEDIUM. Fuel, ERS and tyre age come from cars, and are zero
+        for any car index not in cars, as is everything else."""
         by_index: Dict[int, StatusSpec] = {spec.index: spec for spec in cars}
         entries = [self._car_status(by_index.get(index, fuel_and_ers(index)))
                    for index in range(get_num_cars(self.packet_format))]
@@ -352,7 +354,7 @@ class Packets:
             fuel_mix=CarStatusData.FuelMix.LEAN, front_brake_bias=0, pit_limiter_status=False,
             fuel_in_tank=spec.fuel_in_tank, fuel_capacity=0.0, fuel_remaining_laps=0.0, max_rpm=0, idle_rpm=0,
             max_gears=0, drs_allowed=0, drs_activation_distance=0, actual_tyre_compound=ActualTyreCompound.C3,
-            visual_tyre_compound=VisualTyreCompound.MEDIUM, tyres_age_laps=0,
+            visual_tyre_compound=VisualTyreCompound.MEDIUM, tyres_age_laps=spec.tyres_age_laps,
             m_vehicle_fia_flags=CarStatusData.VehicleFIAFlags.NONE, engine_power_ice=0.0, engine_power_mguk=0.0,
             ers_store_energy=0.0, ers_deploy_mode=CarStatusData.ERSDeployMode.NONE,
             ers_harvested_this_lap_mguk=spec.ers_harvested_mguk, ers_harvested_this_lap_mguh=0.0,
