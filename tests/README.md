@@ -214,11 +214,11 @@ Fixtures (`conftest.py`):
 | `state`, `handler` | The real `SessionState` and `F1TelemetryHandler` |
 | `settings` | Every session type autosaves and records laps, every lap analyzer sensor on, just-in-case saves on |
 | `unified_save` | False by default. `@pytest.mark.parametrize("unified_save", [True], indirect=True)` turns on `Capture.unified_save_format` |
-| `saves` | Records separate-files save requests as (trigger, content, session UID), e.g. `("just_in_case", "pngt", 100)`, instead of writing files |
+| `saves` | Records separate-files save requests as (trigger, content, session UID), e.g. `("just_in_case", "pngt", 100)`, instead of writing files. Triggers are `final_classification`, `just_in_case` and `manual`. Also keeps each `.pngt` save's `write_session()` args (`pngt_args`), and, once the task runs, the JSON's debug block (`json_debug`) and the `.pngt` name (`pngt_names`) |
 | `tokens` | Records the handler's `report_*_from_child` tokens (save skipped, session saved, `.pngt` save start and end) |
 | `fake_subsystem` | Records `fire_and_forget` names, `dealer.fire` calls and `run_in_process` calls (where unified saves land), runs nothing. `block()` / `release()` / `fail_with()` control when a `run_in_process` call finishes |
 | `user_data_dir` | Autouse. `lib.file_path.get_app_base_dir` points at `tmp_path`, so every `resolve_user_file` lands there and nothing is written under the real `data/` |
-| `player_car` | `harness.PlayerCar`, the player's car on `track`, which the test module provides (`@pytest.fixture(params=LAP_TRACKS)`). `session()`, `baseline()`, `drive(status, lap, *distances)`, `flashback(status, lap, distance)`, `car_status()`, `car_damage()`, `tyre_sets()`, `speed()` and `position()` send packets. `completed_laps()`, `in_progress_lap()`, `delta_laps()` and `stints()` read the lap recorder, the delta manager and the tyre set history |
+| `player_car` | `harness.PlayerCar`, the player's car on `track`, which the test module provides (`@pytest.fixture(params=LAP_TRACKS)`). `session()`, `baseline()`, `drive(status, lap, *distances)`, `flashback(status, lap, distance)`, `car_status()`, `car_damage()`, `tyre_sets()`, `speed()` and `position()` send packets. `completed_laps()`, `in_progress_lap()`, `delta_laps()`, `stints()` and `fuel(lap)` read the lap recorder, the delta manager, the tyre set history and the per-lap snapshots |
 | `caplog` | Wired to the real `PngLogger` the state layer uses |
 
 A scenario:
