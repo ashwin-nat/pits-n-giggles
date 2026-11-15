@@ -36,11 +36,11 @@ from allure_commons.types import LabelType
 
 from apps.backend.app_ctx import AppCtx
 from apps.backend.state_mgmt_layer import SessionState
-from apps.backend.state_mgmt_layer import save_request as save_request_module
 from apps.backend.telemetry_layer import telemetry_handler as telemetry_handler_module
 from apps.backend.telemetry_layer.telemetry_handler import F1TelemetryHandler
 from lib.config import (CaptureSettings, LapAnalyzerSensorSettings,
                         LapAnalyzerSettings, PngSettings)
+from lib import file_path as file_path_module
 from lib.f1_types import TrackID
 from lib.logger import PngLogger
 
@@ -126,10 +126,9 @@ def settings(unified_save: bool) -> PngSettings:
 
 @pytest.fixture(autouse=True)
 def user_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Where saves would land. resolve_user_file points here for every module that imports it, so no
-    scenario creates anything under the real data/ directory."""
-    for module in (telemetry_handler_module, save_request_module):
-        monkeypatch.setattr(module, "resolve_user_file", lambda name: str(tmp_path / name))
+    """Where saves land: the test's own tmp_path. Patched at get_app_base_dir, which every resolve_user_file
+    import goes through, so no scenario writes under the real data/ directory."""
+    monkeypatch.setattr(file_path_module, "get_app_base_dir", lambda: tmp_path)
     return tmp_path
 
 
