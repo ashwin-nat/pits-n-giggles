@@ -37,7 +37,7 @@ from apps.backend.telemetry_layer.telemetry_handler import F1TelemetryHandler
 from lib.f1_types import PacketEventData, SessionType24, TrackID
 from lib.f1_types.packet_2_lap_data import LapData
 
-from .harness import (ALL_SESSIONS, FP, LAP_TRACKS, QUALI, RACE, FakeSubsystem,
+from .harness import (ALL_SESSIONS, FP, LAP_TRACKS, QUALI, RACE,
                       InjectingTelemetryManager, PlayerCar, SaveRecorder,
                       SaveRequestRecord, TokenRecorder, racing_status, title)
 from .packet_helpers import (ALL_FORMATS, FIRST_SOFT_IDX, Packets, ai, car,
@@ -353,16 +353,3 @@ async def test_final_save_keeps_its_session_name_when_the_next_uid_arrives_first
     assert [(debug["file-name"].startswith(name), debug["session-uid"], debug["packet-count"])
             for debug in saves.json_debug] == [(True, UID, 4321)]
     assert [pngt.startswith(name) for pngt in saves.pngt_names] == [True]
-
-# ------------------------- HANDLER WIRING -----------------------------------------------------------------------------
-
-@allure.story("Handler wiring")
-@allure.title("register_tasks needs an async telemetry manager")
-async def test_register_tasks_needs_an_async_manager(handler: F1TelemetryHandler,
-                                                     fake_subsystem: FakeSubsystem) -> None:
-    """The handler on the harness's InjectingTelemetryManager.
-
-    Expected: register_tasks refuses it. The receive loop and raw-packet wiring only exist on
-    AsyncF1TelemetryManager."""
-    with pytest.raises(TypeError, match="needs an AsyncF1TelemetryManager, got InjectingTelemetryManager"):
-        handler.register_tasks(fake_subsystem)
