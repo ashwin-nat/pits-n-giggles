@@ -45,7 +45,7 @@ from lib.subsystem import AsyncSubsystem
 from lib.telemetry_manager import F1TelemetryManagerBase
 
 from .packet_helpers import (Packets, car, damage, fuel_and_ers, player,
-                             speed)
+                             speed, world_position)
 
 # ------------------------- LABELS -------------------------------------------------------------------------------------
 
@@ -337,11 +337,12 @@ class PlayerCar:
         assert 0 in self.driver.m_per_lap_snapshots
         assert self.stints() == [(fitted_idx, [(0, wear)])]
 
-    async def car_status(self, *, fuel: float, mguk_mj: float = 0.0) -> None:
-        """CAR_STATUS: fuel in kg, MGU-K harvested this lap in MJ."""
-        with allure.step(f"Car status: fuel {fuel} kg, MGU-K {mguk_mj} MJ"):
+    async def car_status(self, *, fuel: float, mguk_mj: float = 0.0, ers_store_mj: float = 0.0) -> None:
+        """CAR_STATUS: fuel in kg, MGU-K harvested this lap and the ERS store in MJ."""
+        with allure.step(f"Car status: fuel {fuel} kg, MGU-K {mguk_mj} MJ, ERS store {ers_store_mj} MJ"):
             await self.manager.inject(self.packets.car_status(
-                fuel_and_ers(0, fuel_in_tank=fuel, ers_harvested_mguk=mguk_mj * 1e6), session_uid=self.session_uid))
+                fuel_and_ers(0, fuel_in_tank=fuel, ers_harvested_mguk=mguk_mj * 1e6,
+                             ers_store_energy=ers_store_mj * 1e6), session_uid=self.session_uid))
 
     async def car_damage(self, wear: float) -> None:
         """CAR_DAMAGE with all four tyres at wear percent."""
@@ -357,6 +358,11 @@ class PlayerCar:
     async def speed(self, kmph: int) -> None:
         """CAR_TELEMETRY at kmph."""
         await self.manager.inject(self.packets.car_telemetry(speed(0, kmph), session_uid=self.session_uid))
+
+    async def position(self, x: float, y: float, z: float, yaw: float) -> None:
+        """MOTION with the car at world position (x, y, z), facing yaw radians."""
+        await self.manager.inject(self.packets.motion(world_position(0, x=x, y=y, z=z, yaw=yaw),
+                                                      session_uid=self.session_uid))
 
     async def _session_packet(self) -> None:
         await self.manager.inject(self.packets.session(

@@ -136,14 +136,15 @@ class StatusSpec:
     ers_harvested_mguk: float
     ers_deployed: float
     tyres_age_laps: int
+    ers_store_energy: float
 
 
 def fuel_and_ers(index: int, *, fuel_in_tank: float = 0.0, ers_harvested_mguk: float = 0.0,
-                 ers_deployed: float = 0.0, tyres_age_laps: int = 0) -> StatusSpec:
-    """A car's fuel in kg, its MGU-K harvest and ERS deployment this lap in joules, and its tyres' age in laps.
-    Unset values are 0."""
+                 ers_deployed: float = 0.0, tyres_age_laps: int = 0, ers_store_energy: float = 0.0) -> StatusSpec:
+    """A car's fuel in kg, its MGU-K harvest and ERS deployment this lap and its ERS store in joules, and its
+    tyres' age in laps. Unset values are 0."""
     return StatusSpec(index=index, fuel_in_tank=fuel_in_tank, ers_harvested_mguk=ers_harvested_mguk,
-                      ers_deployed=ers_deployed, tyres_age_laps=tyres_age_laps)
+                      ers_deployed=ers_deployed, tyres_age_laps=tyres_age_laps, ers_store_energy=ers_store_energy)
 
 
 @dataclass(frozen=True)
@@ -356,7 +357,7 @@ class Packets:
             max_gears=0, drs_allowed=0, drs_activation_distance=0, actual_tyre_compound=ActualTyreCompound.C3,
             visual_tyre_compound=VisualTyreCompound.MEDIUM, tyres_age_laps=spec.tyres_age_laps,
             m_vehicle_fia_flags=CarStatusData.VehicleFIAFlags.NONE, engine_power_ice=0.0, engine_power_mguk=0.0,
-            ers_store_energy=0.0, ers_deploy_mode=CarStatusData.ERSDeployMode.NONE,
+            ers_store_energy=spec.ers_store_energy, ers_deploy_mode=CarStatusData.ERSDeployMode.NONE,
             ers_harvested_this_lap_mguk=spec.ers_harvested_mguk, ers_harvested_this_lap_mguh=0.0,
             ers_deployed_this_lap=spec.ers_deployed, network_paused=0, packet_format=self.packet_format)
 

@@ -29,7 +29,9 @@ later run's out lap.
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from typing import List, Optional, Tuple
+import math
+from typing import (Awaitable, Callable, Dict, List, NamedTuple, Optional,
+                    Tuple)
 
 import allure
 import pytest
@@ -254,3 +256,42 @@ async def test_disabling_lap_analyzer_discards_the_in_progress_lap(
     await player_car.drive(racing_status(session), 1, 300.0, 400.0)
 
     assert player_car.in_progress_lap() == expected
+
+# ------------------------- SENSOR VALUES ------------------------------------------------------------------------------
+
+class SensorSource(NamedTuple):
+    """The packet that feeds a recorded sensor, and the value it records from it."""
+    send_packet: Callable[[PlayerCar], Awaitable[None]]
+    value: float
+
+
+# Looked up by recorded key, one sensor per source: a lambda param would show in Allure with a changing address
+SENSOR_SOURCES: Dict[str, SensorSource] = {
+    "speed": SensorSource(lambda car: car.speed(283), 283),                                # CAR_TELEMETRY copy
+    "tyre_wear.fl": SensorSource(lambda car: car.car_damage(12.5), 12.5),                  # CAR_DAMAGE, tyre info
+    "ers.store_energy": SensorSource(lambda car: car.car_status(fuel=10.0, ers_store_mj=2.0), 50.0),  # % of 4 MJ
+    "motion.position.x": SensorSource(lambda car: car.position(10.5, 2.25, -30.75, 0.5), 10.5),  # MOTION copy
+}
+
+
+@allure.story("Sensor values")
+@pytest.mark.parametrize("sensor", list(SENSOR_SOURCES))
+@pytest.mark.parametrize("session", ALL_SESSIONS)
+@title("The {sensor} sensor records nothing before its packet, then the packet's value")
+async def test_sensor_has_no_value_before_its_packet(player_car: PlayerCar, session: SessionType24,
+                                                     sensor: str) -> None:
+    """Any session type, every sensor on. A sample at 100 m before the sensor's packet has arrived, then the packet
+    (speed 283 km/h, front left wear 12.5 %, ERS store 2 MJ, or world x 10.5 m), then a sample at 200 m.
+
+    Expected: the first sample holds NaN, the recorder's value for a missing reading, not 0. The second holds the
+    packet's value."""
+    send_packet, value = SENSOR_SOURCES[sensor]
+    await player_car.session(session)
+    await player_car.drive(racing_status(session), 1, 100.0)
+    await send_packet(player_car)
+    await player_car.drive(racing_status(session), 1, 200.0)
+
+    before, after = player_car.driver.m_tel_rec.export().in_progress_lap.telemetry[sensor]
+    assert math.isnan(before)
+    assert after == value
+
