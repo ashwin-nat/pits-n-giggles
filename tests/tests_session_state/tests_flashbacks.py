@@ -24,20 +24,29 @@
 manager and the per-lap snapshots. Flashbacks across the tyre set history are in tests_tyre_change.py.
 """
 
+# Fixtures that take other fixtures as arguments are how pytest works, not shadowing
+# pylint: disable=redefined-outer-name
+
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
+
+from typing import Dict, List, Optional, Tuple
 
 import allure
 import pytest
 
-from lib.f1_types import SessionType24, TrackID
+from apps.backend.state_mgmt_layer import SessionState
+from lib.f1_types import PacketEventData, SessionType24, TrackID
 from lib.f1_types.packet_2_lap_data import LapData
 
-from .harness import (FP, LAP_TRACKS, QUALI, RACE, TT, PlayerCar, racing_status,
+from .harness import (FP, LAP_TRACK_LENGTHS, LAP_TRACKS, QUALI, RACE, TT,
+                      InjectingTelemetryManager, PlayerCar, racing_status,
                       title)
-from .packet_helpers import ALL_FORMATS
+from .packet_helpers import (ALL_FORMATS, Packets, ai, car, fuel_and_ers,
+                             player)
 
 # ------------------------- CONSTANTS ----------------------------------------------------------------------------------
 
+UID = 100
 GARAGE, OUT_LAP, FLYING, IN_LAP, ON_TRACK = (LapData.DriverStatus.IN_GARAGE, LapData.DriverStatus.OUT_LAP,
                                              LapData.DriverStatus.FLYING_LAP, LapData.DriverStatus.IN_LAP,
                                              LapData.DriverStatus.ON_TRACK)
@@ -175,26 +184,71 @@ async def test_landing_on_a_flying_lap_from_an_out_lap_is_not_a_lap_start(
     await player_car.drive(FLYING, 3, 0.6)
     assert player_car.completed_laps() == {1: [2900.0, 5800.0], 2: [0.6, 2900.0, 3500.0, 5800.0]}
 
-# ------------------------- WITHOUT A FLASHBACK ------------------------------------------------------------------------
+# ------------------------- AI REWOUND LATE ----------------------------------------------------------------------------
 
-@allure.story("Lap count going back")
+AI = 1
+
+
+async def _ai_drive(manager: InjectingTelemetryManager, packets: Packets, lap: int, *distances: float) -> None:
+    """One LAP_DATA per distance for the AI car (car 1), FLYING_LAP on lap."""
+    for packet in packets.drive(AI, lap=lap, distances=list(distances), session_uid=UID, status=FLYING):
+        await manager.inject(packet)
+
+
+async def _ai_fuel(manager: InjectingTelemetryManager, packets: Packets, fuel: float) -> None:
+    await manager.inject(packets.car_status(fuel_and_ers(AI, fuel_in_tank=fuel), session_uid=UID))
+
+
+def _ai_laps(state: SessionState) -> Tuple[Dict[int, List[float]], Optional[Tuple[int, List[float]]], float]:
+    """The AI car's recorded laps (lap -> distances), its in-progress lap, and lap 2's snapshot fuel in kg."""
+    driver = state.m_driver_data[AI]
+    export = driver.m_tel_rec.export()
+    completed = {lap.metadata.lap_number: [round(d, 1) for d in lap.telemetry["lap_distance"]]
+                 for lap in export.completed_laps}
+    in_progress = export.in_progress_lap
+    current = (None if in_progress is None else
+               (in_progress.metadata.lap_number, [round(d, 1) for d in in_progress.telemetry["lap_distance"]]))
+    return completed, current, round(driver.m_per_lap_snapshots[2].m_car_status_packet.m_fuelInTank, 3)
+
+
+@allure.story("AI rewound late")
 @pytest.mark.parametrize("session", [FP])
-@title("The lap count going back without a flashback only changes the lap number")
-async def test_lap_count_back_without_flashback_only_updates_the_lap(
-        player_car: PlayerCar, session: SessionType24) -> None:
-    """Practice. Laps 1 and 2 are done and the car is on lap 3, then LAP_DATA reports lap 1 with no FLBK before it: a
-    new practice programme.
+@pytest.mark.xfail(strict=True, reason="An AI car's lap count going back after the landing isn't handled as a "
+                   "flashback (plans/session-state-test-harness/ai-lap-back-after-flashback.md)")
+@title("An AI car put back a lap well after a flashback redoes that lap")
+async def test_ai_lap_count_back_after_a_flashback_redoes_the_lap(manager: InjectingTelemetryManager,
+                                                                  packets: Packets, state: SessionState,
+                                                                  session: SessionType24, track: TrackID) -> None:
+    """Practice, as in f1_26_sp_career_fp_singapore (Russell, car 2), lap 2's end shortened to fit Monaco. The AI
+    completes lap 2 with 5.394 kg of fuel and is at 1767.6 m on lap 3 when the player flashes back: the landing
+    leaves it on lap 3, at 1405.1 m. It drives on to 2832.9 m. Then, 1748 frames later and with no FLBK, one
+    LAP_DATA puts it on lap 2 at 3051.2 m with 5.848 kg. It redoes the rest of lap 2 and crosses onto lap 3 again
+    with 5.39 kg.
 
-    Expected: the current lap becomes 1. The per-lap snapshots and the recorder's completed laps are untouched:
-    nothing is dropped as if it were a flashback, and lap 3 isn't stored as if it had ended."""
-    await player_car.session(session)
-    await player_car.drive(FLYING, 1, 2900.0, 5800.0)
-    await player_car.drive(FLYING, 2, 0.6, 2900.0, 5800.0)
-    await player_car.drive(FLYING, 3, 0.6, 1000.0)
-    snapshots_before = dict(player_car.driver.m_per_lap_snapshots)
+    Expected: the drop is handled as that car's flashback. Lap 2 is cut back at 3051.2 m and redone, then stored
+    again on the second crossing, with the redone lap's 5.39 kg. Lap 3 starts over at the line."""
+    await manager.inject(packets.session(session_uid=UID, session_type=session.name, track=track, total_laps=0,
+                                         track_length=LAP_TRACK_LENGTHS[track]))
+    await manager.inject(packets.participants(player("Bottas"), ai("Russell"), session_uid=UID))
+    await _ai_drive(manager, packets, 2, 24.5, 1500.0, 3000.0, 3300.0)
+    await _ai_fuel(manager, packets, 5.394)
+    await _ai_drive(manager, packets, 3, 1.1, 1000.0, 1767.6)
+    target_frame = manager.injected[-1].m_header.m_frameIdentifier // 2
+    with allure.step("The player flashes back: the AI lands on lap 3 at 1405.1 m"):
+        await manager.inject(packets.event(PacketEventData.EventPacketType.FLASHBACK,
+                                           PacketEventData.Flashback.from_values(frame_identifier=target_frame),
+                                           session_uid=UID))
+        await manager.inject(packets.lap(car(AI, lap=3, lap_distance=1405.1, status=FLYING), session_uid=UID,
+                                         frame=target_frame + 1))
+    await _ai_drive(manager, packets, 3, 1800.0, 2832.9)
+    assert _ai_laps(state) == ({2: [24.5, 1500.0, 3000.0, 3300.0]}, (3, [1.1, 1000.0, 1405.1, 1800.0, 2832.9]),
+                               5.394)
 
-    await player_car.drive(FLYING, 1, 100.0)
-    assert player_car.driver.m_lap_info.m_current_lap == 1
-    assert player_car.driver.m_per_lap_snapshots.keys() == snapshots_before.keys()
-    assert all(player_car.driver.m_per_lap_snapshots[lap] is snapshot for lap, snapshot in snapshots_before.items())
-    assert player_car.completed_laps() == {1: [2900.0, 5800.0], 2: [0.6, 2900.0, 5800.0]}
+    with allure.step("No FLBK: the AI is put back on lap 2 at 3051.2 m"):
+        await _ai_drive(manager, packets, 2, 3051.2)
+        await _ai_fuel(manager, packets, 5.848)
+    await _ai_drive(manager, packets, 2, 3200.0)
+    await _ai_fuel(manager, packets, 5.39)
+    await _ai_drive(manager, packets, 3, 0.1)
+
+    assert _ai_laps(state) == ({2: [24.5, 1500.0, 3000.0, 3051.2, 3200.0]}, (3, [0.1]), 5.39)
