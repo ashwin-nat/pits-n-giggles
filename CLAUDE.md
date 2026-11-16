@@ -61,7 +61,7 @@ poetry run graphify explain "SessionState"
 See `tests/README.md` for full details. Key conventions:
 
 - Test files must be named `tests_*.py` to be collected; the default run is parallel (`-n auto --dist=loadgroup`) with `openf1`-marked tests excluded.
-- Test order is shuffled every run (pytest-randomly). The header prints `Using --randomly-seed=N`; rerun that order with `--randomly-seed=N` (or `last`), or use `-p no:randomly` for file order.
+- Test order and `random` values change every run (pytest-randomly seeds both). The header and the last line print the seed; rerun with `--randomly-seed=N` (or `last`), or use `--randomly-dont-reorganize` for file order.
 - Tests that bind real sockets/ports or spawn processes must be marked serial via module-level `pytestmark = pytest.mark.serial` so xdist funnels them to one worker.
 - Write **new** tests in native pytest style: plain `assert`, `@pytest.mark.parametrize`, and bare `async def test_*` (asyncio_mode is `auto` — no decorator or base class needed).
 - Existing tests are `unittest.TestCase`-style and run under pytest as-is; do not rewrite them.

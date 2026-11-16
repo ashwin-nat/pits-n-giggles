@@ -20,14 +20,19 @@ poetry run pytest tests/ -n 0
 ```
 
 Tests run in a shuffled order, a new one each run (pytest-randomly), so a test that leans on another's leftovers
-fails rather than passing by luck. Modules are shuffled, then the tests within each. The run's header prints the seed
-(`Using --randomly-seed=2836115104`; `-q` hides it), and it reruns that order:
+fails rather than passing by luck. Modules are shuffled, then the tests within each. The same seed also seeds `random`
+before each test (from the seed and the test's id), so a test's random values change from run to run too. The run's
+header (`Using --randomly-seed=2836115104`) and its last line (`Rerun with --randomly-seed=2836115104`, shown under
+`-q` too) print the seed, and it reruns that order and those values. Allure results carry it as a `seed` label on
+every test, so a report, and each run in its history, says which seed it ran with:
 
 ```bash
-poetry run pytest tests/ --randomly-seed=2836115104   # rerun that order
-poetry run pytest tests/ --randomly-seed=last         # rerun the last run's order
-poetry run pytest tests/ -p no:randomly               # file order
+poetry run pytest tests/ --randomly-seed=2836115104          # rerun that order and those values
+poetry run pytest tests/ --randomly-seed=last                # rerun the last run's
+poetry run pytest tests/ --randomly-dont-reorganize          # file order, random still seeded
 ```
+
+`-p no:randomly` also gives file order, but leaves `random` unseeded, so a failure there may not reproduce.
 
 ## Running a Subset
 
@@ -257,7 +262,7 @@ with `--allure-label track=weird`, or with `-k weird`. Features and stories can 
 `--allure-features` and `--allure-stories`.
 
 A lap scenario also takes a `session`: `@pytest.mark.parametrize("session", [FP, QUALI])`, with `FP`, `QUALI`,
-`RACE`, `TT` and `ALL_SESSIONS` from `harness.py`. These are `SessionType24` members. `Run.session()` passes the
+`RACE`, `TT` and `ALL_SESSIONS` from `harness.py`. These are `SessionType24` members. `PlayerCar.session()` passes the
 name on, and `Packets` picks `SessionType23`'s value for 2023, where RACE and TIME_TRIAL are numbered differently.
 List only the session types the mechanism under test exists in, as the recordings show it:
 
