@@ -27,8 +27,6 @@ SESSION_HISTORY bursts and FINAL_CLASSIFICATION, all on overall frame 0.
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-import asyncio
-
 import allure
 import pytest
 
@@ -39,7 +37,7 @@ from lib.f1_types.packet_2_lap_data import LapData
 
 from .harness import (ALL_SESSIONS, FP, LAP_TRACKS, QUALI, RACE, SAVE_FORMATS,
                       InjectingTelemetryManager, PlayerCar, SaveRecorder,
-                      SaveRequestRecord, TokenRecorder, racing_status, title)
+                      SaveRequestRecord, TokenRecorder, racing_status, saves_finished, title)
 from .packet_helpers import (ALL_FORMATS, FIRST_SOFT_IDX, Packets, ai, car,
                              classified, lap_time, player)
 
@@ -54,7 +52,7 @@ FINAL_SAVES = [SaveRequestRecord("final_classification", "json", UID),
 JUST_IN_CASE_SAVES = [SaveRequestRecord("just_in_case", "json", UID),
                       SaveRequestRecord("just_in_case", "pngt", UID)]
 
-pytestmark = [allure.feature("Session handling"), SAVE_FORMATS]
+pytestmark = allure.feature("Session handling")
 
 # ------------------------- FIXTURES -----------------------------------------------------------------------------------
 
@@ -109,6 +107,7 @@ def _is_cleared(state: SessionState) -> bool:
 @allure.story("Session UID change")
 @pytest.mark.parametrize("packet_format", ALL_FORMATS, indirect=True)
 @allure.title("A UID change clears the state and saves the old session just in case (Race, {packet_format})")
+@SAVE_FORMATS
 async def test_uid_change_clears_and_saves_just_in_case(manager: InjectingTelemetryManager, packets: Packets,
                                                         state: SessionState, handler: F1TelemetryHandler,
                                                         saves: SaveRecorder, tokens: TokenRecorder) -> None:
@@ -129,6 +128,7 @@ async def test_uid_change_clears_and_saves_just_in_case(manager: InjectingTeleme
 
 @allure.story("Session UID change")
 @allure.title("A UID change after FINAL_CLASSIFICATION skips the just-in-case save (Race, {packet_format})")
+@SAVE_FORMATS
 async def test_uid_change_after_final_classification_skips_just_in_case(
         manager: InjectingTelemetryManager, packets: Packets, state: SessionState, handler: F1TelemetryHandler,
         saves: SaveRecorder, tokens: TokenRecorder) -> None:
@@ -139,7 +139,7 @@ async def test_uid_change_after_final_classification_skips_just_in_case(
     await manager.inject(packets.final_classification(classified(position=1, num_laps=5),
                                                       classified(position=2, num_laps=5), session_uid=UID))
     assert saves.requests == FINAL_SAVES
-    await asyncio.sleep(0)      # the saves finish, so no save task is running when UID 200 arrives
+    await saves_finished(handler)     # so no save task is running when UID 200 arrives
 
     await manager.inject(packets.lap(car(0, lap=1, lap_distance=10), session_uid=NEXT_UID))
 
@@ -209,6 +209,7 @@ async def test_button_events_while_paused_do_not_clear(manager: InjectingTelemet
 @pytest.mark.parametrize("packet_format", ALL_FORMATS, indirect=True)
 @pytest.mark.parametrize("session", [RACE])
 @title("A race restarted on the same UID is cleared, saved just in case and recorded afresh")
+@SAVE_FORMATS
 async def test_same_uid_race_restart_clears_and_saves_the_aborted_start(
         player_car: PlayerCar, session: SessionType24, manager: InjectingTelemetryManager, packets: Packets,
         state: SessionState, saves: SaveRecorder) -> None:
@@ -267,6 +268,7 @@ async def test_same_uid_race_restart_clears_and_saves_the_aborted_start(
 @pytest.mark.parametrize("packet_format", ALL_FORMATS, indirect=True)
 @pytest.mark.parametrize("session", ALL_SESSIONS)
 @allure.title("A normal session end isn't taken for a restart ({session}, {packet_format})")
+@SAVE_FORMATS
 async def test_normal_session_end_does_not_clear_before_final_classification(
         manager: InjectingTelemetryManager, packets: Packets, state: SessionState, saves: SaveRecorder,
         session: SessionType24) -> None:
@@ -307,6 +309,7 @@ async def test_late_lap_data_without_send_is_not_a_restart(manager: InjectingTel
 @allure.story("Final classification")
 @pytest.mark.parametrize("packet_format", ALL_FORMATS, indirect=True)
 @allure.title("FINAL_CLASSIFICATION before any LAP_DATA still saves (Race, {packet_format})")
+@SAVE_FORMATS
 async def test_final_classification_before_any_lap_data(manager: InjectingTelemetryManager, packets: Packets,
                                                         state: SessionState, saves: SaveRecorder) -> None:
     """Race with SESSION and PARTICIPANTS only, then FINAL_CLASSIFICATION.
@@ -329,9 +332,10 @@ async def test_final_classification_before_any_lap_data(manager: InjectingTeleme
 @pytest.mark.parametrize("next_packet", ["SESSION", "SSTA"])
 @allure.title("The final save keeps its session's name when the next UID arrives first "
               "({session}, next UID on {next_packet}, {packet_format})")
+@SAVE_FORMATS
 async def test_final_save_keeps_its_session_name_when_the_next_uid_arrives_first(
-        manager: InjectingTelemetryManager, packets: Packets, state: SessionState, saves: SaveRecorder,
-        session: SessionType24, next_packet: str) -> None:
+        manager: InjectingTelemetryManager, packets: Packets, state: SessionState, handler: F1TelemetryHandler,
+        saves: SaveRecorder, session: SessionType24, next_packet: str) -> None:
     """Any session type at Silverstone on UID 100 to FINAL_CLASSIFICATION. Before the save tasks run, UID 200
     arrives on a Race SESSION at Austria, or on an SSTA, which carries no event info.
 
@@ -352,7 +356,7 @@ async def test_final_save_keeps_its_session_name_when_the_next_uid_arrives_first
     assert state.m_session_info.m_session_uid in (None, NEXT_UID)
     assert (saves.json_debug, saves.pngt_names) == ([], [])
 
-    await asyncio.sleep(0)      # the save tasks run
+    await saves_finished(handler)
 
     assert saves.requests == FINAL_SAVES
     assert [(debug["file-name"].startswith(name), debug["session-uid"], debug["packet-count"])

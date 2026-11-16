@@ -46,7 +46,6 @@ from apps.backend.intf_layer.ipc.command_handlers import handleManualSave
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer import save_request as save_request_module
 from apps.backend.state_mgmt_layer.save_request import SaveReason
-from apps.backend.telemetry_layer import telemetry_handler as telemetry_handler_module
 from apps.backend.telemetry_layer.telemetry_handler import F1TelemetryHandler
 from lib.config import LapAnalyzerSensorSettings, PngSettings
 from lib.f1_types import PacketEventData, SessionType24, TrackID
@@ -636,27 +635,21 @@ async def test_stop_waits_for_every_save(manager: InjectingTelemetryManager, pac
 @allure.story("Concurrency and names")
 @UNIFIED
 @pytest.mark.parametrize("session", [RACE])
+@pytest.mark.parametrize("save_task_stop_timeout_s", [0.01], indirect=True, ids=["10 ms wait"])
 @allure.title("stop() cancels a save that outlasts its wait ({session})")
 async def test_stop_cancels_a_save_that_exceeds_the_wait(manager: InjectingTelemetryManager, packets: Packets,
                                                          handler: F1TelemetryHandler, fake_subsystem: FakeSubsystem,
-                                                         tokens: TokenRecorder, monkeypatch: pytest.MonkeyPatch,
-                                                         session: SessionType24) -> None:
+                                                         tokens: TokenRecorder, session: SessionType24) -> None:
     """Race. A manual save is held and never let go, then stop(), with its 5 s wait cut to 10 ms.
 
     Expected: the save task is cancelled, stop() returns, and nothing raises. The save-ended token is still
     reported."""
-    real_wait_for = asyncio.wait_for
-
-    def short_wait_for(awaitable: Any, timeout: Optional[float]) -> Any:
-        return real_wait_for(awaitable, timeout=0.01 if timeout == 5.0 else timeout)
-
-    monkeypatch.setattr(telemetry_handler_module.asyncio, "wait_for", short_wait_for)
     await _session(manager, packets, session)
     fake_subsystem.block()
     await _manual_save(handler)
     [task] = handler.m_save_tasks
 
-    await real_wait_for(handler.stop(), timeout=2.0)
+    await asyncio.wait_for(handler.stop(), timeout=2.0)
 
     assert task.cancelled()
     assert handler.m_save_tasks == set()

@@ -270,7 +270,11 @@ SENSOR_SOURCES: Dict[str, SensorSource] = {
     "speed": SensorSource(lambda car: car.speed(283), 283),                                # CAR_TELEMETRY copy
     "tyre_wear.fl": SensorSource(lambda car: car.car_damage(12.5), 12.5),                  # CAR_DAMAGE, tyre info
     "ers.store_energy": SensorSource(lambda car: car.car_status(fuel=10.0, ers_store_mj=2.0), 50.0),  # % of 4 MJ
-    "motion.position.x": SensorSource(lambda car: car.position(10.5, 2.25, -30.75, 0.5), 10.5),  # MOTION copy
+    # MOTION copies: four fields of one packet, each a distinct value so a swapped field fails
+    "motion.position.x": SensorSource(lambda car: car.position(10.5, 2.25, -30.75, 0.5), 10.5),
+    "motion.position.y": SensorSource(lambda car: car.position(10.5, 2.25, -30.75, 0.5), 2.25),
+    "motion.position.z": SensorSource(lambda car: car.position(10.5, 2.25, -30.75, 0.5), -30.75),
+    "motion.yaw": SensorSource(lambda car: car.position(10.5, 2.25, -30.75, 0.5), 0.5),
 }
 
 
@@ -281,7 +285,8 @@ SENSOR_SOURCES: Dict[str, SensorSource] = {
 async def test_sensor_has_no_value_before_its_packet(player_car: PlayerCar, session: SessionType24,
                                                      sensor: str) -> None:
     """Any session type, every sensor on. A sample at 100 m before the sensor's packet has arrived, then the packet
-    (speed 283 km/h, front left wear 12.5 %, ERS store 2 MJ, or world x 10.5 m), then a sample at 200 m.
+    (speed 283 km/h, front left wear 12.5 %, ERS store 2 MJ, or world x, y, z 10.5, 2.25,
+    -30.75 m and yaw 0.5 rad), then a sample at 200 m.
 
     Expected: the first sample holds NaN, the recorder's value for a missing reading, not 0. The second holds the
     packet's value."""

@@ -162,8 +162,15 @@ def state(ctx: AppCtx) -> SessionState:
 
 
 @pytest.fixture
-async def handler(ctx: AppCtx, state: SessionState,
-                  frame_gate_enabled: bool) -> AsyncIterator[F1TelemetryHandler]:
+def save_task_stop_timeout_s(request: pytest.FixtureRequest) -> float:
+    """5 s (the handler's default) unless a test passes @pytest.mark.parametrize("save_task_stop_timeout_s", [0.01],
+    indirect=True)."""
+    return getattr(request, "param", 5.0)
+
+
+@pytest.fixture
+async def handler(ctx: AppCtx, state: SessionState, frame_gate_enabled: bool,
+                  save_task_stop_timeout_s: float) -> AsyncIterator[F1TelemetryHandler]:
     """The real F1TelemetryHandler, registered on an InjectingTelemetryManager. Stopped at teardown,
     which also waits for any save task it started."""
     telemetry_handler = F1TelemetryHandler(
@@ -171,6 +178,7 @@ async def handler(ctx: AppCtx, state: SessionState,
         session_state=state,
         manager=InjectingTelemetryManager(ctx.logger, frame_gate_enabled=frame_gate_enabled),
         packet_forward_queue=asyncio.Queue(),
+        save_task_stop_timeout_s=save_task_stop_timeout_s,
     )
     yield telemetry_handler
     await telemetry_handler.stop()

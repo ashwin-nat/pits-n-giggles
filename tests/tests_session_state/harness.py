@@ -25,6 +25,7 @@
 import asyncio
 import inspect
 import json
+import pickle
 from dataclasses import dataclass
 from logging import Logger
 from pathlib import Path
@@ -156,7 +157,9 @@ class FakeSubsystem:
 
     def run_in_process(self, fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Awaitable[Any]:
         """Record the call without running fn. Returns a future that resolves to None straight away, unless
-        block() or fail_with() says otherwise. Same signature as AsyncSubsystem.run_in_process."""
+        block() or fail_with() says otherwise. Same signature as AsyncSubsystem.run_in_process. Pickles fn and its
+        args as the real process pool does, so an unpicklable one raises here."""
+        pickle.dumps((fn, args, kwargs))
         self.process_calls.append(ProcessCall(fn_name=fn.__name__, args=args, kwargs=kwargs))
         future = asyncio.get_running_loop().create_future()
         if self._fail_next is not None:
@@ -307,6 +310,12 @@ async def _clear_task_slot(handler: F1TelemetryHandler, slot: str,
     if on_run is not None:
         on_run()
     setattr(handler, slot, None)
+
+
+async def saves_finished(handler: F1TelemetryHandler) -> None:
+    """Wait for every save task handler has started: the separate-files JSON and .pngt tasks, and the unified ones."""
+    tasks = [handler.m_json_save_task, handler.m_lap_telemetry_save_task, *handler.m_save_tasks]
+    await asyncio.gather(*(task for task in tasks if task is not None))
 
 
 class TokenRecorder:
