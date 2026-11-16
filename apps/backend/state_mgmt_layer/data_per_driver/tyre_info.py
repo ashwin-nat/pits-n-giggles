@@ -232,18 +232,15 @@ class TyreSetHistoryManager:
             laps (List[int]): List of lap numbers to be removed
         """
 
-        if self.m_history:
-            last_entry = self.m_history[-1]
-
-            # Remove the last lap from tyre wear history if it matches any in the removal list
-            if last_entry.m_tyre_wear_history:
-                last_lap = last_entry.m_tyre_wear_history[-1].lap_number
-                if last_lap in laps:
-                    last_entry.m_tyre_wear_history.pop()
-
-            # Remove the entire tyre set if its start lap is in the removal list
-            if last_entry.m_start_lap in laps:
-                self.m_history.pop()
+        if not laps:
+            return
+        # Everything from the first removed lap on goes: whole stints, even with no completed lap yet (so no
+        #   snapshot key), and the earlier stints' samples
+        first_removed = min(laps)
+        self.m_history = [entry for entry in self.m_history if entry.m_start_lap < first_removed]
+        for entry in self.m_history:
+            entry.m_tyre_wear_history = [wear for wear in entry.m_tyre_wear_history
+                                         if wear.lap_number < first_removed]
 
     def _computeTyreStintEndLaps(self, final_lap_num: int) -> None:
         """
@@ -445,8 +442,16 @@ class TyreInfo:
         Args:
             outdated_laps (List[int]): The list of lap numbers that are outdated due to flashback
         """
-        self.m_tyre_set_history_manager.remove(outdated_laps)
+        history = self.m_tyre_set_history_manager
+        last_stint = history.getLastEntry() if history.length else None
+        history.remove(outdated_laps)
         self.m_tyre_wear_extrapolator.remove(outdated_laps)
+        restored_stint = history.getLastEntry() if history.length else None
+        if restored_stint is not None and restored_stint is not last_stint:
+            # A stop was rewound. The extrapolator only held the dropped stint, so refill it from the one fitted again
+            self.m_tyre_wear_extrapolator.clear()
+            for wear in restored_stint.m_tyre_wear_history:
+                self.m_tyre_wear_extrapolator.add(wear)
 
         # Flashback is too error prone with tyre wear rolling history, so we just clear it.
         # User made the bed, they can lie in it.

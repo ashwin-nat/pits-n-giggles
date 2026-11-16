@@ -32,7 +32,7 @@ the garage between them.
 import allure
 import pytest
 
-from lib.f1_types import SessionType24, TrackID
+from lib.f1_types import SessionType24
 
 from .harness import (FLYING, FP, GARAGE, IN_LAP, ON_TRACK, OUT_LAP, QUALI, RACE,
                       PlayerCar, title)
@@ -41,11 +41,6 @@ from .packet_helpers import ALL_FORMATS, FIRST_SOFT_IDX
 # ------------------------- CONSTANTS ----------------------------------------------------------------------------------
 
 RUN_1_SET, RUN_2_SET = FIRST_SOFT_IDX, FIRST_SOFT_IDX + 1
-
-# Known bug: the xfail flips to XPASS (and fails, being strict) once it is fixed
-WEIRD_GARAGE_SET_CHANGE = ("On a weird track a pending tyre change also waits for a lap change, which a quali garage "
-                           "set change only gets at the end of the next flying lap. That lap is booked to the old "
-                           "stint, and the new stint starts at its end.")
 
 pytestmark = [allure.feature("Per-lap re-baseline"),
               pytest.mark.parametrize("packet_format", ALL_FORMATS, indirect=True)]
@@ -129,22 +124,27 @@ async def test_fresh_stint_starting_wear_moves_to_the_line(player_car: PlayerCar
 @allure.story("Tyre stint start")
 @pytest.mark.parametrize("session", [FP, QUALI])
 @title("A run on a new set re-baselines the new stint at the line")
-async def test_run_on_a_new_set_rebaselines_the_new_stint(player_car: PlayerCar, session: SessionType24,
-                                                          request: pytest.FixtureRequest) -> None:
-    """Practice or quali. After run 1, the set is changed in the garage on lap 2 (fresh at 0.0 %). The second run's out
-    lap reaches the line at 1.648 %.
+async def test_run_on_a_new_set_rebaselines_the_new_stint(player_car: PlayerCar, session: SessionType24) -> None:
+    """Practice or quali, as in f1_26_sp_quali_suzuka_multi_run. Run 1's flying lap 1 ends at 3.359 % wear, and the
+    car goes back to the garage on lap 2. There the set is changed to a fresh one at 0.0 %. Run 2's out lap reaches
+    the line at 1.648 %.
 
-    Expected: the new stint starts at 1.648 %, keeping its lap number. Run 1's stint is untouched."""
-    if player_car.track == TrackID.Monaco:
-        request.applymarker(pytest.mark.xfail(strict=True, reason=WEIRD_GARAGE_SET_CHANGE))
-    await first_run(player_car, session)
-    await player_car.tyre_sets(RUN_2_SET)
-    await player_car.car_damage(0.0)
+    On a weird track (Monaco) the change used to wait for a lap change as well, as a race pit stop does. A garage
+    change never gets one at the line, so run 2's flying lap was booked to run 1's stint.
+
+    Expected: the change completes in the garage on either track. The new stint starts at lap 1's end with 0.0 %, and
+    at the line its starting wear moves to 1.648 %, keeping that lap number. Run 1's stint is untouched."""
+    with allure.step("Run 1 on its set: flying lap 1 ends at 3.359 %, then back to the garage on lap 2"):
+        await first_run(player_car, session)
+    with allure.step("Garage, lap 2: a fresh set is fitted, at 0.0 %"):
+        await player_car.tyre_sets(RUN_2_SET)
+        await player_car.car_damage(0.0)
     assert player_car.stints() == [(RUN_1_SET, [(0, 1.429), (1, 3.359)]), (RUN_2_SET, [(1, 0.0)])]
 
-    await player_car.drive(OUT_LAP, 2, 222.0, 3000.0, 5809.7)
-    await player_car.car_damage(1.648)
-    await player_car.drive(FLYING, 2, 1.0)
+    with allure.step("Run 2's out lap reaches the line at 1.648 %"):
+        await player_car.drive(OUT_LAP, 2, 222.0, 3000.0, 5809.7)
+        await player_car.car_damage(1.648)
+        await player_car.drive(FLYING, 2, 1.0)
     assert player_car.stints() == [(RUN_1_SET, [(0, 1.429), (1, 3.359)]), (RUN_2_SET, [(1, 1.648)])]
 
 

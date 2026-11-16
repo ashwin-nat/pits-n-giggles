@@ -33,6 +33,7 @@ import pytest
 
 from apps.backend.state_mgmt_layer import SessionState
 from lib.f1_types import SessionType24, TrackID
+from lib.f1_types.packet_2_lap_data import LapData
 
 from .harness import (FLYING, FP, GARAGE, IN_LAP, LAP_TRACK_LENGTHS, OUT_LAP, QUALI,
                       RACE, TT, InjectingTelemetryManager, PlayerCar, flashback,
@@ -175,32 +176,44 @@ async def test_landing_on_a_flying_lap_from_an_out_lap_is_not_a_lap_start(
 AI = 1
 
 
-async def _ai_drive(manager: InjectingTelemetryManager, packets: Packets, lap: int, *distances: float) -> None:
-    """One LAP_DATA per distance for the AI car (car 1), FLYING_LAP on lap."""
-    for packet in packets.drive(AI, lap=lap, distances=list(distances), session_uid=UID, status=FLYING):
+async def _ai_drive(manager: InjectingTelemetryManager, packets: Packets, lap: int, *distances: float,
+                    status: LapData.DriverStatus = FLYING) -> None:
+    """One LAP_DATA per distance for the AI car (car 1), in status on lap."""
+    for packet in packets.drive(AI, lap=lap, distances=list(distances), session_uid=UID, status=status):
         await manager.inject(packet)
+
+
+async def _ai_session(manager: InjectingTelemetryManager, packets: Packets, session: SessionType24,
+                      track: TrackID) -> None:
+    """The SESSION and PARTICIPANTS packets for the player and the AI car."""
+    await manager.inject(packets.session(session_uid=UID, session_type=session.name, track=track, total_laps=0,
+                                         track_length=LAP_TRACK_LENGTHS[track]))
+    await manager.inject(packets.participants(player("Bottas"), ai("Russell"), session_uid=UID))
 
 
 async def _ai_fuel(manager: InjectingTelemetryManager, packets: Packets, fuel: float) -> None:
     await manager.inject(packets.car_status(fuel_and_ers(AI, fuel_in_tank=fuel), session_uid=UID))
 
 
-def _ai_laps(state: SessionState) -> Tuple[Dict[int, List[float]], Optional[Tuple[int, List[float]]], float]:
-    """The AI car's recorded laps (lap -> distances), its in-progress lap, and lap 2's snapshot fuel in kg."""
-    driver = state.m_driver_data[AI]
-    export = driver.m_tel_rec.export()
+def _ai_recording(state: SessionState) -> Tuple[Dict[int, List[float]], Optional[Tuple[int, List[float]]]]:
+    """The AI car's recorded laps (lap -> distances) and its in-progress lap."""
+    export = state.m_driver_data[AI].m_tel_rec.export()
     completed = {lap.metadata.lap_number: [round(d, 1) for d in lap.telemetry["lap_distance"]]
                  for lap in export.completed_laps}
     in_progress = export.in_progress_lap
     current = (None if in_progress is None else
                (in_progress.metadata.lap_number, [round(d, 1) for d in in_progress.telemetry["lap_distance"]]))
-    return completed, current, round(driver.m_per_lap_snapshots[2].m_car_status_packet.m_fuelInTank, 3)
+    return completed, current
+
+
+def _ai_laps(state: SessionState) -> Tuple[Dict[int, List[float]], Optional[Tuple[int, List[float]]], float]:
+    """The AI car's recorded laps (lap -> distances), its in-progress lap, and lap 2's snapshot fuel in kg."""
+    fuel = state.m_driver_data[AI].m_per_lap_snapshots[2].m_car_status_packet.m_fuelInTank
+    return *_ai_recording(state), round(fuel, 3)
 
 
 @allure.story("AI rewound late")
 @pytest.mark.parametrize("session", [FP])
-@pytest.mark.xfail(strict=True, reason="An AI car's lap count going back after the landing isn't handled as a "
-                   "flashback (plans/session-state-test-harness/ai-lap-back-after-flashback.md)")
 @title("An AI car put back a lap well after a flashback redoes that lap")
 async def test_ai_lap_count_back_after_a_flashback_redoes_the_lap(manager: InjectingTelemetryManager,
                                                                   packets: Packets, state: SessionState,
@@ -213,9 +226,7 @@ async def test_ai_lap_count_back_after_a_flashback_redoes_the_lap(manager: Injec
 
     Expected: the drop is handled as that car's flashback. Lap 2 is cut back at 3051.2 m and redone, then stored
     again on the second crossing, with the redone lap's 5.39 kg. Lap 3 starts over at the line."""
-    await manager.inject(packets.session(session_uid=UID, session_type=session.name, track=track, total_laps=0,
-                                         track_length=LAP_TRACK_LENGTHS[track]))
-    await manager.inject(packets.participants(player("Bottas"), ai("Russell"), session_uid=UID))
+    await _ai_session(manager, packets, session, track)
     await _ai_drive(manager, packets, 2, 24.5, 1500.0, 3000.0, 3300.0)
     await _ai_fuel(manager, packets, 5.394)
     await _ai_drive(manager, packets, 3, 1.1, 1000.0, 1767.6)
@@ -233,3 +244,56 @@ async def test_ai_lap_count_back_after_a_flashback_redoes_the_lap(manager: Injec
     await _ai_drive(manager, packets, 3, 0.1)
 
     assert _ai_laps(state) == ({2: [24.5, 1500.0, 3000.0, 3051.2, 3200.0]}, (3, [0.1]), 5.39)
+
+
+@allure.story("AI rewound late")
+@pytest.mark.parametrize("session", [FP])
+@pytest.mark.parametrize("back_to", [1, 0], ids=["three laps back", "to lap 0"])
+@title("A lap count going back to lap {back_to} with no FLBK isn't a rewind, so the history stays")
+async def test_lap_count_back_more_than_a_lap_keeps_the_history(manager: InjectingTelemetryManager,
+                                                                packets: Packets, state: SessionState,
+                                                                session: SessionType24, track: TrackID,
+                                                                back_to: int) -> None:
+    """Practice. An AI car completes laps 1 to 3 and is 1000 m into lap 4. Then one LAP_DATA with no FLBK puts it on
+    lap 1, or on lap 0. A flashback goes back one lap at most, so neither is a rewind. Constructed, not captured: the
+    capture's late drops are all one lap.
+
+    Expected: laps 1 to 3 keep their per-lap snapshots and recorded laps. Only the lap number follows the game."""
+    await _ai_session(manager, packets, session, track)
+    for lap in (1, 2, 3):
+        await _ai_drive(manager, packets, lap, 0.5, 1500.0, 3000.0)
+    await _ai_drive(manager, packets, 4, 0.5, 1000.0)
+    completed, _ = _ai_recording(state)
+    assert sorted(completed) == [1, 2, 3]
+
+    with allure.step(f"No FLBK: the AI's lap count goes to {back_to}"):
+        await _ai_drive(manager, packets, back_to, 1100.0)
+
+    driver = state.m_driver_data[AI]
+    assert _ai_recording(state)[0] == completed
+    assert {1, 2, 3} <= set(driver.m_per_lap_snapshots)
+    assert driver.m_lap_info.m_current_lap == back_to
+
+
+@allure.story("AI rewound late")
+@pytest.mark.parametrize("session", [FP])
+@title("An AI car put back from its out lap onto a flying lap isn't at a lap start")
+async def test_ai_put_back_from_an_out_lap_is_not_a_lap_start(manager: InjectingTelemetryManager, packets: Packets,
+                                                              state: SessionState, session: SessionType24,
+                                                              track: TrackID) -> None:
+    """Practice. An AI car drives lap 2 as a flying lap to 2000 m, then an in lap through the pit lane without
+    stopping, and is 500 m into lap 3's out lap. Then one LAP_DATA with no FLBK puts it back on lap 2 at 1500 m, flying:
+    the status goes from OUT_LAP to FLYING_LAP in the same packet as the late rewind. Constructed, not captured: the
+    capture's late drops come from FLYING_LAP or IN_LAP.
+
+    Expected: the rewind reopens lap 2, cut at 1500 m. The status change isn't a lap start, so the reopened lap keeps
+    its samples below 1500 m."""
+    await _ai_session(manager, packets, session, track)
+    await _ai_drive(manager, packets, 2, 0.5, 1000.0, 2000.0)
+    await _ai_drive(manager, packets, 2, 2500.0, 3300.0, status=IN_LAP)
+    await _ai_drive(manager, packets, 3, 0.1, 500.0, status=OUT_LAP)
+
+    with allure.step("No FLBK: the AI is put back on lap 2 at 1500 m, flying"):
+        await _ai_drive(manager, packets, 2, 1500.0)
+
+    assert _ai_recording(state)[1] == (2, [0.5, 1000.0, 1500.0])

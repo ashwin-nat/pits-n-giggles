@@ -301,9 +301,12 @@ class SessionState:
             self._updateDriverPositionData(driver_obj, lap_data)
 
             # Handle lap changes, flashbacks and snapshots
+            rewound = False
             if driver_obj.m_lap_info.m_current_lap is not None:
-                self._handleLapChangeLogic(driver_obj, lap_data)
-            self._handleLapBoundaries(driver_obj, lap_data)
+                rewound = self._handleLapChangeLogic(driver_obj, lap_data)
+            if not rewound:
+                # A rewind can change the driver status too, which isn't a lap boundary
+                self._handleLapBoundaries(driver_obj, lap_data)
 
             # Update current lap and process driver status
             self._updateDriverStatus(driver_obj, lap_data, index)
@@ -341,12 +344,15 @@ class SessionState:
         driver_obj.m_driver_info.grid_position = lap_data.m_gridPosition
         driver_obj.m_lap_info.processLapDataUpdate(lap_data, self.m_session_info.m_track_len)
 
-    def _handleLapChangeLogic(self, driver_obj: DataPerDriver, lap_data: LapData) -> None:
+    def _handleLapChangeLogic(self, driver_obj: DataPerDriver, lap_data: LapData) -> bool:
         """Handle lap change detection and snapshot capture
 
         Args:
             driver_obj: Driver object to check for lap changes
             lap_data: Lap data containing current lap number
+
+        Returns:
+            bool: True if this packet rewound the car
         """
         # Capture zeroth lap snapshot if needed
         if self.m_session_info.curr_weather is not None and driver_obj.shouldCaptureZerothLapSnapshot(self.m_pkt_fmt):
@@ -355,19 +361,28 @@ class SessionState:
         current_lap = driver_obj.m_lap_info.m_current_lap
         new_lap = lap_data.m_currentLapNum
 
+        rewound = False
         if self.m_flashback_occurred:
             # This packet is where the rewind landed, possibly back across the line
             driver_obj.onFlashback(new_lap, lap_data.m_lapDistance, self.m_session_info.m_session_type)
+            rewound = True
         elif new_lap > current_lap:
             driver_obj.onLapChange(old_lap_number=current_lap)
+        elif new_lap == current_lap - 1 and new_lap >= 1:
+            # The sim put this car back on its own after a flashback (AI cars, seconds after the landing)
+            self.m_logger.debug('Driver %s. Lap count went back without a FLBK (lap %d -> %d). Handling as a flashback',
+                                driver_obj, current_lap, new_lap)
+            driver_obj.onFlashback(new_lap, lap_data.m_lapDistance, self.m_session_info.m_session_type)
+            rewound = True
         elif new_lap < current_lap:
-            # Without a flashback, the lap count going back is a new practice programme
-            self.m_logger.debug('Driver %s. Lap count went back without a flashback (lap %d -> %d)',
+            # A flashback goes back one lap at most, so this isn't one. Its history is kept
+            self.m_logger.debug('Driver %s. Lap count went back without a FLBK (lap %d -> %d). Not a rewind, ignored',
                                 driver_obj, current_lap, new_lap)
 
         if current_lap != new_lap:
             driver_obj.m_lap_info.m_current_lap = new_lap
             driver_obj.notifyLapChanged()
+        return rewound
 
     def _handleLapBoundaries(self, driver_obj: DataPerDriver, lap_data: LapData) -> None:
         """Report the lap boundaries the sim's lap number doesn't show, from driver status changes:

@@ -66,15 +66,15 @@ class PendingTyreChange:
     the packets carrying the new stint's data have arrived.
 
     Attributes:
-        is_weird_track (bool): True if the pit garage is before the finish line. Such tracks need the last stint's
-                               final wear rewritten before the new stint is started.
-        awaiting_lap_change (bool): True while a lap change is still awaited. Only ever True on weird tracks.
+        is_stop_before_line (bool): True for a race stop on a track whose pit garage is before the finish line.
+                                    The last stint's final wear is rewritten before the new stint is started.
+        awaiting_lap_change (bool): True while a lap change is still awaited. Only ever True if is_stop_before_line.
         target_idx (int): The fitted tyre set index this change is for. Used to spot the set changing again
                           before this change settled.
         awaiting_car_dmg (bool): True while the next car damage packet (new tyre's wear) is still awaited.
     """
 
-    is_weird_track: bool
+    is_stop_before_line: bool
     awaiting_lap_change: bool
     target_idx: int
     awaiting_car_dmg: bool = True
@@ -572,7 +572,8 @@ class DataPerDriver:
         for lap_num in outdated_laps:
             del self.m_per_lap_snapshots[lap_num]
 
-        # Remove outdated laps from managed objects
+        # Remove outdated laps from managed objects. Race control messages are deliberately not rolled back:
+        #   a redone event (a stop, an overtake) is reported again
         self.m_tyre_info.handleFlashback(outdated_laps)
         self.m_car_info.m_fuel_rate_recommender.remove(outdated_laps)
 
@@ -580,6 +581,8 @@ class DataPerDriver:
         # completed against has just been rewound, and the rolling buffer it reads the old
         # stint's final wear from was cleared outright. Detection re-fires on the next tyre
         # sets packet if the change survived the flashback.
+        # Game issue: after a rewind past a stop, TYRE_SETS reports the undone set for 1-3 s more, recorded as a
+        #   change then a revert. Not worked around, since nothing marks those packets as stale.
         self.m_pending_tyre_change = None
 
         self.m_logger.debug("Driver %s - detected flashback. outdated_laps: %s", str(self), outdated_laps)
@@ -880,9 +883,9 @@ class DataPerDriver:
                 # Simple fix - delay tyre change event until new car dmg pkt arrives. This will contain the new
                 #   tyre's wear data
                 #
-                # On weird tracks (pit garage before the finish line), the tyre set change happens before lap
+                # On weird tracks (pit garage before the finish line), a race stop changes the set before lap
                 #   completion, so the prev lap's tyre wear data could get lost. There, the lap change is awaited
-                #   as well, and the last stint's final wear is rewritten on completion
+                #   as well, and the last stint's final wear is rewritten on completion. Not outside races (below)
                 # Track is always known here: tyre history only starts after a session packet has named it
                 pending = self.m_pending_tyre_change
                 if pending and pending.target_idx != fitted_index:
@@ -898,6 +901,10 @@ class DataPerDriver:
                 if pending is None:
                     # An unknown track is treated as non weird
                     is_weird = F1Utils.isFinishLineAfterPitGarage(track)
+                    session_type = self.m_state_ref.m_session_info.m_session_type
+                    is_race = session_type is not None and session_type.isRaceTypeSession()
+                    # Outside races the set changes in the garage, after the in lap was dropped: no lap to close out
+                    stop_before_line = is_weird and is_race
 
                     # The weird-track lap wait exists so the rewrite happens after onLapChange has
                     #   closed out the old stint's final lap. If the line has already been crossed
@@ -913,13 +920,14 @@ class DataPerDriver:
                         self.m_current_set_last_seen_lap < self.m_lap_info.m_current_lap
                     )
                     self.m_pending_tyre_change = PendingTyreChange(
-                        is_weird_track=is_weird,
-                        awaiting_lap_change=is_weird and not line_crossed_since_old_set_seen,
+                        is_stop_before_line=stop_before_line,
+                        awaiting_lap_change=stop_before_line and not line_crossed_since_old_set_seen,
                         target_idx=fitted_index,
                     )
                     self.m_logger.debug("Driver %s - lap %d tyre set change detected. Registering for delayed "
-                                        "handling. weird=%s line already crossed=%s", str(self),
-                                        self.m_lap_info.m_current_lap, is_weird, line_crossed_since_old_set_seen)
+                                        "handling. weird=%s race=%s line already crossed=%s", str(self),
+                                        self.m_lap_info.m_current_lap, is_weird, is_race,
+                                        line_crossed_since_old_set_seen)
 
             else:
                 # Same set still fitted. Remember the lap, so that when a change is eventually
@@ -1040,11 +1048,11 @@ class DataPerDriver:
             return
         self.m_pending_tyre_change = None
 
-        self.m_logger.debug("Driver %s - processing delayed tyre set change. weird track: %s",
-                            str(self), pending.is_weird_track)
+        self.m_logger.debug("Driver %s - processing delayed tyre set change. stop before line: %s",
+                            str(self), pending.is_stop_before_line)
         fitted_tyre_set_key = self.m_packet_copies.m_packet_tyre_sets.getFittedTyreSetKey()
 
-        if pending.is_weird_track:
+        if pending.is_stop_before_line:
             # The tyre change landed before lap completion, so overwrite the end of the last stint's wear history
             # with the old tyre's final value before the new stint is started
             if last_stint_max_wear := self._getDelayedTyreChangeDataWeird():

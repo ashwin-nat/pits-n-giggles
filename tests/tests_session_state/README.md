@@ -129,7 +129,8 @@ await manager.inject(packets.lap(car(0, lap=1, lap_distance=1000), car(1, lap=1,
 - **Lap distances are float32 on the wire.** `PlayerCar` rounds what it reads back to 0.1 m. Compare raw values at
   float32 precision.
 - **Generators and constructed sequences stay within what the game can send.** For example, a flashback goes back at
-  most one lap: the buffer is about 30 s and the shortest lap about 1:02.
+  most one lap: the buffer is about 30 s and the shortest lap about 1:02. A test that goes past that on purpose says
+  so in its docstring, as a robustness check (`test_flashback_two_laps_back_drops_both_laps`).
 - **Known bugs are strict xfails**: `@pytest.mark.xfail(strict=True, reason="...")`, with a reason saying what's
   wrong, or `request.applymarker(...)` inside the test when only some cases are affected. A fix flips them to XPASS,
   which fails the run, so the fix also removes the marker.
