@@ -33,18 +33,17 @@ import pytest
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.telemetry_layer.telemetry_handler import F1TelemetryHandler
 from lib.f1_types import PacketEventData, SessionType24, TrackID
-from lib.f1_types.packet_2_lap_data import LapData
 
-from .harness import (ALL_SESSIONS, FP, LAP_TRACKS, QUALI, RACE, SAVE_FORMATS,
+from .harness import (ALL_SESSIONS, FP, ON_TRACK, QUALI, RACE, SAVE_FORMATS,
                       InjectingTelemetryManager, PlayerCar, SaveRecorder,
-                      SaveRequestRecord, TokenRecorder, racing_status, saves_finished, title)
+                      SaveRequestRecord, TokenRecorder, button_events, racing_status,
+                      saves_finished, title)
 from .packet_helpers import (ALL_FORMATS, FIRST_SOFT_IDX, Packets, ai, car,
                              classified, lap_time, player)
 
 # ------------------------- CONSTANTS ----------------------------------------------------------------------------------
 
 UID, NEXT_UID = 100, 200
-ON_TRACK = LapData.DriverStatus.ON_TRACK
 
 # The JSON and the .pngt, both requested on FINAL_CLASSIFICATION for UID 100
 FINAL_SAVES = [SaveRequestRecord("final_classification", "json", UID),
@@ -53,13 +52,6 @@ JUST_IN_CASE_SAVES = [SaveRequestRecord("just_in_case", "json", UID),
                       SaveRequestRecord("just_in_case", "pngt", UID)]
 
 pytestmark = allure.feature("Session handling")
-
-# ------------------------- FIXTURES -----------------------------------------------------------------------------------
-
-@pytest.fixture(params=LAP_TRACKS)
-def track(request: pytest.FixtureRequest) -> TrackID:
-    """Both track topologies."""
-    return request.param
 
 # ------------------------- HELPERS ------------------------------------------------------------------------------------
 
@@ -81,11 +73,7 @@ async def _session_end(manager: InjectingTelemetryManager, packets: Packets, ses
     frame 0 (as in f1_25_mp_coop_quali_australia)."""
     await manager.inject(packets.event(PacketEventData.EventPacketType.SESSION_ENDED, None,
                                        session_uid=session_uid, overall_frame=0))
-    for _ in range(3):
-        await manager.inject(packets.event(
-            PacketEventData.EventPacketType.BUTTON_STATUS,
-            PacketEventData.Buttons.from_status(PacketEventData.Buttons.udp_action_flag(5)),
-            session_uid=0, overall_frame=0))
+    await button_events(manager, packets, 3, session_uid=0, overall_frame=0)
     for packet in packets.session_history_burst(laps=[lap_time(92_000, valid=True)], session_uid=session_uid,
                                                 overall_frame=0):
         await manager.inject(packet)
@@ -190,11 +178,7 @@ async def test_button_events_while_paused_do_not_clear(manager: InjectingTelemet
     Expected: nothing is cleared or saved."""
     await _session_in_progress(manager, packets, UID, session)
     paused_frame = manager.injected[-1].m_header.m_overallFrameIdentifier
-    for _ in range(4):
-        await manager.inject(packets.event(
-            PacketEventData.EventPacketType.BUTTON_STATUS,
-            PacketEventData.Buttons.from_status(PacketEventData.Buttons.udp_action_flag(5)),
-            session_uid=button_uid, overall_frame=paused_frame))
+    await button_events(manager, packets, 4, button_uid, paused_frame)
     await manager.inject(packets.lap(car(0, lap=1, lap_distance=1100, status=racing_status(session)),
                                      session_uid=UID))
 
@@ -236,11 +220,7 @@ async def test_same_uid_race_restart_clears_and_saves_the_aborted_start(
             await manager.inject(packet)
         await manager.inject(packets.event(PacketEventData.EventPacketType.SESSION_ENDED, None,
                                            session_uid=UID, overall_frame=0))
-        for _ in range(3):
-            await manager.inject(packets.event(
-                PacketEventData.EventPacketType.BUTTON_STATUS,
-                PacketEventData.Buttons.from_status(PacketEventData.Buttons.udp_action_flag(5)),
-                session_uid=0, overall_frame=0))
+        await button_events(manager, packets, 3, session_uid=0, overall_frame=0)
         await manager.inject(packets.event(PacketEventData.EventPacketType.SESSION_STARTED, None,
                                            session_uid=UID, overall_frame=0))
     assert saves.requests == []

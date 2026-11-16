@@ -45,7 +45,7 @@ from lib.f1_types import TrackID
 from lib.logger import PngLogger
 
 from .packet_helpers import Packets
-from .harness import (FakeSubsystem, InjectingTelemetryManager, PlayerCar,
+from .harness import (LAP_TRACKS, FakeSubsystem, InjectingTelemetryManager, PlayerCar,
                       SaveRecorder, TokenRecorder)
 
 # ------------------------- CONSTANTS ----------------------------------------------------------------------------------
@@ -194,11 +194,16 @@ def manager(request: pytest.FixtureRequest, handler: F1TelemetryHandler) -> Iter
         handler.m_manager.attach_trace()
 
 
+@pytest.fixture(params=LAP_TRACKS)
+def track(request: pytest.FixtureRequest) -> TrackID:
+    """Both track topologies. A module can override it, as tests_tyre_change does to add an unrecognised track."""
+    return request.param
+
+
 @pytest.fixture
 def player_car(manager: InjectingTelemetryManager, packets: Packets, state: SessionState,
                track: TrackID) -> PlayerCar:
-    """The player's car on track. The test module provides track, e.g. a fixture with params=LAP_TRACKS. Start
-    the session with await player_car.session(...)."""
+    """The player's car on track. Start the session with await player_car.session(...)."""
     return PlayerCar(manager, packets, state, track)
 
 

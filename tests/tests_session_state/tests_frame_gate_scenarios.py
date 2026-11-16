@@ -36,8 +36,8 @@ from lib.f1_types import F1PacketType, PacketEventData, SessionType24, TrackID
 from lib.f1_types.common import get_num_cars
 from lib.race_ctrl import MessageType
 
-from .harness import (FP, LAP_TRACKS, QUALI, RACE, InjectingTelemetryManager,
-                      PlayerCar, racing_status, title)
+from .harness import (FP, QUALI, RACE, InjectingTelemetryManager, PlayerCar,
+                      button_events, racing_status, title)
 from .packet_helpers import ALL_FORMATS, Packets, ai, car, lap_time, player
 
 # ------------------------- CONSTANTS ----------------------------------------------------------------------------------
@@ -46,13 +46,6 @@ UID = 100
 GATE_ON = pytest.mark.parametrize("frame_gate_enabled", [True], indirect=True)
 
 pytestmark = allure.feature("Frame gate")
-
-# ------------------------- FIXTURES -----------------------------------------------------------------------------------
-
-@pytest.fixture(params=LAP_TRACKS)
-def track(request: pytest.FixtureRequest) -> TrackID:
-    """Both track topologies."""
-    return request.param
 
 # ------------------------- HELPERS ------------------------------------------------------------------------------------
 
@@ -121,11 +114,7 @@ async def test_flashback_after_a_button_burst_is_handled(
 
     burst_frame = next_overall_frame(manager)
     with allure.step(f"11 button events on overall frame {burst_frame}"):
-        for _ in range(11):
-            await manager.inject(packets.event(
-                PacketEventData.EventPacketType.BUTTON_STATUS,
-                PacketEventData.Buttons.from_status(PacketEventData.Buttons.udp_action_flag(5)),
-                session_uid=player_car.session_uid, overall_frame=burst_frame))
+        await button_events(manager, packets, 11, player_car.session_uid, burst_frame)
     await player_car.flashback(timed, 1, 4154.3, overall_frame=burst_frame)
 
     assert gate_drops(manager) == {}

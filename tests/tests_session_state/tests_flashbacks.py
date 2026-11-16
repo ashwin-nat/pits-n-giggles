@@ -24,9 +24,6 @@
 manager and the per-lap snapshots. Flashbacks across the tyre set history are in tests_tyre_change.py.
 """
 
-# Fixtures that take other fixtures as arguments are how pytest works, not shadowing
-# pylint: disable=redefined-outer-name
-
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
 from typing import Dict, List, Optional, Tuple
@@ -35,31 +32,20 @@ import allure
 import pytest
 
 from apps.backend.state_mgmt_layer import SessionState
-from lib.f1_types import PacketEventData, SessionType24, TrackID
-from lib.f1_types.packet_2_lap_data import LapData
+from lib.f1_types import SessionType24, TrackID
 
-from .harness import (FP, LAP_TRACK_LENGTHS, LAP_TRACKS, QUALI, RACE, TT,
-                      InjectingTelemetryManager, PlayerCar, racing_status,
-                      title)
+from .harness import (FLYING, FP, GARAGE, IN_LAP, LAP_TRACK_LENGTHS, OUT_LAP, QUALI,
+                      RACE, TT, InjectingTelemetryManager, PlayerCar, flashback,
+                      racing_status, title)
 from .packet_helpers import (ALL_FORMATS, Packets, ai, car, fuel_and_ers,
                              player)
 
 # ------------------------- CONSTANTS ----------------------------------------------------------------------------------
 
 UID = 100
-GARAGE, OUT_LAP, FLYING, IN_LAP, ON_TRACK = (LapData.DriverStatus.IN_GARAGE, LapData.DriverStatus.OUT_LAP,
-                                             LapData.DriverStatus.FLYING_LAP, LapData.DriverStatus.IN_LAP,
-                                             LapData.DriverStatus.ON_TRACK)
 
 pytestmark = [allure.feature("Flashbacks"),
               pytest.mark.parametrize("packet_format", ALL_FORMATS, indirect=True)]
-
-# ------------------------- FIXTURES -----------------------------------------------------------------------------------
-
-@pytest.fixture(params=LAP_TRACKS)
-def track(request: pytest.FixtureRequest) -> TrackID:
-    """Both track topologies."""
-    return request.param
 
 # ------------------------- WITHIN A LAP -------------------------------------------------------------------------------
 
@@ -233,13 +219,8 @@ async def test_ai_lap_count_back_after_a_flashback_redoes_the_lap(manager: Injec
     await _ai_drive(manager, packets, 2, 24.5, 1500.0, 3000.0, 3300.0)
     await _ai_fuel(manager, packets, 5.394)
     await _ai_drive(manager, packets, 3, 1.1, 1000.0, 1767.6)
-    target_frame = manager.injected[-1].m_header.m_frameIdentifier // 2
     with allure.step("The player flashes back: the AI lands on lap 3 at 1405.1 m"):
-        await manager.inject(packets.event(PacketEventData.EventPacketType.FLASHBACK,
-                                           PacketEventData.Flashback.from_values(frame_identifier=target_frame),
-                                           session_uid=UID))
-        await manager.inject(packets.lap(car(AI, lap=3, lap_distance=1405.1, status=FLYING), session_uid=UID,
-                                         frame=target_frame + 1))
+        await flashback(manager, packets, car(AI, lap=3, lap_distance=1405.1, status=FLYING), UID)
     await _ai_drive(manager, packets, 3, 1800.0, 2832.9)
     assert _ai_laps(state) == ({2: [24.5, 1500.0, 3000.0, 3300.0]}, (3, [1.1, 1000.0, 1405.1, 1800.0, 2832.9]),
                                5.394)

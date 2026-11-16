@@ -24,9 +24,6 @@
 manual save, and what goes into it. The JSON save beside it follows CaptureSettings, which leaves every session
 type on (a manual save has no JSON gate)."""
 
-# Fixtures that take other fixtures as arguments are how pytest works, not shadowing
-# pylint: disable=redefined-outer-name
-
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
 from typing import List
@@ -40,7 +37,7 @@ from apps.backend.telemetry_layer.telemetry_handler import F1TelemetryHandler
 from lib.config import LapAnalyzerSensorSettings, PngSettings
 from lib.f1_types import PacketSessionData, SessionType24, TelemetrySetting, TrackID
 
-from .harness import (ALL_SESSIONS, FP, LAP_TRACK_LENGTHS, LAP_TRACKS, QUALI,
+from .harness import (ALL_SESSIONS, FP, LAP_TRACK_LENGTHS, QUALI,
                       RACE, SAVE_FORMATS, TT, InjectingTelemetryManager, SaveRecorder,
                       SaveRequestRecord, racing_status, title)
 from .packet_helpers import (ALL_FORMATS, DriverSpec, Packets, ai, car,
@@ -54,13 +51,6 @@ RECORD_IN = {FP: "record_in_fp", QUALI: "record_in_quali", RACE: "record_in_race
 FormulaType = PacketSessionData.FormulaType
 
 pytestmark = [allure.feature("pngt save gate"), SAVE_FORMATS]
-
-# ------------------------- FIXTURES -----------------------------------------------------------------------------------
-
-@pytest.fixture(params=LAP_TRACKS)
-def track(request: pytest.FixtureRequest) -> TrackID:
-    """Both track topologies."""
-    return request.param
 
 # ------------------------- HELPERS ------------------------------------------------------------------------------------
 

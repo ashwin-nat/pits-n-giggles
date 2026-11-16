@@ -46,7 +46,7 @@ from lib.f1_types.packet_2_lap_data import LapData
 from lib.subsystem import AsyncSubsystem
 from lib.telemetry_manager import F1TelemetryManagerBase
 
-from .packet_helpers import (Packets, car, damage, fuel_and_ers, player,
+from .packet_helpers import (CarSpec, Packets, car, damage, fuel_and_ers, player,
                              speed, world_position)
 
 # ------------------------- LABELS -------------------------------------------------------------------------------------
@@ -337,6 +337,30 @@ class TokenRecorder:
 # Silverstone: finish line before the pit garage. Monaco: pit garage before the finish line
 LAP_TRACKS = [track_param(TrackID.Silverstone, "normal"), track_param(TrackID.Monaco, "weird")]
 LAP_TRACK_LENGTHS = {TrackID.Silverstone: 5891, TrackID.Monaco: 3337}
+GARAGE, OUT_LAP, FLYING, IN_LAP, ON_TRACK = (LapData.DriverStatus.IN_GARAGE, LapData.DriverStatus.OUT_LAP,
+                                             LapData.DriverStatus.FLYING_LAP, LapData.DriverStatus.IN_LAP,
+                                             LapData.DriverStatus.ON_TRACK)
+
+
+async def flashback(manager: InjectingTelemetryManager, packets: Packets, landing: CarSpec, session_uid: int,
+                    overall_frame: Optional[int] = None) -> None:
+    """A FLBK event, on overall_frame if given, then a LAP_DATA with the landing car. The landing's frame goes back to
+    just after the flashback's target frame (half the last injected one). Its overall frame keeps counting up."""
+    target_frame = manager.injected[-1].m_header.m_frameIdentifier // 2
+    await manager.inject(packets.event(
+        PacketEventData.EventPacketType.FLASHBACK, PacketEventData.Flashback.from_values(frame_identifier=target_frame),
+        session_uid=session_uid, overall_frame=overall_frame))
+    await manager.inject(packets.lap(landing, session_uid=session_uid, frame=target_frame + 1))
+
+
+async def button_events(manager: InjectingTelemetryManager, packets: Packets, count: int, session_uid: int,
+                        overall_frame: int) -> None:
+    """count BUTTON_STATUS events (UDP action 5), all on overall_frame."""
+    for _ in range(count):
+        await manager.inject(packets.event(
+            PacketEventData.EventPacketType.BUTTON_STATUS,
+            PacketEventData.Buttons.from_status(PacketEventData.Buttons.udp_action_flag(5)),
+            session_uid=session_uid, overall_frame=overall_frame))
 
 
 class PlayerCar:
@@ -427,14 +451,9 @@ class PlayerCar:
         """A FLBK event, on overall_frame if given, then the LAP_DATA the car lands in: status, on lap, at distance.
         The landing's frame goes back to just after the flashback's target frame. Its overall frame keeps counting
         up."""
-        target_frame = self.manager.injected[-1].m_header.m_frameIdentifier // 2
         with allure.step(f"Flashback, landing {status.name} lap {lap} at {distance}"):
-            await self.manager.inject(self.packets.event(
-                PacketEventData.EventPacketType.FLASHBACK,
-                PacketEventData.Flashback.from_values(frame_identifier=target_frame), session_uid=self.session_uid,
-                overall_frame=overall_frame))
-            await self.manager.inject(self.packets.lap(car(0, lap=lap, lap_distance=distance, status=status),
-                                                       session_uid=self.session_uid, frame=target_frame + 1))
+            await flashback(self.manager, self.packets, car(0, lap=lap, lap_distance=distance, status=status),
+                            self.session_uid, overall_frame)
 
     def completed_laps(self) -> Dict[int, List[float]]:
         """The lap recorder's completed laps, as lap number -> lap distances."""

@@ -33,16 +33,13 @@ import allure
 import pytest
 
 from lib.f1_types import SessionType24, TrackID
-from lib.f1_types.packet_2_lap_data import LapData
 
-from .harness import FP, LAP_TRACKS, QUALI, RACE, PlayerCar, title
+from .harness import (FLYING, FP, GARAGE, IN_LAP, ON_TRACK, OUT_LAP, QUALI, RACE,
+                      PlayerCar, title)
 from .packet_helpers import ALL_FORMATS, FIRST_SOFT_IDX
 
 # ------------------------- CONSTANTS ----------------------------------------------------------------------------------
 
-GARAGE, OUT_LAP, FLYING, IN_LAP, ON_TRACK = (LapData.DriverStatus.IN_GARAGE, LapData.DriverStatus.OUT_LAP,
-                                             LapData.DriverStatus.FLYING_LAP, LapData.DriverStatus.IN_LAP,
-                                             LapData.DriverStatus.ON_TRACK)
 RUN_1_SET, RUN_2_SET = FIRST_SOFT_IDX, FIRST_SOFT_IDX + 1
 
 # Known bug: the xfail flips to XPASS (and fails, being strict) once it is fixed
@@ -52,13 +49,6 @@ WEIRD_GARAGE_SET_CHANGE = ("On a weird track a pending tyre change also waits fo
 
 pytestmark = [allure.feature("Per-lap re-baseline"),
               pytest.mark.parametrize("packet_format", ALL_FORMATS, indirect=True)]
-
-# ------------------------- FIXTURES -----------------------------------------------------------------------------------
-
-@pytest.fixture(params=LAP_TRACKS)
-def track(request: pytest.FixtureRequest) -> TrackID:
-    """Both track topologies."""
-    return request.param
 
 # ------------------------- HELPERS ------------------------------------------------------------------------------------
 

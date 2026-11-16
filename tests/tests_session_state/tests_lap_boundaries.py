@@ -37,28 +37,18 @@ import allure
 import pytest
 
 from apps.backend.state_mgmt_layer import SessionState
-from lib.f1_types import SessionType24, TrackID
-from lib.f1_types.packet_2_lap_data import LapData
+from lib.f1_types import SessionType24
 
-from .harness import (ALL_SESSIONS, FP, LAP_TRACKS, QUALI, RACE, TT, PlayerCar,
-                      leaving_garage_status, racing_status, title)
+from .harness import (ALL_SESSIONS, FLYING, FP, GARAGE, IN_LAP, ON_TRACK, OUT_LAP,
+                      QUALI, RACE, TT, PlayerCar, leaving_garage_status,
+                      racing_status, title)
 from .packet_helpers import ALL_FORMATS
 
 # ------------------------- CONSTANTS ----------------------------------------------------------------------------------
 
-GARAGE, OUT_LAP, FLYING, IN_LAP, ON_TRACK = (LapData.DriverStatus.IN_GARAGE, LapData.DriverStatus.OUT_LAP,
-                                             LapData.DriverStatus.FLYING_LAP, LapData.DriverStatus.IN_LAP,
-                                             LapData.DriverStatus.ON_TRACK)
 
 pytestmark = [allure.feature("Lap boundaries"),
               pytest.mark.parametrize("packet_format", ALL_FORMATS, indirect=True)]
-
-# ------------------------- FIXTURES -----------------------------------------------------------------------------------
-
-@pytest.fixture(params=LAP_TRACKS)
-def track(request: pytest.FixtureRequest) -> TrackID:
-    """Both track topologies."""
-    return request.param
 
 # ------------------------- OUT LAP TO FLYING LAP ----------------------------------------------------------------------
 

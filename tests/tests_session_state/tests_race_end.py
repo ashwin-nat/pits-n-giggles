@@ -24,9 +24,6 @@
 and every finished car's timer on the line, and mid-race. The lap recorder drops any sample whose lap time is
 below the last kept one. Timers are from the test_data recordings; distances are shortened to fit Monaco."""
 
-# Fixtures that take other fixtures as arguments are how pytest works, not shadowing
-# pylint: disable=redefined-outer-name
-
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
 from typing import Dict, List, Optional, Tuple
@@ -35,10 +32,10 @@ import allure
 import pytest
 
 from apps.backend.state_mgmt_layer import SessionState
-from lib.f1_types import PacketEventData, SessionType24, TrackID
+from lib.f1_types import SessionType24, TrackID
 
-from .harness import (LAP_TRACK_LENGTHS, LAP_TRACKS, RACE,
-                      InjectingTelemetryManager, title)
+from .harness import (LAP_TRACK_LENGTHS, RACE, InjectingTelemetryManager,
+                      flashback, title)
 from .packet_helpers import (ALL_FORMATS, CarSpec, Packets, ai, car,
                              classified, fuel_and_ers, player)
 
@@ -53,13 +50,6 @@ Samples = List[Tuple[float, int]]
 pytestmark = [allure.feature("Race end"),
               pytest.mark.parametrize("packet_format", ALL_FORMATS, indirect=True),
               pytest.mark.parametrize("session", [RACE])]
-
-# ------------------------- FIXTURES -----------------------------------------------------------------------------------
-
-@pytest.fixture(params=LAP_TRACKS)
-def track(request: pytest.FixtureRequest) -> TrackID:
-    """Both track topologies."""
-    return request.param
 
 # ------------------------- HELPERS ------------------------------------------------------------------------------------
 
@@ -247,13 +237,8 @@ async def test_flashback_landing_with_a_rewound_timer_is_dropped(manager: Inject
     await _race(manager, packets, session, track)
     for distance, lap_time_ms in ((2000.0, 70_000), (2291.9, 76_637), (2600.0, 83_000)):
         await _lap_data(manager, packets, car(PLAYER, 2, distance, lap_time_ms=lap_time_ms))
-    target_frame = manager.injected[-1].m_header.m_frameIdentifier // 2
     with allure.step("Flashback, landing at 2292.5 m, 76634 ms"):
-        await manager.inject(packets.event(PacketEventData.EventPacketType.FLASHBACK,
-                                           PacketEventData.Flashback.from_values(frame_identifier=target_frame),
-                                           session_uid=UID))
-        await manager.inject(packets.lap(car(PLAYER, 2, 2292.5, lap_time_ms=76_634), session_uid=UID,
-                                         frame=target_frame + 1))
+        await flashback(manager, packets, car(PLAYER, 2, 2292.5, lap_time_ms=76_634), UID)
     for distance, lap_time_ms in ((2293.4, 76_650), (2294.3, 76_667)):
         await _lap_data(manager, packets, car(PLAYER, 2, distance, lap_time_ms=lap_time_ms))
 
