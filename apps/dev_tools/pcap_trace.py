@@ -70,12 +70,14 @@ class CarState:
 
 def trace(file_name: str, cars: List[int], all_events: bool) -> List[Dict[str, Any]]:
     """The timeline records for cars (empty: the player) in file_name. Each has a "kind": "info", "event",
-    "session_uid", "final_classification", "tyre_sets" or "lap"."""
+    "session_uid", "final_classification", "tyre_sets" or "lap". Raises ValueError if cars is empty and the
+    recording has no player car (spectating)."""
     factory = PacketParserFactory(set(F1PacketType), logging.getLogger("pcap_trace"))
     states: Dict[int, CarState] = {car: CarState() for car in cars}
     records: List[Dict[str, Any]] = []
     session_uid: Optional[int] = None
     classified_uids: Set[int] = set()
+    described_uids: Set[int] = set()
 
     for _, raw in F1PacketCapture(file_name=file_name).getPackets():
         packet = factory.parse(raw)
@@ -84,6 +86,8 @@ def trace(file_name: str, cars: List[int], all_events: bool) -> List[Dict[str, A
         header = packet.m_header
         if not states:
             player = header.m_playerCarIndex
+            if player == 255:
+                raise ValueError("No player car (spectating). Pass --car N")
             states[player] = CarState()
             records.append({"kind": "info", "packet_format": header.m_packetFormat, "player_car": player})
         frames = {"overall_frame": header.m_overallFrameIdentifier, "frame": header.m_frameIdentifier}
@@ -91,9 +95,14 @@ def trace(file_name: str, cars: List[int], all_events: bool) -> List[Dict[str, A
             records.append({"kind": "session_uid", **frames, "from": session_uid, "to": header.m_sessionUID,
                             "packet": header.m_packetId.name})
             session_uid = header.m_sessionUID
+            states = {car: CarState() for car in states}
         if header.m_packetId == F1PacketType.FINAL_CLASSIFICATION and header.m_sessionUID not in classified_uids:
             classified_uids.add(header.m_sessionUID)
             records.append({"kind": "final_classification", **frames, "session_uid": header.m_sessionUID})
+        if header.m_packetId == F1PacketType.SESSION and header.m_sessionUID not in described_uids | {0}:
+            described_uids.add(header.m_sessionUID)
+            records.append({"kind": "info", "session_type": str(packet.m_sessionType), "track": str(packet.m_trackId),
+                            "track_length": packet.m_trackLength})
         _apply(packet, states, all_events, records)
     return records
 
@@ -104,10 +113,7 @@ def _apply(packet: F1PacketBase, states: Dict[int, CarState], all_events: bool,
     frames = {"overall_frame": header.m_overallFrameIdentifier, "frame": header.m_frameIdentifier}
     packet_id = header.m_packetId
 
-    if packet_id == F1PacketType.SESSION and not any(state.lap_key for state in states.values()):
-        records.append({"kind": "info", "session_type": str(packet.m_sessionType), "track": str(packet.m_trackId),
-                        "track_length": packet.m_trackLength})
-    elif packet_id == F1PacketType.EVENT:
+    if packet_id == F1PacketType.EVENT:
         if all_events or packet.m_eventCode in KEY_EVENTS:
             details = str(packet.mEventDetails) if packet.mEventDetails is not None else ""
             records.append({"kind": "event", **frames, "event": packet.m_eventCode.name, "details": details})
@@ -164,7 +170,10 @@ def main() -> None:
     parser.add_argument("--json", action="store_true", help="One JSON object per line instead of a table")
     args = parser.parse_args()
 
-    records = trace(args.file_name, args.car, args.all_events)
+    try:
+        records = trace(args.file_name, args.car, args.all_events)
+    except ValueError as error:
+        parser.error(str(error))
     if args.json:
         for record in records:
             print(json.dumps(record))
