@@ -65,6 +65,7 @@ See `tests/README.md` for full details. Key conventions:
 - Tests that bind real sockets/ports or spawn processes must be marked serial via module-level `pytestmark = pytest.mark.serial` so xdist funnels them to one worker.
 - Write **new** tests in native pytest style: plain `assert`, `@pytest.mark.parametrize`, and bare `async def test_*` (asyncio_mode is `auto` — no decorator or base class needed).
 - Existing tests are `unittest.TestCase`-style and run under pytest as-is; do not rewrite them.
+- Backend state and session handling tests are scenarios in `tests/tests_session_state/`, never mocks of `SessionState`/`DataPerDriver`. Read `tests/tests_session_state/README.md` before adding one.
 - `tests/integration_test/` is the full-app integration runner and is not collected by pytest.
 
 ## Running Apps

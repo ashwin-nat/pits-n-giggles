@@ -191,7 +191,7 @@ parametrize over plain values (`str`, numbers, enums):
 | `tests_config/` | Config validation tests |
 | `tests_delta/` | Lap delta tests |
 | `tests_data_per_driver/` | Per-driver data structure tests |
-| `tests_session_state/` | Session state scenarios - typed packets through the real handler and `SessionState` (see below) |
+| `tests_session_state/` | Session state scenarios - typed packets through the real handler and `SessionState`. See [its README](tests_session_state/README.md) |
 | `tests_wdt/` | Watchdog timer tests (async + sync) |
 | `tests_event_counter/` | Event counter and latency stat tests |
 | `ipc/` | IPC tests — ZeroMQ pub/sub, router/dealer, parent/child (serial) |
@@ -200,87 +200,9 @@ parametrize over plain values (`str`, numbers, enums):
 
 ## Session State Scenarios
 
-`tests_session_state/` tests the backend's state layer as a whole. A scenario builds typed packets,
-injects them into the real `F1TelemetryHandler` and `SessionState`, and asserts on the resulting
-state and on what the handler asked the outside world to do. Socket, parser and raw-packet path
-are skipped. Everything from the frame gate onward is production code.
-
-```text
-Packets (packet_helpers.py) -> InjectingTelemetryManager.inject() -> F1TelemetryHandler -> SessionState
-```
-
-Fixtures (`conftest.py`):
-
-| Fixture | What it is |
-|---------|------------|
-| `manager` | `InjectingTelemetryManager` with the handler's callbacks registered. `await manager.inject(packet)` |
-| `packets` | Packet helpers bound to `packet_format` (default 2026). Frames count up on their own |
-| `frame_gate_enabled` | False by default. `@pytest.mark.parametrize("frame_gate_enabled", [True], indirect=True)` turns the frame gate on |
-| `state`, `handler` | The real `SessionState` and `F1TelemetryHandler`. `handler` is stopped at teardown, which waits for its save tasks |
-| `save_task_stop_timeout_s` | 5 s by default, how long the handler's `stop()` waits for each save task. `@pytest.mark.parametrize("save_task_stop_timeout_s", [0.01], indirect=True)` shortens it |
-| `settings` | Every session type autosaves and records laps, every lap analyzer sensor on, just-in-case saves on |
-| `unified_save` | False by default (separate JSON and `.pngt` files, as the app ships). `@pytest.mark.parametrize("unified_save", [True], indirect=True)` turns on `Capture.unified_save_format`, and `harness.SAVE_FORMATS` runs a test on both |
-| `saves` | Records save requests as (trigger, content, session UID), e.g. `("just_in_case", "pngt", 100)`, the same on either save format: separate-files saves write nothing, and each half of a unified container counts as a JSON or `.pngt` request. Triggers are `final_classification`, `just_in_case` and `manual`. Also keeps each `.pngt` save's `write_session()` args (`pngt_args`), and, once the task runs, the JSON's debug block (`json_debug`) and the `.pngt` name (`pngt_names`) |
-| `tokens` | Records the handler's `report_*_from_child` tokens (save skipped, session saved, `.pngt` save start and end) |
-| `fake_subsystem` | Records `fire_and_forget` names, `dealer.fire` calls and `run_in_process` calls (where unified saves land), runs nothing. `block()` / `release()` / `fail_with()` control when a `run_in_process` call finishes. `run_in_process` pickles its args as the real process pool does. `harness.saves_finished(handler)` waits for every save task |
-| `user_data_dir` | Autouse. `lib.file_path.get_app_base_dir` points at `tmp_path`, so every `resolve_user_file` lands there and nothing is written under the real `data/` |
-| `track` | Both `LAP_TRACKS` (Silverstone normal, Monaco weird), so a test on `player_car` runs on each. A module can override it, as `tests_tyre_change.py` does to add an unrecognised track |
-| `player_car` | `harness.PlayerCar`, the player's car on `track`. `session()`, `baseline()`, `drive(status, lap, *distances)`, `flashback(status, lap, distance)`, `car_status()`, `car_damage()`, `tyre_sets()`, `speed()` and `position()` send packets. `completed_laps()`, `in_progress_lap()`, `delta_laps()`, `stints()` and `fuel(lap)` read the lap recorder, the delta manager, the tyre set history and the per-lap snapshots. `harness` also has the status aliases (`GARAGE`, `OUT_LAP`, `FLYING`, `IN_LAP`, `ON_TRACK`), and `flashback()` and `button_events()` for any car |
-| `caplog` | Wired to the real `PngLogger` the state layer uses |
-
-A scenario:
-
-```python
-async def test_something(manager, packets, state, saves):
-    await manager.inject(packets.session(session_uid=100, session_type="RACE", track=TrackID.Silverstone,
-                                         total_laps=5, track_length=5891))
-    await manager.inject(packets.lap(car(0, lap=1, lap_distance=1000), session_uid=100))
-    assert state.m_session_info.m_total_laps == 5
-```
-
-To run a scenario on every packet format, add
-`@pytest.mark.parametrize("packet_format", ALL_FORMATS, indirect=True)`.
-
-Packet helper arguments are only the fields some scenario sets. When a scenario needs another field,
-add it as an explicit argument in that change rather than reaching into the packet afterwards.
-
-Report labels. Every test in the suite sits under the "Session state" epic. Each file sets its feature, and
-collection fails for a test without one:
-
-```python
-pytestmark = allure.feature("Tyre change")
-
-@allure.story("Flashback and tyre set history")   # one story per section of the file
-@allure.title("A flashback over the line drops the redone lap's wear ({track.name}, {packet_format})")
-async def test_something(race):
-    """What the scenario injects.
-
-    Expected: what the state ends up as."""
-```
-
-A test that runs on several track types takes its track from a fixture built with `track_param(track, kind)`
-(`harness.py`). Each case is then tagged "normal track", "weird track" or "unknown track". Select a single kind
-with `--allure-label track=weird`, or with `-k weird`. Features and stories can also be selected, with
-`--allure-features` and `--allure-stories`.
-
-A lap scenario also takes a `session`: `@pytest.mark.parametrize("session", [FP, QUALI])`, with `FP`, `QUALI`,
-`RACE`, `TT` and `ALL_SESSIONS` from `harness.py`. These are `SessionType24` members. `PlayerCar.session()` passes the
-name on, and `Packets` picks `SessionType23`'s value for 2023, where RACE and TIME_TRIAL are numbered differently.
-List only the session types the mechanism under test exists in, as the recordings show it:
-
-| Session type | Garage | Out lap -> flying lap | Flashbacks |
-| --- | --- | --- | --- |
-| `FP` (Practice 1) | yes | yes | yes |
-| `QUALI` (Short Qualifying) | yes | yes | yes |
-| `RACE` | no | no: ON_TRACK from the grid on | yes |
-| `TT` (Time Trial) | at the start | no: the garage goes straight to FLYING_LAP at a negative distance | none recorded |
-
-`racing_status(session)` and `leaving_garage_status(session)` give the statuses that differ between session types.
-Select one with `-k "Practice 1"`.
-
-Each injected packet is a report step, nested under the scenario step that sent it (`Race.change_tyres`,
-`Race.flashback`, ...). A test that does not pass also gets every packet it injected attached as one JSON file,
-"injected packets".
+`tests_session_state/` drives typed packets through the real `F1TelemetryHandler` and `SessionState`. Backend
+state and session handling tests go there. Its [README](tests_session_state/README.md) covers how to add a test, the
+practices to follow, the fixtures and the report labels.
 
 ## Serial vs Parallel
 
