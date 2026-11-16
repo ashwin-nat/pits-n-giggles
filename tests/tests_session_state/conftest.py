@@ -38,17 +38,25 @@ from apps.backend.app_ctx import AppCtx
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.telemetry_layer import telemetry_handler as telemetry_handler_module
 from apps.backend.telemetry_layer.telemetry_handler import F1TelemetryHandler
-from lib.config import PngSettings
+from lib.config import (CaptureSettings, LapAnalyzerSensorSettings,
+                        LapAnalyzerSettings, PngSettings)
+from lib import file_path as file_path_module
+from lib.f1_types import TrackID
 from lib.logger import PngLogger
 
 from .packet_helpers import Packets
-from .harness import (FakeSubsystem, InjectingTelemetryManager, SaveRecorder,
-                      TokenRecorder)
+from .harness import (LAP_TRACKS, FakeSubsystem, InjectingTelemetryManager, PlayerCar,
+                      SaveRecorder, TokenRecorder)
 
 # ------------------------- CONSTANTS ----------------------------------------------------------------------------------
 
 # The report_*_from_child tokens telemetry_handler imports by name
-HANDLER_TOKENS = ["report_session_save_skipped_from_child"]
+HANDLER_TOKENS = [
+    "report_session_save_skipped_from_child",
+    "report_session_saved_from_child",
+    "report_pngt_save_start_from_child",
+    "report_pngt_save_end_from_child",
+]
 
 SUITE_DIR = Path(__file__).parent
 CALL_REPORT = pytest.StashKey[pytest.TestReport]()
@@ -96,9 +104,32 @@ def packets(packet_format: int) -> Packets:
 
 
 @pytest.fixture
-def settings() -> PngSettings:
-    """Default settings."""
-    return PngSettings()
+def unified_save(request: pytest.FixtureRequest) -> bool:
+    """False (the default setting) unless a test passes @pytest.mark.parametrize("unified_save", [True],
+    indirect=True)."""
+    return getattr(request, "param", False)
+
+
+@pytest.fixture
+def settings(unified_save: bool) -> PngSettings:
+    """Every session type autosaves and records laps, every lap analyzer sensor is on, and just-in-case saves
+    are on. Capture.unified_save_format comes from unified_save."""
+    all_sensors = LapAnalyzerSensorSettings(**{name: True for name in LapAnalyzerSensorSettings.model_fields})
+    return PngSettings(
+        Capture=CaptureSettings(post_race_data_autosave=True, post_quali_data_autosave=True,
+                                post_fp_data_autosave=True, post_tt_data_autosave=True,
+                                just_in_case_autosave=True, unified_save_format=unified_save),
+        LapAnalyzer=LapAnalyzerSettings(enable=True, record_in_race=True, record_in_quali=True,
+                                        record_in_fp=True, record_in_tt=True, Sensors=all_sensors),
+    )
+
+
+@pytest.fixture(autouse=True)
+def user_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Where saves land: the test's own tmp_path. Patched at get_app_base_dir, which every resolve_user_file
+    import goes through, so no scenario writes under the real data/ directory."""
+    monkeypatch.setattr(file_path_module, "get_app_base_dir", lambda: tmp_path)
+    return tmp_path
 
 
 @pytest.fixture
@@ -131,8 +162,15 @@ def state(ctx: AppCtx) -> SessionState:
 
 
 @pytest.fixture
-async def handler(ctx: AppCtx, state: SessionState,
-                  frame_gate_enabled: bool) -> AsyncIterator[F1TelemetryHandler]:
+def save_task_stop_timeout_s(request: pytest.FixtureRequest) -> float:
+    """5 s (the handler's default) unless a test passes @pytest.mark.parametrize("save_task_stop_timeout_s", [0.01],
+    indirect=True)."""
+    return getattr(request, "param", 5.0)
+
+
+@pytest.fixture
+async def handler(ctx: AppCtx, state: SessionState, frame_gate_enabled: bool,
+                  save_task_stop_timeout_s: float) -> AsyncIterator[F1TelemetryHandler]:
     """The real F1TelemetryHandler, registered on an InjectingTelemetryManager. Stopped at teardown,
     which also waits for any save task it started."""
     telemetry_handler = F1TelemetryHandler(
@@ -140,6 +178,7 @@ async def handler(ctx: AppCtx, state: SessionState,
         session_state=state,
         manager=InjectingTelemetryManager(ctx.logger, frame_gate_enabled=frame_gate_enabled),
         packet_forward_queue=asyncio.Queue(),
+        save_task_stop_timeout_s=save_task_stop_timeout_s,
     )
     yield telemetry_handler
     await telemetry_handler.stop()
@@ -153,6 +192,19 @@ def manager(request: pytest.FixtureRequest, handler: F1TelemetryHandler) -> Iter
     call_report = request.node.stash.get(CALL_REPORT, None)
     if call_report is None or not call_report.passed:
         handler.m_manager.attach_trace()
+
+
+@pytest.fixture(params=LAP_TRACKS)
+def track(request: pytest.FixtureRequest) -> TrackID:
+    """Both track topologies. A module can override it, as tests_tyre_change does to add an unrecognised track."""
+    return request.param
+
+
+@pytest.fixture
+def player_car(manager: InjectingTelemetryManager, packets: Packets, state: SessionState,
+               track: TrackID) -> PlayerCar:
+    """The player's car on track. Start the session with await player_car.session(...)."""
+    return PlayerCar(manager, packets, state, track)
 
 
 @pytest.fixture

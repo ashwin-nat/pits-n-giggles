@@ -168,7 +168,8 @@ class F1TelemetryHandler:
         ctx: AppCtx,
         session_state: SessionState,
         manager: F1TelemetryManagerBase,
-        packet_forward_queue: asyncio.Queue) -> None:
+        packet_forward_queue: asyncio.Queue,
+        save_task_stop_timeout_s: float = 5.0) -> None:
         """
         Initialize F1TelemetryHandler. Registers the any-packet and typed callbacks on manager.
         register_tasks() wires handleRawPacket and the receive loop, which only the async manager has.
@@ -179,6 +180,7 @@ class F1TelemetryHandler:
             - session_state (SessionState): Handle to the session state
             - manager (F1TelemetryManagerBase): Telemetry manager to register callbacks on
             - packet_forward_queue (asyncio.Queue): Queue the forwarding task drains
+            - save_task_stop_timeout_s (float): How long stop() waits for each save task before cancelling it
         """
         settings = ctx.settings
         logger = ctx.logger
@@ -188,6 +190,7 @@ class F1TelemetryHandler:
         self.m_session_state_ref: SessionState = session_state
         self.m_subsystem: AsyncSubsystem = ctx.subsystem
         self.m_packet_forward_queue: asyncio.Queue = packet_forward_queue
+        self.m_save_task_stop_timeout_s: float = save_task_stop_timeout_s
 
         self.m_last_session_uid: Optional[int] = None
         self.m_session_ended: bool = False                      # SEND seen for the current UID
@@ -340,13 +343,13 @@ class F1TelemetryHandler:
         self.m_logger.debug("Telemetry handler stopped. manager and wdt stopped.")
 
     async def _waitForSaveTask(self, task: Optional[asyncio.Task], label: str) -> None:
-        """Waits up to 5s for a save task to finish, cancelling it if it doesn't.
+        """Waits up to m_save_task_stop_timeout_s for a save task to finish, cancelling it if it doesn't.
         No-op if task is None (nothing was in flight)."""
         if not task:
             return
         self.m_logger.debug("Waiting for %s save task to complete...", label)
         try:
-            await asyncio.wait_for(task, timeout=5.0)
+            await asyncio.wait_for(task, timeout=self.m_save_task_stop_timeout_s)
             self.m_logger.debug("%s save task completed.", label)
         except asyncio.TimeoutError:
             self.m_logger.debug("%s save task timed out. Cancelling...", label)

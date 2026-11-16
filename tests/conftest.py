@@ -1,17 +1,10 @@
+import inspect
 import os
-import random
 from pathlib import Path
 
 import allure
 import pytest
 from allure_commons.types import LabelType
-
-_GLOBAL_SEED = 42
-
-
-@pytest.fixture(autouse=True)
-def _seed_rng():
-    random.seed(_GLOBAL_SEED)
 
 # tests_wdt.py conflicts with the tests_wdt/ package (same base name).
 # The package supersedes the file; exclude the file so pytest doesn't choke.
@@ -40,7 +33,11 @@ def pytest_collection_modifyitems(items):
 def pytest_collection_finish(session):
     # The report tree groups by epic > feature > story. Each level a test doesn't set falls back to folder > file > class
     tests_dir = Path(__file__).parent
+    # A label, not a parameter: parameters feed Allure's history id, so a new seed each run would break the trends
+    seed = session.config.getoption("randomly_seed") if session.config.pluginmanager.hasplugin("randomly") else None
     for item in session.items:
+        if seed is not None:
+            item.add_marker(allure.label("seed", str(seed)))
         labelled = {mark.kwargs.get("label_type") for mark in item.iter_markers(name="allure_label")}
         if LabelType.EPIC not in labelled:
             folder = item.path.parent.relative_to(tests_dir).as_posix()
@@ -49,3 +46,14 @@ def pytest_collection_finish(session):
             item.add_marker(allure.feature(item.path.name))
         if LabelType.STORY not in labelled and item.cls is not None:
             item.add_marker(allure.story(item.cls.__name__))
+
+        # The docstring is the report's description. Dedented: Markdown renders its source indent as a code block
+        doc = getattr(getattr(item, "function", None), "__doc__", None)
+        if doc and item.get_closest_marker("allure_description") is None:
+            item.add_marker(allure.description(inspect.cleandoc(doc)))
+
+
+def pytest_terminal_summary(terminalreporter, config):
+    # pytest-randomly seeds random per test from this run seed; -q hides its header line, so repeat it here
+    if config.pluginmanager.hasplugin("randomly"):
+        terminalreporter.write_line(f"Rerun with --randomly-seed={config.getoption('randomly_seed')}")

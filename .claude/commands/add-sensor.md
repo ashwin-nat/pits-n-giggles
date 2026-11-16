@@ -115,6 +115,14 @@ poetry run pylint --rcfile scripts/.pylintrc lib/config/schema/lap_analyzer.py a
 
 The existing tests already enforce schema <-> `F1_SENSORS` key parity, unique manifest keys, label parity and complete annotations. Do **not** add tests for preset membership (presets are a UI construct). If the sensor joined `DEFAULT`, update `DEFAULT_KEYS` in `tests/tests_lap_telemetry_export.py` (it holds manifest keys, not field names).
 
+If Step 3d wired the source, it touched `apps/backend`, so also run the session state harness:
+
+```bash
+poetry run pytest tests/tests_session_state/ -q
+```
+
+`SENSOR_SOURCES` in `tests/tests_session_state/tests_lap_boundaries.py` checks the wiring for a few sensors, one or more per source packet: each row sends that packet through the real handler and expects the recorded value. Add a row only if the new sensor reads a packet with no row yet, or could be swapped with a field already in the table without anything failing (same packet, same kind of value, as the motion x, y, z and yaw rows). A packet `PlayerCar` can't send yet needs a `PlayerCar` method in `harness.py` first. Don't add a row per sensor.
+
 Do not edit `png_config.json`; missing keys are filled with the Pydantic default on startup.
 
 ---

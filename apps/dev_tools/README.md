@@ -10,7 +10,25 @@ poetry run python -m apps.dev_tools.telemetry_recorder
 poetry run python -m apps.dev_tools.compress_pcap <src-file> <dst-file>
 poetry run python -m apps.dev_tools.udp_action_code_injector --action-code <code>
 poetry run python -m apps.dev_tools.check_save_invariants "data/**/*.json"
+poetry run python -m apps.dev_tools.pcap_trace <f1pcap-file-path> [--car N ...] [--all-events] [--json]
 ```
+
+## Recording Trace
+
+Prints a car's lap and driver status timeline from an `.f1pcap`, straight from the packets, with no app running.
+Useful for checking what the game actually sends in a scenario (a flashback landing, an out lap becoming a flying
+lap, a garage tyre change) before writing a test for it.
+
+- One line per change of lap number or driver status: overall frame, frame, lap distance, lap time, pit status,
+  and the latest fuel, MGU-K harvest this lap, average tyre wear and fitted set
+- Fitted set changes and the key events (flashback, session start/end, lights, chequered flag, retirement) in between
+- Session UID changes (menu packets on UID 0 aside), each session's type, track and length, and the first
+  `FINAL_CLASSIFICATION` on each UID
+- `--car N` traces car N, and can be repeated. Default: the player. A recording with no player car (index 255) needs
+  `--car`
+- `--all-events` prints every event, not just the key ones
+- `--json` prints one JSON object per line instead of the table, for scripts. Each has a `kind`: `info`, `event`,
+  `session_uid`, `final_classification`, `tyre_sets` or `lap`
 
 ## Save Invariant Checker
 

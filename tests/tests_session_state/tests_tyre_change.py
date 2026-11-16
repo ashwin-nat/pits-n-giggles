@@ -442,10 +442,7 @@ async def test_flashback_discards_pending_change(race: Race) -> None:
 # any stint that started on one of them, must go. The landing lap is only recorded again once the car crosses the
 # line again, with the wear from then.
 
-# Known bugs on this branch: the xfails flip to XPASS (and fail, being strict) once they are fixed
-EARLY_RE_RECORD = ("The landing lap's wear is recorded again at the landing packet, from packet copies taken before "
-                   "the rewind: onLapChange runs straight after _handleFlashBack. feat/telemetry-analysis-base "
-                   "moves flashback handling into onFlashback.")
+# Known bug on this branch: the xfail flips to XPASS (and fails, being strict) once it is fixed
 SINGLE_SAMPLE_REMOVE = ("TyreSetHistoryManager.remove() pops only the last wear sample, so a rewind of two or more "
                         "laps leaves the earlier laps' samples behind.")
 
@@ -467,7 +464,6 @@ async def test_flashback_within_a_lap_keeps_tyre_history(race: Race) -> None:
 
 
 @allure.story("Flashback and tyre set history")
-@pytest.mark.xfail(strict=True, reason=EARLY_RE_RECORD)
 async def test_flashback_over_the_line_drops_the_redone_laps_wear(race: Race) -> None:
     await race.flashback(land_lap=START_LAP - 1, wear=WEAR_PER_LAP * (START_LAP - 1))
     assert race.wear_history() == [(lap, WEAR_PER_LAP * lap) for lap in range(START_LAP - 1)]
@@ -489,7 +485,7 @@ async def test_flashback_keeps_the_stint_when_earlier_wear_remains(race: Race) -
 
 
 @allure.story("Flashback and tyre set history")
-@pytest.mark.xfail(strict=True, reason=f"{SINGLE_SAMPLE_REMOVE} {EARLY_RE_RECORD}")
+@pytest.mark.xfail(strict=True, reason=SINGLE_SAMPLE_REMOVE)
 async def test_flashback_two_laps_back_drops_both_laps(race: Race) -> None:
     await race.flashback(land_lap=START_LAP - 2, wear=WEAR_PER_LAP * (START_LAP - 2))
 
@@ -497,7 +493,6 @@ async def test_flashback_two_laps_back_drops_both_laps(race: Race) -> None:
 
 
 @allure.story("Flashback and tyre set history")
-@pytest.mark.xfail(strict=True, reason=f"{SINGLE_SAMPLE_REMOVE} {EARLY_RE_RECORD}")
 async def test_two_flashbacks_in_a_row_each_trim_history(race: Race) -> None:
     await race.flashback(land_lap=START_LAP - 1, wear=WEAR_PER_LAP * (START_LAP - 1))
     await race.flashback(land_lap=START_LAP - 2, wear=WEAR_PER_LAP * (START_LAP - 2))
