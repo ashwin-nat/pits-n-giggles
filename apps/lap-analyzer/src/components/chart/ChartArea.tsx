@@ -3,6 +3,7 @@ import { TrackProgressBar } from "./TrackProgressBar";
 import { CurrentLocationLabel } from "./CurrentLocationLabel";
 import { ChartLegend, type ChartTraceVisibility } from "./ChartLegend";
 import { ChartLaneList } from "./ChartLaneList";
+import { TrackMap } from "./TrackMap";
 
 // Composes the chart area's pieces. Owns trace visibility (a legend toggle
 // is view-local UI state, not store state -- see ChartLegend) since it's the
@@ -29,6 +30,7 @@ export function ChartArea() {
         <TrackProgressBar crosshairPosition={crosshairPosition} />
         <ChartLegend visibility={visibility} onToggle={toggleTrace} />
       </div>
+      <TrackMap crosshairPosition={crosshairPosition} />
       <ChartLaneList
         visibility={visibility}
         crosshairPosition={crosshairPosition}
