@@ -71,4 +71,5 @@ diff-cover = "^10.5.1"
 # and requests asserts chardet<6.0.0 at import, so an unconstrained resolve warns on every run.
 chardet = "^5.2.0"
 pytest-randomly = "^5.1"
+zstandard = "^0.25.0"
 
