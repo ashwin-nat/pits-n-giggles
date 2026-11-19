@@ -33,7 +33,7 @@ import os
 import platform
 import shutil
 import tempfile
-from PyInstaller.utils.hooks import collect_submodules, collect_data_files, copy_metadata
+from PyInstaller.utils.hooks import collect_all, collect_submodules, collect_data_files, copy_metadata
 from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT, BUNDLE
 from meta.meta import APP_NAME_SNAKE
 from lib.version import get_build_version
@@ -152,7 +152,8 @@ hiddenimports = (
     collect_submodules("apps.web") +
     collect_submodules("apps.hud") +
     collect_submodules("apps.broker") +
-    collect_submodules("apps.mcp_server")
+    collect_submodules("apps.mcp_server") +
+    collect_submodules("apps.voice")
 )
 
 # Automatically collect all assets and frontend files
@@ -160,6 +161,21 @@ datas = []
 
 # Package metadata required by packages that call importlib.metadata.version() at import time
 datas += copy_metadata("fastmcp")
+
+# Voice assistant (--voice). Models are not bundled: they are read from models/ next to
+# the executable (see apps/voice/paths.py). faster-whisper ships its Silero VAD weights as
+# package data and ctranslate2/onnxruntime ship native libraries PyInstaller misses.
+voice_binaries = []
+for _pkg in ("faster_whisper", "ctranslate2", "piper", "onnxruntime", "speech_recognition"):
+    try:
+        _d, _b, _h = collect_all(_pkg)
+    except Exception as _exc:  # pylint: disable=broad-except
+        print(f"Warning: could not collect {_pkg}: {_exc}")
+        continue
+    datas += _d
+    voice_binaries += _b
+    hiddenimports += _h
+datas.extend(collect_directory("apps/voice", "apps/voice"))
 
 # Frontend assets (CSS, HTML, JS)
 datas.extend(collect_directory("apps/frontend/css", "apps/frontend/css"))
@@ -213,7 +229,7 @@ datas.extend([
 a = Analysis(
     [entry_script],
     pathex=[PROJECT_ROOT],
-    binaries=[],
+    binaries=voice_binaries,
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
