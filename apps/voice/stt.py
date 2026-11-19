@@ -1,13 +1,14 @@
 """Offline speech-to-text using faster-whisper on CPU."""
 
 import logging
-from pathlib import Path
 
 import numpy as np
 
+from apps.voice.paths import models_dir
+
 LOGGER = logging.getLogger(__name__)
 
-MODELS_DIR = Path(__file__).resolve().parents[2] / "models" / "whisper"
+MODELS_DIR = models_dir("whisper")
 
 F1_PROMPT = (
     "Radio, engineer. Box box. Tyres, softs, mediums, hards, inters, wets. "

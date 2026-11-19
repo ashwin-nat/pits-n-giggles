@@ -12,16 +12,16 @@ import json
 import logging
 import os
 import threading
-from pathlib import Path
 import time
 from typing import Any, Dict, Iterator, Optional
 
 from apps.voice.contracts import Answer, Intent, RequestContext
+from apps.voice.paths import voice_home
 from apps.voice.session_tracker import SessionProgressTracker
 
 LOGGER = logging.getLogger(__name__)
 
-CONFIG_PATH = Path(__file__).resolve().parents[2] / "png_voice.json"
+CONFIG_PATH = voice_home() / "png_voice.json"
 
 DEFAULT_CONFIG: Dict[str, Any] = {
     "backend": "local",  # "local" (offline) or "cloud" (Gemini)

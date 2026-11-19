@@ -1,8 +1,9 @@
 """Text-to-speech for the AI race engineer.
 
 Local Piper PCM prefers PipeWire's ``pw-play``; ``paplay`` is the PulseAudio
-fallback. Explicit cloud mode can use Edge TTS and ``ffplay``. ``pyttsx3`` is the
-final offline fallback.
+fallback. Where neither exists (Windows, macOS) Piper audio is played in-process
+through PyAudio, which the microphone path already depends on. Explicit cloud
+mode can use Edge TTS and ``ffplay``. ``pyttsx3`` is the final offline fallback.
 """
 
 import asyncio
@@ -12,7 +13,8 @@ import shutil
 import subprocess
 import tempfile
 import threading
-from pathlib import Path
+
+from apps.voice.paths import models_dir
 
 LOGGER = logging.getLogger(__name__)
 
@@ -45,7 +47,7 @@ class Speaker:
             self._load_piper(piper_voice)
 
     def _load_piper(self, name: str) -> None:
-        path = Path(__file__).resolve().parents[2] / "models" / "piper" / f"{name}.onnx"
+        path = models_dir("piper") / f"{name}.onnx"
         try:
             from piper import PiperVoice  # pylint: disable=import-outside-toplevel
 
@@ -68,8 +70,10 @@ class Speaker:
                 self.speaking.clear()
 
     def _say_piper(self, text: str) -> bool:
-        if self._piper is None or not self._pcm_player:
+        if self._piper is None:
             return False
+        if not self._pcm_player:
+            return self._say_piper_pyaudio(text)
         try:
             proc = None
             n_bytes, rate = 0, 22050
@@ -107,6 +111,38 @@ class Speaker:
         except Exception as exc:  # pylint: disable=broad-except
             LOGGER.warning("Piper failed: %s", exc)
             return False
+
+    def _say_piper_pyaudio(self, text: str) -> bool:
+        """Play Piper PCM in-process when no command-line PCM player is installed."""
+        try:
+            import pyaudio  # pylint: disable=import-outside-toplevel
+        except ImportError:
+            return False
+        audio = stream = None
+        try:
+            for chunk in self._piper.synthesize(text):
+                if stream is None:
+                    audio = pyaudio.PyAudio()
+                    stream = audio.open(
+                        format=pyaudio.paInt16,
+                        channels=1,
+                        rate=chunk.sample_rate,
+                        output=True,
+                    )
+                stream.write(chunk.audio_int16_bytes)
+            return stream is not None
+        except Exception as exc:  # pylint: disable=broad-except
+            LOGGER.warning("Piper playback via PyAudio failed: %s", exc)
+            return False
+        finally:
+            if stream is not None:
+                try:
+                    stream.stop_stream()
+                    stream.close()
+                except Exception:  # pylint: disable=broad-except
+                    pass
+            if audio is not None:
+                audio.terminate()
 
     def _say_edge(self, text: str) -> bool:
         if not self._player:

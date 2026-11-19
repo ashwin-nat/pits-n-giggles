@@ -7,12 +7,12 @@ import json
 import logging
 import signal
 import threading
-from pathlib import Path
 from urllib.parse import urlsplit
 
 import requests
 
 from apps.voice.engineer import load_config
+from apps.voice.paths import models_dir
 from apps.voice.voice_controller import VoiceController
 
 LOGGER = logging.getLogger(__name__)
@@ -64,12 +64,7 @@ def check_dependencies() -> dict:
     if not tools:
         raise RuntimeError("Local MCP server did not provide telemetry tools")
     stt = WhisperSTT(config["whisper_model"], threads=4)
-    model_path = (
-        Path(__file__).resolve().parents[2]
-        / "models"
-        / "piper"
-        / f"{config['piper_voice']}.onnx"
-    )
+    model_path = models_dir("piper") / f"{config['piper_voice']}.onnx"
     voice = PiperVoice.load(str(model_path))
     audio_bytes = sum(
         len(chunk.audio_int16_bytes) for chunk in voice.synthesize("Radio check.")
