@@ -23,8 +23,10 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .database import TrackSegmentsDatabase
-from .types import (ComplexCornerSegmentInfo, CornerSegmentInfo,
-                    StraightSegmentInfo)
+from .types import (ActiveAeroZoneInfo, BrakeBoardInfo,
+                    ComplexCornerSegmentInfo, CornerSegmentInfo,
+                    DrsActivationInfo, DrsZoneInfo, OvertakeZoneInfo,
+                    StraightSegmentInfo, SubCornerInfo)
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -34,4 +36,11 @@ __all__ = [
     "ComplexCornerSegmentInfo",
     "CornerSegmentInfo",
     "StraightSegmentInfo",
+
+    "ActiveAeroZoneInfo",
+    "BrakeBoardInfo",
+    "DrsActivationInfo",
+    "DrsZoneInfo",
+    "OvertakeZoneInfo",
+    "SubCornerInfo",
 ]

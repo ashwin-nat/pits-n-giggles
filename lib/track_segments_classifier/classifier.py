@@ -25,13 +25,14 @@
 import bisect
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Optional, Sequence, Tuple
+from typing import Iterator, Literal, Optional, Sequence, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from lib.f1_types.packet_2_lap_data import LapData
 
-from .types import (ComplexCornerSegmentInfo, CornerSegmentInfo,
+from .types import (ActiveAeroZoneInfo, ComplexCornerSegmentInfo,
+                    CornerSegmentInfo, DrsZoneInfo, OvertakeZoneInfo,
                     SectorBoundaries, SegmentInfo)
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -55,6 +56,10 @@ class TrackSegmentsClassifier(BaseModel):
     sectors : sector boundaries (required); must satisfy s1 < s2 < track_length
     use_cache : required. True memoizes the last hit, which helps a single car moving
         along the track and hurts random access (e.g. looking up many cars).
+    schema_version : 1 when absent, 2 for files carrying the fields below
+    speed_trap_m, drs_zones, overtake_zones, active_aero_zones : optional; every lap
+        distance in them, and in brake boards, satisfies 0 <= value < track_length.
+        Zones may cross the start line (end_m < start_m); segments may not.
     """
 
     model_config = ConfigDict(frozen=True, allow_inf_nan=False)
@@ -65,6 +70,12 @@ class TrackSegmentsClassifier(BaseModel):
     segments: Tuple[SegmentInfo, ...]
     sectors: SectorBoundaries
     use_cache: bool
+
+    schema_version: Literal[1, 2] = 1
+    speed_trap_m: Optional[float] = None
+    drs_zones: Tuple[DrsZoneInfo, ...] = ()
+    overtake_zones: Tuple[OvertakeZoneInfo, ...] = ()
+    active_aero_zones: Tuple[ActiveAeroZoneInfo, ...] = ()
 
     # Public field for read speed (PrivateAttr reads are far slower); a dataclass so cache writes skip pydantic's __setattr__.
     # Safe because the class is internal: input data never reaches it.
@@ -123,6 +134,46 @@ class TrackSegmentsClassifier(BaseModel):
                         f"corner numbers must start at 1 and have no gaps: missing {missing} before corner {num}"
                     )
         return self
+
+    @model_validator(mode="after")
+    def _check_zone_ids(self) -> "TrackSegmentsClassifier":
+        for kind, zones in (("drs_zones", self.drs_zones), ("overtake_zones", self.overtake_zones)):
+            ids = [z.id for z in zones]
+            dupes = sorted({i for i in ids if ids.count(i) > 1})
+            if dupes:
+                raise ValueError(f"{kind}: duplicate id {', '.join(str(i) for i in dupes)}")
+        return self
+
+    @model_validator(mode="after")
+    def _check_lap_positions(self) -> "TrackSegmentsClassifier":
+        for label, value in self._lap_positions():
+            if not 0 <= value < self.track_length:
+                raise ValueError(f"{label} ({value}) must be in [0, track_length={self.track_length})")
+        return self
+
+    def _lap_positions(self) -> Iterator[Tuple[str, float]]:
+        """Every schema v2 lap distance, labelled for error messages."""
+        if self.speed_trap_m is not None:
+            yield "speed_trap_m", self.speed_trap_m
+        for z in self.drs_zones:
+            yield f"drs zone {z.id} detection_m", z.detection_m
+            for a in z.activation:
+                yield f"drs zone {z.id} activation start_m", a.start_m
+                yield f"drs zone {z.id} activation end_m", a.end_m
+        for z in self.overtake_zones:
+            yield f"overtake zone {z.id} detection_m", z.detection_m
+            yield f"overtake zone {z.id} activation_m", z.activation_m
+        for i, z in enumerate(self.active_aero_zones):
+            yield f"active aero zone {i} start_m", z.start_m
+            yield f"active aero zone {i} end_m", z.end_m
+        for seg in self.segments:
+            if isinstance(seg, CornerSegmentInfo):
+                for b in seg.brake_boards:
+                    yield f"corner {seg.corner_number} {b.distance_m}m board at_m", b.at_m
+            elif isinstance(seg, ComplexCornerSegmentInfo):
+                for sub in seg.corners:
+                    for b in sub.brake_boards:
+                        yield f"corner {sub.corner_number} {b.distance_m}m board at_m", b.at_m
 
     # Field validator rather than post-init: the model is frozen, so segments can't be reassigned afterwards.
     # segment_id is the segment's index in the array.

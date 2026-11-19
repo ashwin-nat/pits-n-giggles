@@ -44,6 +44,75 @@ class SectorBoundaries(BaseModel):
         return self
 
 
+class BrakeBoardInfo(BaseModel):
+    """A brake board: its label, its real lap distance, and which side of the track it stands on."""
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False)
+
+    distance_m: Literal[50, 100, 150, 200, 250, 300]
+    at_m: float
+    side: Literal["left", "right", "both"]
+
+
+class SubCornerInfo(BaseModel):
+    """One corner's part of a complex corner."""
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False)
+
+    corner_number: int
+    name: str = ""
+    start_m: float
+    end_m: float
+    brake_boards: Tuple[BrakeBoardInfo, ...] = ()
+
+    @model_validator(mode="after")
+    def _check_range(self) -> "SubCornerInfo":
+        if self.start_m >= self.end_m:
+            raise ValueError(
+                f"corner {self.corner_number}: start_m ({self.start_m}) must be less than end_m ({self.end_m})"
+            )
+        return self
+
+
+class LapRangeInfo(BaseModel):
+    """A lap range that may cross the start line, shown by end_m < start_m."""
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False)
+
+    start_m: float
+    end_m: float
+
+    @model_validator(mode="after")
+    def _check_not_empty(self) -> "LapRangeInfo":
+        if self.start_m == self.end_m:
+            raise ValueError(f"zone is empty: start_m equals end_m ({self.start_m})")
+        return self
+
+
+class DrsActivationInfo(LapRangeInfo):
+    """One DRS activation range."""
+
+
+class DrsZoneInfo(BaseModel):
+    """A DRS detection point and the activation ranges it opens."""
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False)
+
+    id: int
+    detection_m: float
+    activation: Tuple[DrsActivationInfo, ...] = Field(min_length=1)
+
+
+class OvertakeZoneInfo(BaseModel):
+    """An overtake mode detection point and its activation point."""
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False)
+
+    id: int
+    detection_m: float
+    activation_m: float
+
+
+class ActiveAeroZoneInfo(LapRangeInfo):
+    """An active aero zone. Named to avoid lib.f1_types.ActiveAeroZone."""
+    mode: Literal["full", "partial"]
+
+
 class BaseSegmentInfo(BaseModel):
     model_config = ConfigDict(frozen=True, allow_inf_nan=False)
 
@@ -89,6 +158,7 @@ class CornerSegmentInfo(BaseSegmentInfo):
     type: Literal["corner"] = "corner"
     name: str = ""
     corner_number: int
+    brake_boards: Tuple[BrakeBoardInfo, ...] = ()
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -103,6 +173,7 @@ class ComplexCornerSegmentInfo(BaseSegmentInfo):
     type: Literal["complex_corner"] = "complex_corner"
     name: str = ""
     corner_numbers: Tuple[int, ...]
+    corners: Tuple[SubCornerInfo, ...] = ()
 
     @field_validator("corner_numbers")
     @classmethod
@@ -116,6 +187,38 @@ class ComplexCornerSegmentInfo(BaseSegmentInfo):
                     f"got {v[i - 1]} followed by {v[i]}"
                 )
         return v
+
+    @model_validator(mode="after")
+    def _check_sub_corners(self) -> "ComplexCornerSegmentInfo":
+        """When present, corners must match corner_numbers and tile the segment exactly."""
+        if not self.corners:
+            return self
+        numbers = tuple(c.corner_number for c in self.corners)
+        if numbers != self.corner_numbers:
+            raise ValueError(
+                f"{self._label()}: corners numbered {list(numbers)} must match "
+                f"corner_numbers {list(self.corner_numbers)}"
+            )
+        if self.corners[0].start_m != self.start_m:
+            raise ValueError(
+                f"{self._label()}: corner {numbers[0]} starts at {self.corners[0].start_m}, "
+                f"not at the segment start {self.start_m}"
+            )
+        if self.corners[-1].end_m != self.end_m:
+            raise ValueError(
+                f"{self._label()}: corner {numbers[-1]} ends at {self.corners[-1].end_m}, "
+                f"not at the segment end {self.end_m}"
+            )
+        for prev, curr in zip(self.corners, self.corners[1:]):
+            if curr.start_m != prev.end_m:
+                raise ValueError(
+                    f"{self._label()}: corner {curr.corner_number} starts at {curr.start_m}, "
+                    f"not where corner {prev.corner_number} ends ({prev.end_m})"
+                )
+        return self
+
+    def _label(self) -> str:
+        return f"complex_corner {self.name!r} at {self.start_m}m" if self.name else f"complex_corner at {self.start_m}m"
 
     def to_dict(self) -> Dict[str, object]:
         return {
