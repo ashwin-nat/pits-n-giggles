@@ -1,8 +1,15 @@
 """Extract track geometry (white-line edges) from an F1 25 install into assets/track-data/track_geometry.npz.
 
-POC: geometry only, Monza and Melbourne.
+POC: geometry only.
 
-usage: poetry run python -m apps.dev_tools.extract_track_data --game-dir "E:\\...\\F1 25" --layout monza melbourne
+usage: poetry run python -m apps.dev_tools.extract_track_data --game-dir "E:\\...\\F1 25" --layout monza=11 melbourne=0 losail=32
+
+Each --layout is "<game track folder>=<circuit number>". The folder is under
+<game>/2025_asset_groups/environment_package/tracks. The circuit number is the game's track id, the
+same value as "circuit_number" in assets/track-segments/*.json (look it up there; a track that only
+exists in older games may have no file, so take the id from the telemetry spec instead).
+
+The output file is rewritten from scratch, so pass every layout you want in it.
 """
 import argparse
 import re
@@ -13,11 +20,6 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 import zstandard
 
-# layout -> (game folder, circuit number)
-LAYOUTS: Dict[str, Tuple[str, int]] = {
-    "monza": ("monza", 11),
-    "melbourne": ("melbourne", 0),
-}
 TRACKS_SUBDIR = Path("2025_asset_groups") / "environment_package" / "tracks"
 OUT_FILE = Path(__file__).resolve().parents[2] / "assets" / "track-data" / "track_geometry.npz"
 
@@ -104,18 +106,21 @@ def build_geometry(gates: List[Dict[str, Any]]) -> Tuple[np.ndarray, np.ndarray]
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--game-dir", required=True, type=Path)
-    ap.add_argument("--layout", nargs="+", required=True, choices=sorted(LAYOUTS))
+    ap.add_argument("--layout", nargs="+", required=True, metavar="FOLDER=CIRCUIT")
     args = ap.parse_args()
 
     out: Dict[str, np.ndarray] = {}
-    for layout in args.layout:
-        folder, circuit = LAYOUTS[layout]
+    for spec in args.layout:
+        folder, _, number = spec.partition("=")
+        if not number.isdigit():
+            ap.error(f"--layout {spec!r} must be FOLDER=CIRCUIT, the id is never guessed")
+        circuit = int(number)
         erp = args.game_dir / TRACKS_SUBDIR / folder / "wep" / f"{folder}_common.erp"
         gates = parse_gates(read_aispline(erp))
         edges, frac = build_geometry(gates)
         out[f"c{circuit}_edges"] = edges
         out[f"c{circuit}_frac"] = frac
-        print(f"{layout}: circuit {circuit}, {len(gates)} gates, {len(edges)} track gates")
+        print(f"{folder}: circuit {circuit}, {len(gates)} gates, {len(edges)} track gates")
 
     OUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     np.savez(OUT_FILE, **out)
