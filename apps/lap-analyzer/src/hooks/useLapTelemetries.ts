@@ -6,25 +6,30 @@ import type { TelemetryPoint } from "../types/api";
 import { useSessions } from "./useSessions";
 import type { LoadedLap } from "../lib/lapSeries";
 
-// One telemetry query per lap slot. Each lap is asked only for the sensors its
-// session recorded, so a comparison lap from a recording with fewer sensors
-// yields a missing series rather than a failed fetch. `laps[i]` is slot i;
-// `undefined` while that slot is incomplete or still loading.
-export function useLapTelemetries(laps: readonly LapSelection[], sensors: readonly string[]) {
+// One telemetry query per lap slot, keyed by lap alone and carrying every
+// sensor its session recorded. The charts, the section table and the map all
+// read the same query, so each lap is downloaded once and toggling a sensor
+// does not refetch. `laps[i]` is slot i; `undefined` while that slot is
+// incomplete or still loading.
+export function useLapTelemetries(laps: readonly LapSelection[]) {
   const active = useLapAnalyzerProvider();
   const { data: sessions } = useSessions();
 
   const queries = useQueries({
     queries: laps.map((lap) => {
       const manifest = sessions?.find((s) => s.id === lap.sessionId)?.sensorManifest;
-      const wanted = manifest === undefined ? [] : sensors.filter((key) => manifest.some((s) => s.key === key));
       return {
-        queryKey: ["telemetry", active?.id ?? null, lap.sessionId, lap.driverIndex, lap.lapNumber, wanted],
+        queryKey: ["telemetry", active?.id ?? null, lap.sessionId, lap.driverIndex, lap.lapNumber],
         queryFn: (): Promise<TelemetryPoint[]> => {
-          if (active === null || !isCompleteLap(lap)) {
+          if (active === null || !isCompleteLap(lap) || manifest === undefined) {
             throw new Error("useLapTelemetries queried an incomplete lap");
           }
-          return active.provider.getTelemetry(lap.sessionId, lap.driverIndex, lap.lapNumber, wanted);
+          return active.provider.getTelemetry(
+            lap.sessionId,
+            lap.driverIndex,
+            lap.lapNumber,
+            manifest.map((s) => s.key)
+          );
         },
         enabled: active !== null && manifest !== undefined && isCompleteLap(lap),
         // A recorded lap never changes.

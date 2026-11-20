@@ -55,7 +55,7 @@ export function ChartLaneList({ crosshairPosition, onCrosshairMove }: ChartLaneL
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sensors.join(",")]);
 
-  const { laps: loaded, isFetching, errors, retry } = useLapTelemetries(laps, sensors);
+  const { laps: loaded, isFetching, errors, retry } = useLapTelemetries(laps);
 
   // Corners are shaded behind the traces, lining up with the strip's pills.
   const { data: sessions } = useSessions();

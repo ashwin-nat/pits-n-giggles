@@ -4,7 +4,7 @@ import { useSessions } from "../../hooks/useSessions";
 import { useTrackGeometry } from "../../hooks/useTrackGeometry";
 import { useTrackMeta } from "../../hooks/useTrackMeta";
 import { LAP_SLOT_COLORS, LAP_SLOT_LETTERS } from "../../lib/chartConstants";
-import { buildMapGeometry, drivenLine, POSITION_KEYS } from "../../lib/mapGeometry";
+import { buildMapGeometry, drivenLine } from "../../lib/mapGeometry";
 import { sectionCode, sectionViewport } from "../../lib/sectionStrip";
 import { buildSectionRows } from "../../lib/sectionTable";
 import { useTelemetryStore } from "../../store/telemetryStore";
@@ -12,7 +12,6 @@ import { isCompleteLap } from "../../types/store";
 import type { TrackSection } from "../../types/api";
 import { MapSvg } from "./MapSvg";
 
-const SPEED_KEY = ["speed"];
 const DEFAULT_PANEL_PX = 380;
 const MIN_PANEL_PX = 280;
 const MAX_PANEL_PX = 800;
@@ -34,8 +33,7 @@ function SectionTable({ sections, trackLength }: { sections: TrackSection[]; tra
   const setHoverSection = useTelemetryStore((s) => s.setHoverSection);
   const setViewport = useTelemetryStore((s) => s.setViewport);
 
-  // Speed is fetched here whether or not the user charts it.
-  const { laps: loaded } = useLapTelemetries(laps, SPEED_KEY);
+  const { laps: loaded } = useLapTelemetries(laps);
   const rows = useMemo(() => buildSectionRows(loaded, sections), [loaded, sections]);
 
   const hasSpeed = rows.some((r) => r.minA !== null);
@@ -122,7 +120,7 @@ export function MapPanel({ crosshairPosition }: { crosshairPosition: number | nu
     [rawGeometry]
   );
 
-  const { laps: positions } = useLapTelemetries(laps, POSITION_KEYS);
+  const { laps: positions } = useLapTelemetries(laps);
   const lines = useMemo(() => positions.map((lap) => drivenLine(lap?.points)), [positions]);
 
   // Drag the panel's left edge: moving left widens it.
