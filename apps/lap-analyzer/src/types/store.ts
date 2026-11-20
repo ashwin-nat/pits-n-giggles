@@ -10,6 +10,22 @@ export interface SelectionState {
   sensors: string[]; // sensor keys, e.g. ["speed", "throttle", "brake"]
 }
 
+// One complete lap. laps[0] is the reference lap (A); laps[1..3] are comparison laps.
+export interface LapRef {
+  sessionId: string;
+  driverIndex: number;
+  lapNumber: number;
+}
+
+// A slot's selection while the old cascading pickers are still in use: any
+// field may be null until the user finishes picking. Slice 5's Choose lap
+// modal only ever produces a complete LapRef, and this type goes away.
+export type LapSelection = { [K in keyof LapRef]: LapRef[K] | null };
+
+export function isCompleteLap(lap: LapSelection | undefined): lap is LapRef {
+  return lap !== undefined && lap.sessionId !== null && lap.driverIndex !== null && lap.lapNumber !== null;
+}
+
 export interface Viewport {
   distanceStart: number;
   distanceEnd: number;

@@ -1,32 +1,46 @@
 import { create } from "zustand";
-import type { ActiveSection, SelectionState, Viewport } from "../types/store";
+import { MAX_COMPARISON_LAPS } from "../lib/chartConstants";
+import type { ActiveSection, LapSelection, SelectionState, Viewport } from "../types/store";
 
-const emptySelection: SelectionState = {
-  sessionId: null,
-  driverIndex: null,
-  lapNumber: null,
-  sensors: [],
-};
+const emptyLap: LapSelection = { sessionId: null, driverIndex: null, lapNumber: null };
 
-// Changing sessionId invalidates any stale driverIndex/lapNumber/sensors left
-// over from the previous session's manifest -- but values passed in the same
-// patch (e.g. selecting session + driver together) must still take effect, so
-// reset to empty first and apply the patch on top of that, rather than on top
-// of the old selection. Shared by setPrimary and setReference so this rule
-// can't drift between the two.
-function applySelectionPatch(current: SelectionState, patch: Partial<SelectionState>): SelectionState {
-  if ("sessionId" in patch && patch.sessionId !== current.sessionId) {
-    return { ...emptySelection, ...patch };
-  }
-  return { ...current, ...patch };
+// Slots hold at most the reference lap plus MAX_COMPARISON_LAPS comparison laps.
+const MAX_LAPS = 1 + MAX_COMPARISON_LAPS;
+
+// A new session invalidates the driver and lap left over from the old one,
+// but values in the same patch still apply.
+function patchLap(current: LapSelection, patch: Partial<LapSelection>): LapSelection {
+  const base = "sessionId" in patch && patch.sessionId !== current.sessionId ? emptyLap : current;
+  return { ...base, ...patch };
+}
+
+// primary / reference are the old two-lap view of `laps` + `sensors`, kept so
+// the existing pickers and charts run unchanged until slices 2 to 5 replace
+// them. They are rebuilt on every write so selectors get a stable reference.
+function derive(laps: LapSelection[], sensors: string[]) {
+  const primary: SelectionState = { ...(laps[0] ?? emptyLap), sensors };
+  const reference: SelectionState | null = laps[1] === undefined ? null : { ...laps[1], sensors };
+  return { laps, sensors, primary, reference };
 }
 
 export interface TelemetryStore {
-  // Primary selection
+  // laps[0] is the reference lap (A); laps[1..3] are comparison laps (B to D).
+  laps: LapSelection[];
+  // Sensor keys drawn for every lap.
+  sensors: string[];
+  setSensors: (sensors: string[]) => void;
+  // Patches slot `slot`; a slot one past the end appends (up to the cap).
+  // Changing A's session drops the comparison laps, the sensors and the
+  // viewport: all three are tied to the old session's circuit and manifest.
+  setLap: (slot: number, patch: Partial<LapSelection>) => void;
+  // Removing A promotes nothing: it clears the whole selection.
+  removeLap: (slot: number) => void;
+  // Moves a lap held in another slot to `toSlot`, swapping the two.
+  moveLap: (fromSlot: number, toSlot: number) => void;
+
+  // Old two-lap view of the above (see derive).
   primary: SelectionState;
   setPrimary: (patch: Partial<SelectionState>) => void;
-
-  // Reference selection (null = no comparison active)
   reference: SelectionState | null;
   setReference: (patch: Partial<SelectionState> | null) => void;
 
@@ -39,6 +53,11 @@ export interface TelemetryStore {
   activeSection: ActiveSection | null;
   setActiveSection: (section: ActiveSection | null) => void;
 
+  // Section under the pointer on the strip or the section table. Read by the
+  // charts and the map; null when nothing is hovered.
+  hoverSection: ActiveSection | null;
+  setHoverSection: (section: ActiveSection | null) => void;
+
   // Whether to show the delta lane
   showDelta: boolean;
   toggleDelta: () => void;
@@ -47,49 +66,95 @@ export interface TelemetryStore {
   incidentsPanelOpen: boolean;
   toggleIncidentsPanel: () => void;
 
-  // Clears primary/reference selection plus viewport/activeSection -- for
-  // when the underlying provider itself changes (a new file loaded), where
-  // every distance/index in the old state may no longer mean anything
-  // against the new data. Leaves showDelta/incidentsPanelOpen alone -- those
-  // are user display preferences, not data tied to the loaded session.
+  // Clears the lap selection plus viewport/activeSection -- for when the
+  // underlying provider itself changes (a new file loaded), where every
+  // distance/index in the old state may no longer mean anything against the
+  // new data. Leaves showDelta/incidentsPanelOpen alone -- those are user
+  // display preferences, not data tied to the loaded session.
   reset: () => void;
 }
 
 export const useTelemetryStore = create<TelemetryStore>((set) => ({
-  primary: emptySelection,
-  setPrimary: (patch) =>
+  ...derive([], []),
+
+  setSensors: (sensors) => set((state) => derive(state.laps, sensors)),
+
+  setLap: (slot, patch) =>
     set((state) => {
-      // Changing sessionId invalidates any stale driverIndex/lapNumber/sensors
-      // left over from the previous session's manifest -- but values passed
-      // in this same patch (e.g. selecting session + driver together) must
-      // still take effect, so reset to empty first and apply the patch on
-      // top of that, rather than on top of the old state.
-      if ("sessionId" in patch && patch.sessionId !== state.primary.sessionId) {
-        // A reference lap must share primary's circuit+formula (see
-        // SessionSelector's restrictToSessionId) -- an active reference's
-        // session may no longer qualify once primary's session changes, so
-        // drop it rather than leave it pointing at a now-invalid session.
-        // The user re-adds a reference under the new circuit+formula.
-        // viewport/activeSection are distance-in-metres state scoped to the
-        // *old* circuit -- a shorter new track can leave both pointing past
-        // the end of the real data (empty chart, focus zone off-screen).
-        return { primary: { ...emptySelection, ...patch }, reference: null, viewport: null, activeSection: null };
+      if (slot < 0 || slot > state.laps.length || slot >= MAX_LAPS) {
+        return state;
       }
-      // A reference lap must share primary's circuit+formula (see
-      // SessionSelector's restrictToSessionId) -- an active reference's
-      // session may no longer qualify once primary's session changes, so
-      // drop it rather than leave it pointing at a now-invalid session.
-      // The user re-adds a reference under the new circuit+formula.
-      return { primary: applySelectionPatch(state.primary, patch), reference: null };
+      const current = state.laps[slot] ?? emptyLap;
+      if (slot === 0 && "sessionId" in patch && patch.sessionId !== current.sessionId) {
+        return {
+          ...derive([{ ...emptyLap, ...patch }], []),
+          viewport: null,
+          activeSection: null,
+          hoverSection: null,
+        };
+      }
+      const laps = [...state.laps];
+      laps[slot] = patchLap(current, patch);
+      return derive(laps, state.sensors);
     }),
 
-  reference: null,
+  removeLap: (slot) =>
+    set((state) => {
+      if (slot < 0 || slot >= state.laps.length) {
+        return state;
+      }
+      if (slot === 0) {
+        return { ...derive([], []), viewport: null, activeSection: null, hoverSection: null };
+      }
+      return derive(
+        state.laps.filter((_, i) => i !== slot),
+        state.sensors
+      );
+    }),
+
+  moveLap: (fromSlot, toSlot) =>
+    set((state) => {
+      const { laps } = state;
+      if (fromSlot === toSlot || fromSlot < 0 || toSlot < 0 || fromSlot >= laps.length || toSlot >= laps.length) {
+        return state;
+      }
+      const next = [...laps];
+      [next[fromSlot], next[toSlot]] = [next[toSlot], next[fromSlot]];
+      return derive(next, state.sensors);
+    }),
+
+  setPrimary: (patch) =>
+    set((state) => {
+      const { sensors, ...lapPatch } = patch;
+      const sessionChanged = "sessionId" in lapPatch && lapPatch.sessionId !== (state.laps[0]?.sessionId ?? null);
+      // A session change resets sensors, then the same patch's sensors apply on top.
+      const baseSensors = sessionChanged ? [] : state.sensors;
+      const nextSensors = sensors ?? baseSensors;
+      if (sessionChanged) {
+        return {
+          ...derive([{ ...emptyLap, ...lapPatch }], nextSensors),
+          viewport: null,
+          activeSection: null,
+          hoverSection: null,
+        };
+      }
+      const laps = [...state.laps];
+      laps[0] = { ...(laps[0] ?? emptyLap), ...lapPatch };
+      return derive(laps, nextSensors);
+    }),
+
   setReference: (patch) =>
     set((state) => {
-      if (patch === null) {
-        return { reference: null };
+      if (state.laps.length === 0) {
+        return state;
       }
-      return { reference: applySelectionPatch(state.reference ?? emptySelection, patch) };
+      if (patch === null) {
+        return derive(state.laps.slice(0, 1), state.sensors);
+      }
+      const { sensors, ...lapPatch } = patch;
+      const laps = [...state.laps];
+      laps[1] = patchLap(laps[1] ?? emptyLap, lapPatch);
+      return derive(laps.slice(0, 2), sensors ?? state.sensors);
     }),
 
   viewport: null,
@@ -98,11 +163,14 @@ export const useTelemetryStore = create<TelemetryStore>((set) => ({
   activeSection: null,
   setActiveSection: (section) => set({ activeSection: section }),
 
+  hoverSection: null,
+  setHoverSection: (section) => set({ hoverSection: section }),
+
   showDelta: false,
   toggleDelta: () => set((state) => ({ showDelta: !state.showDelta })),
 
   incidentsPanelOpen: false,
   toggleIncidentsPanel: () => set((state) => ({ incidentsPanelOpen: !state.incidentsPanelOpen })),
 
-  reset: () => set({ primary: emptySelection, reference: null, viewport: null, activeSection: null }),
+  reset: () => set({ ...derive([], []), viewport: null, activeSection: null, hoverSection: null }),
 }));
