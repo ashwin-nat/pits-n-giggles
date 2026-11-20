@@ -52,6 +52,9 @@ export function useLapTelemetries(laps: readonly LapSelection[], sensors: readon
   return {
     laps: loaded,
     isFetching: queries.some((q) => q.isFetching),
-    error: queries.find((q) => q.error)?.error ?? null,
+    // Per slot, so one failed comparison lap does not take the others down.
+    errors: queries.map((q) => (q.error instanceof Error ? q.error : q.error ? new Error(String(q.error)) : null)),
+    // Refetches only the slots that failed.
+    retry: () => queries.forEach((q) => q.error && void q.refetch()),
   };
 }

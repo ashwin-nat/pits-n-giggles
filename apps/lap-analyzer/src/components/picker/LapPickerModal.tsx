@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 import { useDriverBests } from "../../hooks/useDriverBests";
 import { useSessions } from "../../hooks/useSessions";
 import { LAP_SLOT_COLORS, LAP_SLOT_LETTERS } from "../../lib/chartConstants";
-import { formatLapTime, isWholeLap } from "../../lib/lapFormat";
-import { comparableSessions, gameLabel, newestFirst } from "../../lib/sessionFilters";
+import { formatLapTime, isPartialLap } from "../../lib/lapFormat";
+import { comparableSessions, effectiveGame, gameLabel, newestFirst } from "../../lib/sessionFilters";
 import { getTeamColor } from "../../lib/teamColors";
 import { useTelemetryStore } from "../../store/telemetryStore";
 import type { Lap, Session } from "../../types/api";
@@ -85,13 +85,13 @@ export function LapPickerModal({ slot, trackId, onClose }: LapPickerModalProps) 
     if (isComparison) {
       return newestFirst(comparableSessions(sessions, reference));
     }
-    const currentGame = game ?? (reference === undefined ? null : gameLabel(reference));
+    const currentGame = effectiveGame(sessions, game, laps[0]?.sessionId ?? null);
     return newestFirst(
       sessions.filter(
         (s) => (trackId === undefined || s.trackId === trackId) && (currentGame === null || gameLabel(s) === currentGame)
       )
     );
-  }, [sessions, isComparison, reference, game, trackId]);
+  }, [sessions, isComparison, reference, game, laps, trackId]);
 
   // Defaults to the slot's own session, else A's, else the newest.
   const [pickedSession, setPickedSession] = useState<string | null>(null);
@@ -105,8 +105,12 @@ export function LapPickerModal({ slot, trackId, onClose }: LapPickerModalProps) 
   const [pickedDriver, setPickedDriver] = useState<number | null>(null);
   const [order, setOrder] = useState<LapOrder>("lap");
   const { rows, isLoading } = useDriverBests(sessionId);
+  // Every driver with laps, fastest personal best first; drivers with no valid timed lap last.
   const drivers = useMemo(
-    () => rows.filter((r) => r.bestMs !== null).sort((a, b) => (a.bestMs as number) - (b.bestMs as number)),
+    () =>
+      rows
+        .filter((r) => r.laps.length > 0)
+        .sort((a, b) => (a.bestMs ?? Infinity) - (b.bestMs ?? Infinity) || a.driver.index - b.driver.index),
     [rows]
   );
   const driverIndex =
@@ -183,7 +187,7 @@ export function LapPickerModal({ slot, trackId, onClose }: LapPickerModalProps) 
           ) : isLoading && drivers.length === 0 ? (
             <Empty>Loading…</Empty>
           ) : drivers.length === 0 ? (
-            <Empty>No driver has a whole lap in this session</Empty>
+            <Empty>No driver has laps in this session</Empty>
           ) : (
             drivers.map(({ driver: d, bestMs }) => {
               const isSessionBest = sessionBest !== null && sessionBest.driverIndex === d.index && sessionBest.lapTimeMs === bestMs;
@@ -226,28 +230,27 @@ export function LapPickerModal({ slot, trackId, onClose }: LapPickerModalProps) 
                 ))}
               </div>
               {shownLaps.map((lap) => {
-                const whole = isWholeLap(lap);
+                const partial = isPartialLap(lap);
                 const isSessionBest =
                   sessionBest !== null &&
                   sessionBest.driverIndex === driver.driver.index &&
                   sessionBest.lapNumber === lap.lapNumber;
-                const isPersonalBest = !isSessionBest && lap.valid && whole && lap.lapTime === driver.bestMs;
+                const isPersonalBest = !isSessionBest && lap.valid && lap.lapTime !== null && lap.lapTime === driver.bestMs;
                 const held = sessionId === null ? [] : holders(laps, sessionId, driver.driver.index, lap.lapNumber);
                 return (
                   <button
                     key={lap.lapNumber}
                     type="button"
-                    disabled={!whole}
                     aria-pressed={held.includes(slot)}
                     onClick={() => pick(lap)}
-                    title={whole ? undefined : (lap.incompleteReason ?? "Not recorded in full")}
-                    className={`${listItemClass} ${whole ? "" : "cursor-not-allowed opacity-50"}`}
+                    title={partial ? `Partly recorded: ${lap.incompleteReason ?? "not captured in full"}` : undefined}
+                    className={listItemClass}
                   >
                     <span className="w-6">
                       <SlotBadges slots={held} />
                     </span>
                     <span
-                      className={`font-mono text-sm ${whole ? "" : "line-through"} ${isSessionBest ? "text-best" : isPersonalBest ? "text-ahead" : "text-tone-100"}`}
+                      className={`font-mono text-sm ${isSessionBest ? "text-best" : isPersonalBest ? "text-ahead" : "text-tone-100"}`}
                     >
                       {formatLapTime(lap.lapTime)}
                     </span>
@@ -257,7 +260,7 @@ export function LapPickerModal({ slot, trackId, onClose }: LapPickerModalProps) 
                       {lap.lapNumber === 1 && session?.type === "Race" && <span className="text-tone-500">Start</span>}
                       {(lap.pitInLap || lap.pitOutLap) && <span className="text-tone-500">Pit</span>}
                       {!lap.valid && <span className="text-behind">Invalid</span>}
-                      {!whole && <span className="text-tone-500">{lap.incompleteReason ?? "Partial"}</span>}
+                      {partial && <span className="text-amber-400">Partly recorded</span>}
                     </span>
                   </button>
                 );

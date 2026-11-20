@@ -1,13 +1,13 @@
 import { useQueries } from "@tanstack/react-query";
 import { useLapAnalyzerProvider } from "../providers/ProviderContext";
-import { isWholeLap } from "../lib/lapFormat";
+import { bestValidLapMs } from "../lib/lapFormat";
 import type { Driver, Lap } from "../types/api";
 import { useDrivers } from "./useDrivers";
 
 export interface DriverBest {
   driver: Driver;
   laps: Lap[];
-  // Fastest whole lap, null when the driver has none.
+  // Fastest valid timed lap (personal best), null when the driver has none.
   bestMs: number | null;
 }
 
@@ -34,8 +34,7 @@ export function useDriverBests(sessionId: string | null) {
 
   const rows: DriverBest[] = list.map((driver, i) => {
     const laps: Lap[] = queries[i]?.data ?? [];
-    const times = laps.filter(isWholeLap).map((l) => l.lapTime as number);
-    return { driver, laps, bestMs: times.length > 0 ? Math.min(...times) : null };
+    return { driver, laps, bestMs: bestValidLapMs(laps) };
   });
 
   return { rows, isLoading: driversLoading || queries.some((q) => q.isLoading) };

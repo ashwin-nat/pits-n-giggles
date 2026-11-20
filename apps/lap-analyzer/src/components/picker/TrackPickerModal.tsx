@@ -3,7 +3,7 @@ import { useSessions } from "../../hooks/useSessions";
 import { formatLapTime } from "../../lib/lapFormat";
 import { buildMapGeometry, toPath, type Pt } from "../../lib/mapGeometry";
 import { getAllTrackMeta, type TrackMeta } from "../../lib/segments";
-import { gameLabel, sortTracks, summariseTracks, type TrackOrder, type TrackSummary } from "../../lib/sessionFilters";
+import { effectiveGame, gameLabel, sortTracks, summariseTracks, type TrackOrder, type TrackSummary } from "../../lib/sessionFilters";
 import { getTrackGeometry } from "../../lib/trackGeometry";
 import { useTelemetryStore } from "../../store/telemetryStore";
 import { Modal } from "../ui/Modal";
@@ -101,7 +101,9 @@ function TrackCard({ track, onPick }: { track: TrackSummary; onPick: () => void 
 // layouts nothing has been recorded on yet.
 export function TrackPickerModal({ onPick, onClose }: TrackPickerModalProps) {
   const { data: sessions } = useSessions();
-  const game = useTelemetryStore((s) => s.game);
+  const picked = useTelemetryStore((s) => s.game);
+  const referenceSessionId = useTelemetryStore((s) => s.laps[0]?.sessionId ?? null);
+  const game = useMemo(() => effectiveGame(sessions ?? [], picked, referenceSessionId), [sessions, picked, referenceSessionId]);
   const [order, setOrder] = useState<TrackOrder>("calendar");
   const [calendar, setCalendar] = useState<Map<number, TrackMeta>>(new Map());
 

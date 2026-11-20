@@ -20,6 +20,20 @@ export function listGames(sessions: readonly Session[]): { label: string; count:
     .map(([label, { count }]) => ({ label, count }));
 }
 
+// The game every list is filtered to: the user's pick, else the reference
+// lap's game, else the newest game. null only when there are no sessions.
+export function effectiveGame(
+  sessions: readonly Session[],
+  picked: string | null,
+  referenceSessionId: string | null
+): string | null {
+  if (picked !== null) {
+    return picked;
+  }
+  const reference = sessions.find((s) => s.id === referenceSessionId);
+  return reference === undefined ? (listGames(sessions)[0]?.label ?? null) : gameLabel(reference);
+}
+
 export function newestFirst(sessions: readonly Session[]): Session[] {
   return [...sessions].sort((a, b) => b.date.localeCompare(a.date));
 }

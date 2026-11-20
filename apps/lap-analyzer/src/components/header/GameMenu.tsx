@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSessions } from "../../hooks/useSessions";
-import { gameLabel, listGames } from "../../lib/sessionFilters";
+import { effectiveGame, listGames } from "../../lib/sessionFilters";
 import { useTelemetryStore } from "../../store/telemetryStore";
 import { Popover } from "../ui/Popover";
 import { listItemClass } from "../ui/surfaces";
@@ -15,8 +15,7 @@ export function GameMenu() {
   const [open, setOpen] = useState(false);
 
   const games = listGames(sessions ?? []);
-  const referenceSession = sessions?.find((s) => s.id === referenceSessionId);
-  const current = game ?? (referenceSession === undefined ? (games[0]?.label ?? null) : gameLabel(referenceSession));
+  const current = effectiveGame(sessions ?? [], game, referenceSessionId);
 
   return (
     <div className="relative">

@@ -66,7 +66,7 @@ export interface TelemetryStore {
   incidentsPanelOpen: boolean;
   toggleIncidentsPanel: () => void;
 
-  // Clears the lap selection plus viewport/activeSection -- for when the
+  // Clears the lap selection, game filter plus viewport/activeSection -- for when the
   // underlying provider itself changes (a new file loaded), where every
   // distance/index in the old state may no longer mean anything against the
   // new data. Leaves showDelta/incidentsPanelOpen alone -- those are user
@@ -161,5 +161,5 @@ export const useTelemetryStore = create<TelemetryStore>((set, get) => ({
   incidentsPanelOpen: false,
   toggleIncidentsPanel: () => set((state) => ({ incidentsPanelOpen: !state.incidentsPanelOpen })),
 
-  reset: () => set({ ...derive([], []), viewport: null, activeSection: null, hoverSection: null }),
+  reset: () => set({ ...derive([], []), game: null, viewport: null, activeSection: null, hoverSection: null }),
 }));

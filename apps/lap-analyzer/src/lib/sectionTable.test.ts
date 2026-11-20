@@ -23,7 +23,14 @@ test("timeAt interpolates between samples and is null outside the recorded range
   const l = lap(10, [100, 100, 100, 100]);
   assert.equal(timeAt(l, 150), 1500);
   assert.equal(timeAt(l, 300), 3000);
-  assert.equal(timeAt(l, 301), null);
+  assert.equal(timeAt(l, 400), null);
+});
+
+test("timeAt clamps a distance just outside the first and last sample to that sample", () => {
+  const l: LoadedLap = { manifest, points: [0.4, 100, 200, 298].map((d) => ({ lapDistance: d, lap_time_ms: d * 10 })) };
+  assert.equal(timeAt(l, 0), 4);
+  assert.equal(timeAt(l, 300), 2980);
+  assert.equal(timeAt(l, -100), null);
 });
 
 test("sectionTime is the seconds between the section's ends", () => {

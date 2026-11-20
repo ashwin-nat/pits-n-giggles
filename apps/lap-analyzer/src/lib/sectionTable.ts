@@ -6,12 +6,23 @@ import type { LoadedLap } from "./lapSeries";
 const SPEED_KEY = "speed";
 const TIME_KEY = "lap_time_ms";
 
-// Lap time at distance d, interpolated between samples; null outside the recorded range.
+// Real laps start and end a sample or two away from 0 and the track length,
+// so a distance this close to the recorded range counts as its end sample.
+const END_TOLERANCE_M = 25;
+
+// Lap time at distance d, interpolated between samples; null outside the
+// recorded range (plus END_TOLERANCE_M at each end).
 export function timeAt(lap: LoadedLap, d: number): number | null {
   const pts = lap.points;
-  if (pts.length === 0 || d < pts[0].lapDistance || d > pts[pts.length - 1].lapDistance) {
+  if (pts.length === 0) {
     return null;
   }
+  const first = pts[0].lapDistance;
+  const last = pts[pts.length - 1].lapDistance;
+  if (d < first - END_TOLERANCE_M || d > last + END_TOLERANCE_M) {
+    return null;
+  }
+  d = Math.min(last, Math.max(first, d));
   let lo = 0;
   let hi = pts.length - 1;
   while (lo < hi) {

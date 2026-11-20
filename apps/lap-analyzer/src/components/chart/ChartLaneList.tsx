@@ -3,7 +3,7 @@ import { useLapTelemetries } from "../../hooks/useLapTelemetries";
 import { useTelemetryStore } from "../../store/telemetryStore";
 import { buildDeltas, buildLapSeries } from "../../lib/lapSeries";
 import { isCompleteLap } from "../../types/store";
-import { DELTA_LANE_HEIGHT_PX, LANE_HEIGHT_PX, SPEED_LANE_HEIGHT_PX } from "../../lib/chartConstants";
+import { DELTA_LANE_HEIGHT_PX, LANE_HEIGHT_PX, LAP_SLOT_LETTERS, SPEED_LANE_HEIGHT_PX } from "../../lib/chartConstants";
 import { useSessions } from "../../hooks/useSessions";
 import { useTrackMeta } from "../../hooks/useTrackMeta";
 import { ChartLane, type LaneSeries } from "./ChartLane";
@@ -55,7 +55,7 @@ export function ChartLaneList({ crosshairPosition, onCrosshairMove }: ChartLaneL
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sensors.join(",")]);
 
-  const { laps: loaded, isFetching, error } = useLapTelemetries(laps, sensors);
+  const { laps: loaded, isFetching, errors, retry } = useLapTelemetries(laps, sensors);
 
   // Corners are shaded behind the traces, lining up with the strip's pills.
   const { data: sessions } = useSessions();
@@ -75,13 +75,18 @@ export function ChartLaneList({ crosshairPosition, onCrosshairMove }: ChartLaneL
   if (sensors.length === 0) {
     return <EmptyState>Select sensors to view telemetry</EmptyState>;
   }
-  if (error !== null) {
+  // Only A's failure blanks the charts; a failed comparison lap is a banner and a missing series.
+  if (errors[0] !== null && errors[0] !== undefined) {
     return (
-      <div className="p-8 text-center text-sm text-red-400">
-        Failed to load telemetry: {error instanceof Error ? error.message : String(error)}
+      <div className="flex flex-col items-center gap-3 p-8 text-sm text-red-400">
+        <span>Failed to load telemetry: {errors[0].message}</span>
+        <button type="button" onClick={retry} className="rounded-lg bg-tone-800 px-3 py-1.5 text-xs text-tone-100 hover:bg-tone-700">
+          Retry
+        </button>
       </div>
     );
   }
+  const failedSlots = errors.flatMap((e, slot) => (slot > 0 && e !== null ? [slot] : []));
   if (series === null) {
     return <EmptyState>Loading telemetry…</EmptyState>;
   }
@@ -94,8 +99,10 @@ export function ChartLaneList({ crosshairPosition, onCrosshairMove }: ChartLaneL
       if (from === to) {
         return prev;
       }
+      // Dragged down: land after the target; dragged up: before it.
+      const down = prev.indexOf(from) < prev.indexOf(to);
       const next = prev.filter((key) => key !== from);
-      next.splice(next.indexOf(to), 0, from);
+      next.splice(next.indexOf(to) + (down ? 1 : 0), 0, from);
       return next;
     });
   }
@@ -107,6 +114,16 @@ export function ChartLaneList({ crosshairPosition, onCrosshairMove }: ChartLaneL
       {isFetching && (
         <div className="sticky top-0 z-10 flex justify-center bg-gradient-to-b from-canvas to-transparent py-2">
           <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300 shadow">Loading…</span>
+        </div>
+      )}
+      {failedSlots.length > 0 && (
+        <div className="flex items-center gap-3 border-b border-tone-800/70 bg-red-950/30 px-3 py-1.5 text-xs text-red-300">
+          <span>
+            Could not load lap {failedSlots.map((slot) => LAP_SLOT_LETTERS[slot]).join(", ")}: {errors[failedSlots[0]]?.message}
+          </span>
+          <button type="button" onClick={retry} className="rounded-md bg-tone-800 px-2 py-0.5 text-tone-100 hover:bg-tone-700">
+            Retry
+          </button>
         </div>
       )}
       {deltas.length > 0 && (

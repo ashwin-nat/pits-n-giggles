@@ -175,6 +175,8 @@ export function MapSvg({ geometry, meta, lines, lapPresent, labels, crosshairPos
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={() => (drag.current = null)}
+        onPointerCancel={() => (drag.current = null)}
+        onLostPointerCapture={() => (drag.current = null)}
         onDoubleClick={() => {
           setView(null);
           setFollow(false);

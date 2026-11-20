@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { comparableSessions, gameLabel, listGames, newestFirst, sortTracks, summariseTracks } from "./sessionFilters";
+import { comparableSessions, effectiveGame, gameLabel, listGames, newestFirst, sortTracks, summariseTracks } from "./sessionFilters";
 import type { Session } from "../types/api";
 
 function session(id: string, over: Partial<Session> = {}): Session {
@@ -28,6 +28,14 @@ test("listGames counts sessions per game, newest year first", () => {
     { label: "F1 2024", count: 1 },
   ]);
   assert.equal(gameLabel(session("a")), "F1 2025");
+});
+
+test("effectiveGame: the pick, else A's game, else the newest game", () => {
+  const sessions = [session("a"), session("b", { gameYear: 2024 })];
+  assert.equal(effectiveGame(sessions, "F1 2024", "a"), "F1 2024");
+  assert.equal(effectiveGame(sessions, null, "b"), "F1 2024");
+  assert.equal(effectiveGame(sessions, null, null), "F1 2025");
+  assert.equal(effectiveGame([], null, null), null);
 });
 
 test("newestFirst orders by date descending without mutating the input", () => {

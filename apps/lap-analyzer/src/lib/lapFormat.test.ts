@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatGap, formatLapTime, isWholeLap } from "./lapFormat";
+import { bestValidLapMs, formatGap, formatLapTime, isPartialLap } from "./lapFormat";
 
 test("formatLapTime renders m:ss.mmm and a placeholder for a missing time", () => {
   assert.equal(formatLapTime(81900), "1:21.900");
@@ -14,9 +14,20 @@ test("formatGap is signed seconds", () => {
   assert.equal(formatGap(0), "0.000");
 });
 
-test("isWholeLap needs a time and a complete recording; absent complete counts as complete", () => {
-  assert.equal(isWholeLap({ lapTime: 80000 }), true);
-  assert.equal(isWholeLap({ lapTime: 80000, complete: true }), true);
-  assert.equal(isWholeLap({ lapTime: 80000, complete: false }), false);
-  assert.equal(isWholeLap({ lapTime: null }), false);
+test("isPartialLap is a timed lap recorded in part; absent complete counts as complete", () => {
+  assert.equal(isPartialLap({ lapTime: 80000 }), false);
+  assert.equal(isPartialLap({ lapTime: 80000, complete: true }), false);
+  assert.equal(isPartialLap({ lapTime: 80000, complete: false }), true);
+  assert.equal(isPartialLap({ lapTime: null, complete: false }), false);
+});
+
+test("bestValidLapMs ignores invalid and untimed laps", () => {
+  const laps = [
+    { lapTime: 88900, valid: false },
+    { lapTime: 89500, valid: true },
+    { lapTime: null, valid: true },
+    { lapTime: 90100, valid: true },
+  ];
+  assert.equal(bestValidLapMs(laps), 89500);
+  assert.equal(bestValidLapMs([{ lapTime: 88900, valid: false }]), null);
 });

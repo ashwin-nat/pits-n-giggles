@@ -17,7 +17,14 @@ export function formatGap(ms: number): string {
   return `${seconds > 0 ? "+" : ""}${seconds.toFixed(3)}`;
 }
 
-// A lap can be picked only when it was recorded start to finish and timed.
-export function isWholeLap(lap: { lapTime: number | null; complete?: boolean }): boolean {
-  return lap.lapTime !== null && lap.complete !== false;
+// Timed but not captured in full (the recording started or stopped mid-lap).
+// Still pickable; the picker warns.
+export function isPartialLap(lap: { lapTime: number | null; complete?: boolean }): boolean {
+  return lap.lapTime !== null && lap.complete === false;
+}
+
+// Fastest valid timed lap, the driver's personal best; null when there is none.
+export function bestValidLapMs(laps: readonly { lapTime: number | null; valid: boolean }[]): number | null {
+  const times = laps.filter((l) => l.valid && l.lapTime !== null).map((l) => l.lapTime as number);
+  return times.length > 0 ? Math.min(...times) : null;
 }
