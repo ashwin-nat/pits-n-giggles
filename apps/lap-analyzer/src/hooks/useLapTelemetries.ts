@@ -36,6 +36,9 @@ export function useLapTelemetries(laps: readonly LapSelection[], sensors: readon
   });
 
   const data = queries.map((q) => q.data);
+  // One dependency that changes whenever any slot's data does; a spread of the
+  // data would change the deps array's length with the lap count.
+  const dataKey = queries.map((q) => `${q.dataUpdatedAt}:${q.data === undefined ? 0 : 1}`).join(",");
   const loaded = useMemo<(LoadedLap | undefined)[]>(
     () =>
       data.map((points, slot) => {
@@ -43,7 +46,7 @@ export function useLapTelemetries(laps: readonly LapSelection[], sensors: readon
         return points === undefined || manifest === undefined ? undefined : { points, manifest };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [...data, sessions, laps]
+    [dataKey, sessions, laps]
   );
 
   return {
