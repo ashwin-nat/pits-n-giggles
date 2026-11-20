@@ -40,3 +40,9 @@ export const MAX_LANE_HEIGHT_PX = 400;
 export const PRIMARY_TRACE_COLOR = "#ef4444"; // red-500
 export const COMPARISON_TRACE_COLOR = "#3b82f6"; // blue-500
 export const DELTA_TRACE_COLOR = "#facc15"; // amber-400 -- distinct from both above
+
+// Lap slots: A is the reference lap, B to D comparison laps (C0 spec). Hex
+// mirrors --color-slot-* in index.css because uPlot and SVG need literals.
+export const MAX_COMPARISON_LAPS = 3;
+export const LAP_SLOT_COLORS = ["#0aa2c6", "#ea580c", "#facc15", "#f472b6"] as const;
+export const LAP_SLOT_LETTERS = ["A", "B", "C", "D"] as const;
