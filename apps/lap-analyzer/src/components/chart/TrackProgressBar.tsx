@@ -203,7 +203,10 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
                   onMouseEnter={() => setHoverSection(gapToActiveSection(bar))}
                   onMouseLeave={() => setHoverSection(null)}
                   style={flexStyle}
-                  className={`h-full rounded-md hover:bg-white/5 ${gapActive ? "bg-white/10" : ""}`}
+                  title="Unclassified"
+                  className={`h-full w-[calc(100%-2px)] rounded-md border border-dashed border-tone-700 hover:bg-white/10 ${
+                    gapActive ? "bg-white/15" : "bg-white/[0.04]"
+                  }`}
                 />
               );
             }

@@ -514,15 +514,18 @@ export function ChartLane({
           </div>
         )}
         {canRate && (
-          <div className={`flex items-center gap-1 pl-3 text-2xs ${viewMode === "rate" ? "" : "opacity-0 group-hover:opacity-100"}`}>
-            <button
-              type="button"
-              onClick={() => setViewMode((m) => (m === "rate" ? "value" : "rate"))}
-              aria-pressed={viewMode === "rate"}
-              className="rounded px-1.5 py-0.5 text-tone-500 hover:text-tone-100 aria-pressed:bg-tone-800 aria-pressed:text-tone-100"
-            >
-              Rate
-            </button>
+          <div className="flex items-center gap-1 pl-3 text-2xs">
+            {(["value", "rate"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                aria-pressed={viewMode === mode}
+                className="rounded px-1.5 py-0.5 text-tone-500 capitalize hover:text-tone-100 aria-pressed:bg-tone-800 aria-pressed:text-tone-100"
+              >
+                {mode}
+              </button>
+            ))}
             {/* Always hoverable, so the feature is explained before someone tries it. */}
             <InfoTooltip
               text={

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useLapTelemetries } from "../../hooks/useLapTelemetries";
 import { useSessions } from "../../hooks/useSessions";
 import { useTrackGeometry } from "../../hooks/useTrackGeometry";
@@ -13,6 +13,9 @@ import type { TrackSection } from "../../types/api";
 import { MapSvg } from "./MapSvg";
 
 const SPEED_KEY = ["speed"];
+const DEFAULT_PANEL_PX = 380;
+const MIN_PANEL_PX = 280;
+const MAX_PANEL_PX = 800;
 // Past this many laps the table drops section names to keep the delta columns readable.
 const NAME_COLUMN_MAX_LAPS = 3;
 
@@ -104,6 +107,7 @@ function SectionTable({ sections, trackLength }: { sections: TrackSection[]; tra
 // Pinned side panel: track map above, section table below. Collapses to a slim button.
 export function MapPanel({ crosshairPosition }: { crosshairPosition: number | null }) {
   const laps = useTelemetryStore((s) => s.laps);
+  const [width, setWidth] = useState(DEFAULT_PANEL_PX);
   const mapOpen = useTelemetryStore((s) => s.mapOpen);
   const toggleMap = useTelemetryStore((s) => s.toggleMap);
   const activeSection = useTelemetryStore((s) => s.activeSection);
@@ -120,6 +124,24 @@ export function MapPanel({ crosshairPosition }: { crosshairPosition: number | nu
 
   const { laps: positions } = useLapTelemetries(laps, POSITION_KEYS);
   const lines = useMemo(() => positions.map((lap) => drivenLine(lap?.points)), [positions]);
+
+  // Drag the panel's left edge: moving left widens it.
+  function startResize(event: ReactPointerEvent<HTMLDivElement>) {
+    const startX = event.clientX;
+    const startWidth = width;
+    const target = event.currentTarget;
+    target.setPointerCapture(event.pointerId);
+    const move = (e: PointerEvent) =>
+      setWidth(Math.min(MAX_PANEL_PX, Math.max(MIN_PANEL_PX, startWidth + (startX - e.clientX))));
+    const end = () => {
+      target.removeEventListener("pointermove", move);
+      target.removeEventListener("pointerup", end);
+      target.removeEventListener("pointercancel", end);
+    };
+    target.addEventListener("pointermove", move);
+    target.addEventListener("pointerup", end);
+    target.addEventListener("pointercancel", end);
+  }
 
   if (!isCompleteLap(laps[0])) {
     return null;
@@ -139,7 +161,15 @@ export function MapPanel({ crosshairPosition }: { crosshairPosition: number | nu
   const sectionName = (activeSection ?? hoverSection)?.label;
 
   return (
-    <aside className="sticky top-0 flex max-h-screen w-[380px] shrink-0 flex-col self-start overflow-y-auto border-l border-tone-800/70 bg-chart-panel">
+    <aside
+      style={{ width }}
+      className="sticky top-0 flex max-h-screen shrink-0 flex-col self-start overflow-y-auto border-l border-tone-800/70 bg-chart-panel"
+    >
+      <div
+        onPointerDown={startResize}
+        title="Drag to resize"
+        className="absolute inset-y-0 left-0 z-10 w-1.5 cursor-col-resize hover:bg-tone-600/40"
+      />
       <div className="flex items-center justify-between px-3 py-2 text-xs">
         <span className="font-semibold text-tone-50">
           Track
