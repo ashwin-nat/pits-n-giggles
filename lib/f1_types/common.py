@@ -766,6 +766,11 @@ class TrackID(F1RawValueEnum):
         """Safely cast an integer to a TrackID enum, returning UNKNOWN for invalid values."""
         return super().safeCast(value, cls.UNKNOWN)
 
+    @classmethod
+    def lowercase_names(cls) -> Dict[str, int]:
+        """Lowercase member name -> track id for every real track (UNKNOWN excluded)."""
+        return {m.name.lower(): m.value for m in cls if m is not cls.UNKNOWN}
+
     def __str__(self):
         """
         Returns a string representation of the track.

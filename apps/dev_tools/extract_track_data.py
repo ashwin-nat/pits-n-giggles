@@ -2,26 +2,34 @@
 
 POC: geometry only.
 
-usage: poetry run python -m apps.dev_tools.extract_track_data --game-dir "E:\\...\\F1 25" --layout monza=11 melbourne=0 losail=32
+usage: poetry run python -m apps.dev_tools.extract_track_data --game-dir "E:\\...\\F1 25" [--layout monza=11 ...]
 
-Each --layout is "<game track folder>=<circuit number>". The folder is under
-<game>/2025_asset_groups/environment_package/tracks. The circuit number is the game's track id, the
-same value as "circuit_number" in assets/track-segments/*.json (look it up there; a track that only
-exists in older games may have no file, so take the id from the telemetry spec instead).
+With no --layout, every folder under <game>/2025_asset_groups/environment_package/tracks that maps to a
+TrackID is extracted. Each --layout is "<game track folder>=<circuit number>" and replaces that default.
 
-The output file is rewritten from scratch, so pass every layout you want in it.
+The output file is rewritten from scratch, so pass every layout you want in it. A length report compares
+each layout's midpoint lap length with track_length in assets/track-segments/*.json.
 """
 import argparse
+import json
 import re
 import struct
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import zstandard
 
+from lib.f1_types import TrackID
+
 TRACKS_SUBDIR = Path("2025_asset_groups") / "environment_package" / "tracks"
 OUT_FILE = Path(__file__).resolve().parents[2] / "assets" / "track-data" / "track_geometry.npz"
+
+SEGMENTS_DIR = Path(__file__).resolve().parents[2] / "assets" / "track-segments"
+LENGTH_TOLERANCE = 0.01
+
+# Game folders whose name differs from the lowercased TrackID member name.
+FOLDER_ALIASES = {"bahrain": "sakhir_bahrain", "baku": "baku_azerbaijan", "spa_francorchamps": "spa"}
 
 _TOKEN = re.compile(rb"[\x20-\x7e]{1,200}\x00")
 _ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"
@@ -66,7 +74,7 @@ def parse_gates(data: bytes) -> List[Dict[str, Any]]:
     """Gates with name, position, normal and waypoint lengths, in file order."""
     t = [m.group(0)[:-1].decode("latin1") for m in _TOKEN.finditer(data)]
     gates: List[Dict[str, Any]] = []
-    cur = None
+    cur: Dict[str, Any] = {"wp": {}}  # scratch until the first gate
     i, n = 0, len(t)
     while i < n:
         w = t[i]
@@ -74,13 +82,13 @@ def parse_gates(data: bytes) -> List[Dict[str, Any]]:
             cur = {"wp": {}}
             gates.append(cur)
             i += 3
-        elif w == "name" and cur is not None and "name" not in cur and t[i + 1].startswith("ai_gate"):
+        elif w == "name" and "name" not in cur and t[i + 1].startswith("ai_gate"):
             cur["name"] = t[i + 1]
             i += 2
-        elif w in ("position", "normal") and cur is not None and w not in cur and t[i + 1] == "x":
+        elif w in {"position", "normal"} and w not in cur and t[i + 1] == "x":
             cur[w] = (float(t[i + 2]), float(t[i + 4]), float(t[i + 6]))
             i += 7
-        elif w == "waypoint" and cur is not None and t[i + 1] == "id" and t[i + 3] == "type" and t[i + 5] == "length":
+        elif w == "waypoint" and t[i + 1] == "id" and t[i + 3] == "type" and t[i + 5] == "length":
             cur["wp"][t[i + 4]] = float(t[i + 6])
             i += 7
         else:
@@ -89,7 +97,10 @@ def parse_gates(data: bytes) -> List[Dict[str, Any]]:
 
 
 def build_geometry(gates: List[Dict[str, Any]]) -> Tuple[np.ndarray, np.ndarray]:
-    """(edges (N, 6) left xyz + right xyz, lap fraction (N,)) from track gates."""
+    """(edges (N, 6) left xyz + right xyz, lap fraction (N,)) from track gates.
+
+    The fraction is arc length along the midpoint of the white lines; gate 0 is the start/finish line.
+    """
     keys = ("left_white_line", "right_white_line")
     gates = [g for g in gates
              if "pit" not in g.get("name", "") and "position" in g and "normal" in g
@@ -98,19 +109,53 @@ def build_geometry(gates: List[Dict[str, Any]]) -> Tuple[np.ndarray, np.ndarray]
     nrm = np.array([g["normal"] for g in gates])
     left = pos + nrm * np.array([g["wp"][keys[0]] for g in gates])[:, None]
     right = pos + nrm * np.array([g["wp"][keys[1]] for g in gates])[:, None]
-    seg = np.linalg.norm(np.diff(np.vstack([pos, pos[:1]])[:, [0, 2]], axis=0), axis=1)
+    mid = (left + right) / 2
+    seg = np.linalg.norm(np.diff(np.vstack([mid, mid[:1]])[:, [0, 2]], axis=0), axis=1)
     frac = np.concatenate([[0.0], np.cumsum(seg)[:-1]]) / seg.sum()
     return np.hstack([left, right]).astype(np.float32), frac.astype(np.float32)
+
+
+def midpoint_length(edges: np.ndarray) -> float:
+    """Closed-loop length in metres of the midpoint between the white lines."""
+    mid = (edges[:, :3] + edges[:, 3:]) / 2
+    return float(np.linalg.norm(np.diff(np.vstack([mid, mid[:1]])[:, [0, 2]], axis=0), axis=1).sum())
+
+
+def circuit_for_folder(folder: str) -> Optional[int]:
+    """Circuit number for a game track folder, or None if it is not a known TrackID."""
+    return TrackID.lowercase_names().get(FOLDER_ALIASES.get(folder, folder))
+
+
+def game_layouts(game_dir: Path) -> List[str]:
+    """FOLDER=CIRCUIT for every track folder in the install that maps to a TrackID."""
+    specs = []
+    for path in sorted((game_dir / TRACKS_SUBDIR).iterdir()):
+        circuit = circuit_for_folder(path.name)
+        if path.is_dir() and circuit is not None:
+            specs.append(f"{path.name}={circuit}")
+    return specs
+
+
+def json_lengths() -> Dict[int, float]:
+    """circuit_number -> track_length from the segment files."""
+    out: Dict[int, float] = {}
+    for path in SEGMENTS_DIR.glob("*.json"):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        out[int(data["circuit_number"])] = float(data["track_length"])
+    return out
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--game-dir", required=True, type=Path)
-    ap.add_argument("--layout", nargs="+", required=True, metavar="FOLDER=CIRCUIT")
+    ap.add_argument("--layout", nargs="+", metavar="FOLDER=CIRCUIT")
     args = ap.parse_args()
 
+    specs = args.layout or game_layouts(args.game_dir)
+    real = json_lengths()
     out: Dict[str, np.ndarray] = {}
-    for spec in args.layout:
+    flagged: List[str] = []
+    for spec in specs:
         folder, _, number = spec.partition("=")
         if not number.isdigit():
             ap.error(f"--layout {spec!r} must be FOLDER=CIRCUIT, the id is never guessed")
@@ -120,11 +165,22 @@ def main() -> None:
         edges, frac = build_geometry(gates)
         out[f"c{circuit}_edges"] = edges
         out[f"c{circuit}_frac"] = frac
-        print(f"{folder}: circuit {circuit}, {len(gates)} gates, {len(edges)} track gates")
+        length = midpoint_length(edges)
+        expected = real.get(circuit)
+        note = "no segment file"
+        if expected:
+            gap = length / expected - 1
+            note = f"{length:.0f} m vs {expected:.0f} m ({gap:+.2%})"
+            if abs(gap) > LENGTH_TOLERANCE:
+                flagged.append(f"{folder} {note}")
+                note += "  <-- FLAG"
+        print(f"{folder}: circuit {circuit}, {len(gates)} gates, {len(edges)} track gates, {note}")
 
     OUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     np.savez(OUT_FILE, **out)
     print(f"wrote {OUT_FILE}")
+    if flagged:
+        print(f"length gap over {LENGTH_TOLERANCE:.0%}: " + "; ".join(flagged))
 
 
 if __name__ == "__main__":
