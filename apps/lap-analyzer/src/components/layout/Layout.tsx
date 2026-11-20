@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 export function Layout({ children }: { children: ReactNode }) {
   return (
     <main
-      className="h-full overflow-auto bg-slate-950 text-slate-100"
+      className="h-full overflow-auto bg-canvas text-slate-100"
       // Reserves the scrollbar's width up front so content does not shift when a
       // vertical scrollbar appears once there are enough lanes to overflow.
       style={{ scrollbarGutter: "stable" }}

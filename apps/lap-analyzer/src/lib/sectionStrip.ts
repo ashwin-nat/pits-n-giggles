@@ -1,11 +1,19 @@
 import type { TrackSection } from "../types/api";
 
 // Short pill text: the turn numbers for a corner, the section's own label for
-// a straight.
-export function sectionCode(section: TrackSection): string {
+// a straight. With `trackLength` a straight is shortened: S/F for the one
+// crossing the line, else its last word cut to 4 letters ("Serr.").
+export function sectionCode(section: TrackSection, trackLength?: number): string {
   const turns = section.cornerNumbers;
   if (turns.length === 0) {
-    return section.label;
+    if (trackLength === undefined) {
+      return section.label;
+    }
+    if (section.distanceStart <= 0 || section.distanceEnd >= trackLength - 1) {
+      return "S/F";
+    }
+    const word = section.label.split(" ").pop() ?? section.label;
+    return word.length > 5 ? `${word.slice(0, 4)}.` : word;
   }
   return turns.length === 1 ? `T${turns[0]}` : `T${turns[0]}-${turns[turns.length - 1]}`;
 }

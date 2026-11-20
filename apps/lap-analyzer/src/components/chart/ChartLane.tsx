@@ -35,6 +35,10 @@ export interface ChartLaneProps {
   onCrosshairMove: (distanceM: number | null) => void;
   focusZone: ActiveSection | null;
   hoverZone: ActiveSection | null;
+  // Spans shaded faintly behind the traces (the corners), so they line up with the strip.
+  bands?: { distanceStart: number; distanceEnd: number }[];
+  // Distance labels under the lane; only the last lane in the list shows them.
+  showXAxis?: boolean;
   heightPx?: number;
   // Present on lanes that can be resized by dragging their bottom edge.
   onHeightChange?: (px: number) => void;
@@ -138,19 +142,20 @@ export function ChartLane({
   onCrosshairMove,
   focusZone,
   hoverZone,
+  bands,
+  showXAxis = false,
   heightPx,
   onHeightChange,
   gripProps,
 }: ChartLaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<uPlot | null>(null);
-  const [collapsed, setCollapsed] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("value");
 
   // Props change every render -- keep the latest values in a ref so uPlot
   // hooks (set up once) always see current props without a chart rebuild.
-  const propsRef = useRef({ onViewportChange, onCrosshairMove, focusZone, hoverZone });
-  propsRef.current = { onViewportChange, onCrosshairMove, focusZone, hoverZone };
+  const propsRef = useRef({ onViewportChange, onCrosshairMove, focusZone, hoverZone, bands });
+  propsRef.current = { onViewportChange, onCrosshairMove, focusZone, hoverZone, bands };
   const viewportRef = useRef(viewport);
   viewportRef.current = viewport;
   const heightRef = useRef(heightPx);
@@ -166,13 +171,14 @@ export function ChartLane({
 
   // Gated on effectiveViewMode: a real smoothing + finite-difference pass
   // over the full grid, not worth computing for lanes never put in Rate view.
-  const displayed = useMemo<LaneSeries[]>(
-    () =>
+  // Drawn last slot first so A's trace ends up on top.
+  const displayed = useMemo<LaneSeries[]>(() => {
+    const shown =
       effectiveViewMode === "rate"
         ? series.map((s) => ({ slot: s.slot, points: computeRateOfChange(s.points) }))
-        : series,
-    [series, effectiveViewMode]
-  );
+        : series;
+    return [...shown].sort((a, b) => b.slot - a.slot);
+  }, [series, effectiveViewMode]);
   // The series set decides the uPlot series list, which can't be mutated in place.
   const slotKey = displayed.map((s) => s.slot).join(",");
 
@@ -218,15 +224,12 @@ export function ChartLane({
       })),
     ];
 
-    const unit = effectiveViewMode === "rate" ? `${sensor.unit}/m` : sensor.unit;
-
-    // uPlot's defaults are tuned for a light background; set light axis colours.
-    const axisColor = "#94a3b8"; // slate-400
-    const gridColor = "rgba(148, 163, 184, 0.15)"; // slate-400 @ 15%
+    const axisColor = "#64748b"; // slate-500
 
     const options: uPlot.Options = {
       width: container.clientWidth || 600,
-      height: getChartHeightPx(heightRef.current),
+      height: getChartHeightPx(heightRef.current, showXAxis),
+      padding: [6, 0, 0, 0],
       series: seriesOptions,
       scales: {
         x: { time: false },
@@ -240,26 +243,17 @@ export function ChartLane({
           range: [yRangeRef.current[0], yRangeRef.current[1]],
         },
       },
+      // No y axis: the range ends are drawn inside the plot by the draw hook.
       axes: [
         {
-          show: true,
+          show: showXAxis,
+          size: 28,
           stroke: axisColor,
-          grid: { stroke: gridColor },
-          ticks: { stroke: gridColor },
+          font: "10px Geist Variable, sans-serif",
+          grid: { show: false },
+          ticks: { show: false },
         },
-        {
-          label: unit,
-          stroke: axisColor,
-          grid: { stroke: gridColor },
-          ticks: { stroke: gridColor },
-          // Discrete sensors only take whole-number values.
-          ...(sensor.type === "discrete"
-            ? {
-                incrs: [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000],
-                values: (_u: uPlot, splits: number[]) => splits.map((v) => String(Math.round(v))),
-              }
-            : {}),
-        },
+        { show: false },
       ],
       legend: { show: false },
       cursor: {
@@ -283,19 +277,51 @@ export function ChartLane({
         draw: [
           (u) => {
             const ctx = u.ctx;
-            if (effectiveViewMode === "rate") {
+            const { focusZone: focus, hoverZone: hover, bands: shaded } = propsRef.current;
+            const ratio = window.devicePixelRatio || 1;
+            const right = u.bbox.left + u.bbox.width;
+            const [yMin, yMax] = yRangeRef.current;
+
+            for (const band of shaded ?? []) {
+              const left = u.valToPos(band.distanceStart, "x", true);
+              const end = u.valToPos(band.distanceEnd, "x", true);
+              ctx.save();
+              ctx.fillStyle = "rgba(255, 255, 255, 0.028)";
+              ctx.fillRect(left, u.bbox.top, end - left, u.bbox.height);
+              ctx.restore();
+            }
+
+            // Zero line: always on the delta lane and in rate mode.
+            if ((signColored || effectiveViewMode === "rate") && yMin < 0 && yMax > 0) {
               const zeroY = u.valToPos(0, "y", true);
               ctx.save();
-              ctx.strokeStyle = "rgba(148, 163, 184, 0.6)";
+              ctx.strokeStyle = "rgba(148, 163, 184, 0.35)";
               ctx.lineWidth = 1;
               ctx.beginPath();
               ctx.moveTo(u.bbox.left, zeroY);
-              ctx.lineTo(u.bbox.left + u.bbox.width, zeroY);
+              ctx.lineTo(right, zeroY);
               ctx.stroke();
               ctx.restore();
             }
+
+            // The range ends, inside the plot at the right edge.
+            const digits = Number.isInteger(yMin) && Number.isInteger(yMax) ? 0 : Math.abs(yMax - yMin) >= 10 ? 0 : 2;
+            const fmt = (v: number) => (v > 0 && signColored ? "+" : "") + v.toFixed(digits);
+            ctx.save();
+            ctx.fillStyle = "rgba(148, 163, 184, 0.55)";
+            ctx.font = `italic ${10 * ratio}px Geist Variable, sans-serif`;
+            ctx.textAlign = "right";
+            ctx.textBaseline = "top";
+            ctx.fillText(signColored ? `A behind ${fmt(yMax)}` : fmt(yMax), right - 6 * ratio, u.bbox.top + 3 * ratio);
+            ctx.textBaseline = "bottom";
+            ctx.fillText(
+              signColored ? `A ahead ${fmt(yMin)}` : fmt(yMin),
+              right - 6 * ratio,
+              u.bbox.top + u.bbox.height - 3 * ratio
+            );
+            ctx.restore();
+
             // Hovered section lighter than the selected one.
-            const { focusZone: focus, hoverZone: hover } = propsRef.current;
             for (const [zone, fill] of [
               [hover, "rgba(255, 255, 255, 0.07)"],
               [focus, "rgba(56, 189, 248, 0.12)"],
@@ -323,7 +349,7 @@ export function ChartLane({
     );
 
     const resizeObserver = new ResizeObserver(() => {
-      chart.setSize({ width: container.clientWidth || 600, height: getChartHeightPx(heightRef.current) });
+      chart.setSize({ width: container.clientWidth || 600, height: getChartHeightPx(heightRef.current, showXAxis) });
     });
     resizeObserver.observe(container);
 
@@ -347,7 +373,7 @@ export function ChartLane({
       chartRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sensor.key, sensor.type, effectiveViewMode, slotKey]);
+  }, [sensor.key, sensor.type, effectiveViewMode, slotKey, showXAxis]);
 
   // Data updates -- doesn't rebuild the chart.
   useEffect(() => {
@@ -368,9 +394,9 @@ export function ChartLane({
   useEffect(() => {
     chartRef.current?.setSize({
       width: containerRef.current?.clientWidth || 600,
-      height: getChartHeightPx(heightPx),
+      height: getChartHeightPx(heightPx, showXAxis),
     });
-  }, [heightPx]);
+  }, [heightPx, showXAxis]);
 
   // Viewport prop -> x scale. Zoom/pan interactions call onViewportChange,
   // which updates store.viewport, which flows back here -- setScale is a
@@ -413,7 +439,7 @@ export function ChartLane({
   // re-range x and paint an empty chart.
   useEffect(() => {
     chartRef.current?.redraw(false);
-  }, [focusZone, hoverZone, effectiveViewMode]);
+  }, [focusZone, hoverZone, bands, effectiveViewMode]);
 
   // Header rows: each listed slot's value at the crosshair; no crosshair falls
   // back to the lap's last point, never blank. A lap without the sensor reads missing.
@@ -456,46 +482,44 @@ export function ChartLane({
   }
 
   return (
-    <div className="relative grid grid-cols-[180px_1fr] border-b border-slate-800">
-      <div className="flex flex-col gap-1.5 bg-slate-900 px-3 py-2 text-xs">
-        <div className="flex items-center gap-1.5">
+    <div className="group relative grid grid-cols-[168px_1fr] border-b border-tone-800/70 bg-chart-surface">
+      <div className="flex flex-col gap-1 px-2 py-2 text-xs">
+        <div className="flex items-baseline gap-1.5">
           {gripProps !== undefined && (
             <div
               {...gripProps}
               draggable
               title="Drag to reorder"
-              className="cursor-grab select-none text-slate-500 hover:text-slate-200 active:cursor-grabbing"
+              className="cursor-grab select-none text-tone-600 hover:text-tone-200 active:cursor-grabbing"
             >
               ⠿
             </div>
           )}
-          <span className="font-medium text-slate-200">{sensor.label}</span>
+          <span className="font-medium text-tone-50">{sensor.label}</span>
+          <span className="text-2xs text-tone-500">{effectiveViewMode === "rate" ? `${sensor.unit}/m` : sensor.unit}</span>
         </div>
-        <div className={`grid gap-x-3 gap-y-0.5 ${rows.length > 3 ? "grid-cols-2" : "grid-cols-1"}`}>
-          {rows.map((row) => (
-            <div
-              key={row.slot}
-              className={`flex items-baseline gap-1.5 ${rows.length === 1 ? "text-xl" : "text-sm"} font-semibold`}
-              style={{ color: row.present ? rowColor(row) : "#64748b" }}
-            >
-              {rows.length > 1 && <span className="w-3 text-2xs font-medium opacity-80">{LAP_SLOT_LETTERS[row.slot]}</span>}
-              <span>{row.present ? formatValue(sensor, row.value, effectiveViewMode) : "–"}</span>
-            </div>
-          ))}
-        </div>
+        {/* Values at the crosshair; the delta lane always shows them, as mocked. */}
+        {(signColored || crosshairPosition !== null) && (
+          <div className="flex flex-col gap-0.5 pl-3">
+            {rows.map((row) => (
+              <div
+                key={row.slot}
+                className="flex items-baseline gap-1.5 font-mono text-2xs"
+                style={{ color: row.present ? rowColor(row) : "#64748b" }}
+              >
+                {(rows.length > 1 || signColored) && <span className="w-2.5">{LAP_SLOT_LETTERS[row.slot]}</span>}
+                <span>{row.present ? formatValue(sensor, row.value, effectiveViewMode) : "–"}</span>
+              </div>
+            ))}
+          </div>
+        )}
         {canRate && (
-          <div className="flex items-center gap-1 text-slate-300">
+          <div className={`flex items-center gap-1 pl-3 text-2xs ${viewMode === "rate" ? "" : "opacity-0 group-hover:opacity-100"}`}>
             <button
               type="button"
-              onClick={() => setViewMode("value")}
-              className={`rounded px-1.5 py-0.5 ${viewMode === "value" ? "bg-slate-700 text-slate-100" : "text-slate-500"}`}
-            >
-              Value
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("rate")}
-              className={`rounded px-1.5 py-0.5 ${viewMode === "rate" ? "bg-slate-700 text-slate-100" : "text-slate-500"}`}
+              onClick={() => setViewMode((m) => (m === "rate" ? "value" : "rate"))}
+              aria-pressed={viewMode === "rate"}
+              className="rounded px-1.5 py-0.5 text-tone-500 hover:text-tone-100 aria-pressed:bg-tone-800 aria-pressed:text-tone-100"
             >
               Rate
             </button>
@@ -507,22 +531,17 @@ export function ChartLane({
                   : "Shows how fast this value is changing per metre of track -- useful for spotting where wear, temperature, or other values change fastest, like which corner is hardest on your tyres."
               }
             >
-              <span className="cursor-help text-slate-500">ⓘ</span>
+              <span className="cursor-help text-tone-600">ⓘ</span>
             </InfoTooltip>
           </div>
         )}
-        <div className="mt-auto flex items-center gap-2 border-t border-slate-800 pt-1.5 text-slate-300">
-          <button type="button" onClick={() => setCollapsed((c) => !c)} className="text-slate-500 hover:text-slate-200">
-            {collapsed ? "∨" : "∧"}
-          </button>
-        </div>
       </div>
-      <div ref={containerRef} style={{ display: collapsed ? "none" : "block" }} />
-      {onHeightChange !== undefined && !collapsed && (
+      <div ref={containerRef} />
+      {onHeightChange !== undefined && (
         <div
           onPointerDown={startResize}
           title="Drag to resize"
-          className="absolute inset-x-0 bottom-0 z-10 h-1.5 cursor-row-resize hover:bg-slate-600/60"
+          className="absolute inset-x-0 bottom-0 z-10 h-1.5 cursor-row-resize hover:bg-tone-600/40"
         />
       )}
     </div>

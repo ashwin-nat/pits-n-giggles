@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { TrackProgressBar } from "./TrackProgressBar";
-import { CurrentLocationLabel } from "./CurrentLocationLabel";
 import { ChartLaneList } from "./ChartLaneList";
 import { MapPanel } from "../map/MapPanel";
 
@@ -15,8 +14,7 @@ export function ChartArea() {
       <div className="min-w-0 flex-1">
         {/* Pinned to the top of Layout's scrollable <main> so the progress bar
             stays visible while the lane list below scrolls. */}
-        <div className="sticky top-0 z-20 bg-slate-950">
-          <CurrentLocationLabel crosshairPosition={crosshairPosition} />
+        <div className="sticky top-0 z-20 bg-chart-surface">
           <TrackProgressBar crosshairPosition={crosshairPosition} />
         </div>
         <ChartLaneList crosshairPosition={crosshairPosition} onCrosshairMove={setCrosshairPosition} />

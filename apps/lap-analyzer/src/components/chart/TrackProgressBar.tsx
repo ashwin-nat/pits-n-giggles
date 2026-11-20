@@ -12,11 +12,8 @@ interface TrackProgressBarProps {
   crosshairPosition: number | null;
 }
 
-const SEGMENT_COLOR: Record<TrackSection["type"], string> = {
-  straight: "bg-emerald-600 hover:bg-emerald-500",
-  corner: "bg-sky-700 hover:bg-sky-600",
-  complex_corner: "bg-indigo-700 hover:bg-indigo-600",
-};
+// Every named section is the same navy pill; unnamed gaps stay empty.
+const PILL = "bg-[#16233f] hover:bg-[#1f3159]";
 
 type BarSegment =
   | { kind: "section"; section: TrackSection }
@@ -154,8 +151,9 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
   }
 
   return (
-    <div className="flex items-center gap-2 border-b border-slate-800 bg-slate-900 px-4 py-2">
-      <div className="flex shrink-0 items-center gap-1 text-xs text-slate-300">
+    <div className="flex items-center border-b border-tone-800/70 bg-chart-surface py-1.5">
+      {/* Same width as the lane headers, so the strip lines up with the plots. */}
+      <div className="flex w-[168px] shrink-0 items-center gap-1 px-2 text-xs text-slate-300">
         <button
           type="button"
           onClick={() => step(-1)}
@@ -181,15 +179,11 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
           ›
         </button>
       </div>
-      <div className="relative h-6 min-w-0 flex-1">
+      <div className="relative h-7 min-w-0 flex-1">
         {/* No overflow-hidden on this row -- it would clip InfoTooltip's
-            popup, which renders outside the row's box (bottom-full). Rounded
-            ends come from the first/last block's own corners instead. */}
+            popup, which renders outside the row's box (bottom-full). */}
         <div className="flex h-full w-full">
-          {barSegments.map((bar, index) => {
-            const roundedClass = `${index === 0 ? "rounded-l-full" : ""} ${
-              index === barSegments.length - 1 ? "rounded-r-full" : ""
-            }`;
+          {barSegments.map((bar) => {
             const span =
               bar.kind === "gap"
                 ? bar.distanceEnd - bar.distanceStart
@@ -209,9 +203,7 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
                   onMouseEnter={() => setHoverSection(gapToActiveSection(bar))}
                   onMouseLeave={() => setHoverSection(null)}
                   style={flexStyle}
-                  className={`h-full border-r border-slate-950/40 bg-slate-700 hover:bg-slate-600 last:border-r-0 ${roundedClass} ${
-                    gapActive ? "brightness-150" : ""
-                  }`}
+                  className={`h-full rounded-md hover:bg-white/5 ${gapActive ? "bg-white/10" : ""}`}
                 />
               );
             }
@@ -229,12 +221,12 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
                   onClick={() => handleSegmentClick(section)}
                   onMouseEnter={() => setHoverSection(section)}
                   onMouseLeave={() => setHoverSection(null)}
-                  className={`h-full w-full overflow-hidden whitespace-nowrap border-r border-slate-950/40 text-2xs font-medium text-white/90 last:border-r-0 ${roundedClass} ${
-                    SEGMENT_COLOR[section.type]
-                  } ${isSameSection(activeSection, section) ? "brightness-150" : ""}`}
+                  className={`h-full w-[calc(100%-2px)] overflow-hidden rounded-md whitespace-nowrap text-xs font-medium text-tone-100 ${PILL} ${
+                    isSameSection(activeSection, section) ? "ring-1 ring-sky-400" : ""
+                  }`}
                 >
-                  {trackLength > 0 && labelFits((span / trackLength) * 100, sectionCode(section))
-                    ? sectionCode(section)
+                  {trackLength > 0 && labelFits((span / trackLength) * 100, sectionCode(section, trackLength))
+                    ? sectionCode(section, trackLength)
                     : null}
                 </button>
               </InfoTooltip>
@@ -244,13 +236,13 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
         {sectorMarkerPcts.map((pct, i) => (
           <div
             key={`sector-${i}`}
-            className="pointer-events-none absolute top-0 h-full w-1 bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.9)]"
+            className="pointer-events-none absolute top-[-2px] h-[calc(100%+4px)] w-[3px] rounded-full bg-amber-400"
             style={{ left: `${pct}%` }}
           />
         ))}
         {viewportRange !== null && (
           <div
-            className="pointer-events-none absolute top-0 h-full rounded-full border-2 border-white/80 bg-white/10"
+            className="pointer-events-none absolute top-0 h-full rounded-md border border-white/70 bg-white/10"
             style={{
               left: `${viewportRange.leftPct}%`,
               width: `${viewportRange.rightPct - viewportRange.leftPct}%`,

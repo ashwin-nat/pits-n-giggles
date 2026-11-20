@@ -98,7 +98,8 @@ export const SENSOR_PRESETS: Record<string, string[]> = {
 export const DEFAULT_PRESET = "Driving";
 
 export function presetKeys(manifest: readonly SensorDefinition[], groups: readonly string[]): string[] {
-  return manifest.filter((s) => groups.includes(s.key.split(".")[0])).map((s) => s.key);
+  // In the preset's own order, so the lanes open as listed.
+  return groups.flatMap((group) => manifest.filter((s) => s.key.split(".")[0] === group).map((s) => s.key));
 }
 
 // The union of every lap's manifest, first definition wins.

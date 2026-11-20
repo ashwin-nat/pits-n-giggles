@@ -3,7 +3,9 @@ import { useLapTelemetries } from "../../hooks/useLapTelemetries";
 import { useTelemetryStore } from "../../store/telemetryStore";
 import { buildDeltas, buildLapSeries } from "../../lib/lapSeries";
 import { isCompleteLap } from "../../types/store";
-import { LANE_HEIGHT_PX } from "../../lib/chartConstants";
+import { DELTA_LANE_HEIGHT_PX, LANE_HEIGHT_PX, SPEED_LANE_HEIGHT_PX } from "../../lib/chartConstants";
+import { useSessions } from "../../hooks/useSessions";
+import { useTrackMeta } from "../../hooks/useTrackMeta";
 import { ChartLane, type LaneSeries } from "./ChartLane";
 import type { SensorDefinition } from "../../types/api";
 
@@ -24,7 +26,7 @@ interface ChartLaneListProps {
 }
 
 function EmptyState({ children }: { children: ReactNode }) {
-  return <div className="p-8 text-center text-sm text-slate-500">{children}</div>;
+  return <div className="p-8 text-center text-sm text-tone-500">{children}</div>;
 }
 
 // Renders one ChartLane per selected sensor, plus a delta lane when there is
@@ -54,6 +56,12 @@ export function ChartLaneList({ crosshairPosition, onCrosshairMove }: ChartLaneL
   }, [sensors.join(",")]);
 
   const { laps: loaded, isFetching, error } = useLapTelemetries(laps, sensors);
+
+  // Corners are shaded behind the traces, lining up with the strip's pills.
+  const { data: sessions } = useSessions();
+  const trackId = sessions?.find((s) => s.id === laps[0]?.sessionId)?.trackId ?? null;
+  const meta = useTrackMeta(trackId);
+  const bands = useMemo(() => (meta?.sections ?? []).filter((s) => s.type !== "straight"), [meta]);
 
   const series = useMemo(() => buildLapSeries(loaded, sensors), [loaded, sensors]);
   const deltas = useMemo<LaneSeries[]>(
@@ -97,7 +105,7 @@ export function ChartLaneList({ crosshairPosition, onCrosshairMove }: ChartLaneL
       {/* isFetching with data already present (placeholderData) means the lap
           just changed and the previous chart is still showing. */}
       {isFetching && (
-        <div className="sticky top-0 z-10 flex justify-center bg-gradient-to-b from-slate-950 to-transparent py-2">
+        <div className="sticky top-0 z-10 flex justify-center bg-gradient-to-b from-canvas to-transparent py-2">
           <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300 shadow">Loading…</span>
         </div>
       )}
@@ -114,6 +122,8 @@ export function ChartLaneList({ crosshairPosition, onCrosshairMove }: ChartLaneL
           onCrosshairMove={onCrosshairMove}
           focusZone={activeSection}
           hoverZone={hoverSection}
+          bands={bands}
+          heightPx={DELTA_LANE_HEIGHT_PX}
         />
       )}
       {orderedKeys.map((key) => {
@@ -149,7 +159,9 @@ export function ChartLaneList({ crosshairPosition, onCrosshairMove }: ChartLaneL
               onCrosshairMove={onCrosshairMove}
               focusZone={activeSection}
               hoverZone={hoverSection}
-              heightPx={heights[key] ?? LANE_HEIGHT_PX}
+              bands={bands}
+              showXAxis={key === orderedKeys[orderedKeys.length - 1]}
+              heightPx={heights[key] ?? (key === "speed" ? SPEED_LANE_HEIGHT_PX : LANE_HEIGHT_PX)}
               onHeightChange={(px) => setHeights((prev) => ({ ...prev, [key]: px }))}
               gripProps={{
                 onDragStart: (e: DragEvent) => {

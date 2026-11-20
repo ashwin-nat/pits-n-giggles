@@ -54,24 +54,27 @@ function Chip({ slot, lap, timeMs, gapMs, fastest, onChoose, onRemove }: ChipPro
   const driver = drivers?.find((d) => d.index === lap.driverIndex);
 
   return (
-    <div
-      className="group flex items-center rounded-xl bg-tone-800/40 ring-1 ring-tone-800 transition-colors hover:bg-tone-800"
-      style={{ borderLeft: `3px solid ${LAP_SLOT_COLORS[slot]}` }}
-    >
-      <button type="button" onClick={onChoose} className="flex flex-col items-start px-3 py-1 text-left" title="Change this lap">
-        <span className="flex items-center gap-2">
-          <span className="text-xs font-semibold" style={{ color: LAP_SLOT_COLORS[slot] }}>
-            {LAP_SLOT_LETTERS[slot]}
+    <div className="group flex items-center rounded-lg border border-tone-800 bg-tone-900/60 transition-colors hover:bg-tone-800/70">
+      <button type="button" onClick={onChoose} className="flex items-center gap-2.5 py-1.5 pr-2 pl-2 text-left" title="Change this lap">
+        <span
+          className="flex size-6 shrink-0 items-center justify-center rounded-md text-xs font-bold text-tone-1000"
+          style={{ backgroundColor: LAP_SLOT_COLORS[slot] }}
+        >
+          {LAP_SLOT_LETTERS[slot]}
+        </span>
+        <span className="flex flex-col items-start leading-tight">
+          <span className="flex items-baseline gap-2">
+            <span className={`font-mono text-base ${fastest ? "text-best" : "text-tone-50"}`}>{formatLapTime(timeMs)}</span>
+            <span className="text-sm text-tone-200">{driver?.name ?? ""}</span>
+            {gapMs !== null && (
+              <span className={`font-mono text-xs ${gapMs > 0 ? "text-behind" : "text-ahead"}`}>{formatGap(gapMs)}</span>
+            )}
           </span>
-          <span className={`font-mono text-sm ${fastest ? "text-best" : "text-tone-50"}`}>{formatLapTime(timeMs)}</span>
-          {gapMs !== null && (
-            <span className={`font-mono text-2xs ${gapMs > 0 ? "text-behind" : "text-ahead"}`}>{formatGap(gapMs)}</span>
-          )}
-          <span className="text-xs text-tone-300">{driver?.name ?? ""}</span>
+          <span className="text-2xs text-tone-500">
+            {session?.type} · {session === undefined ? "" : dateLabel(session.date)} · Lap {lap.lapNumber}
+          </span>
         </span>
-        <span className="text-2xs text-tone-500">
-          {session?.type} · {session === undefined ? "" : dateLabel(session.date)} · Lap {lap.lapNumber}
-        </span>
+        <span className="text-tone-500">⌄</span>
       </button>
       {onRemove !== undefined && (
         <button
@@ -131,7 +134,7 @@ export function LapChips({ onChoose }: LapChipsProps) {
         <button
           type="button"
           onClick={() => onChoose(laps.length)}
-          className="rounded-xl border border-dashed border-tone-600 px-3 py-2 text-xs text-tone-300 hover:bg-tone-800"
+          className="rounded-lg border border-dashed border-tone-700 px-3 py-3 text-xs text-tone-300 hover:bg-tone-800"
         >
           + Compare with a lap
         </button>

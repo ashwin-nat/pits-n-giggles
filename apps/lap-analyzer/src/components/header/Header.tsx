@@ -28,7 +28,7 @@ export function Header({ onFileChange }: HeaderProps) {
 
   return (
     <>
-      <header className="flex flex-wrap items-center gap-3 border-b border-tone-800 bg-tone-950 px-4 py-2">
+      <header className="flex flex-wrap items-center gap-3 border-b border-tone-800/70 bg-canvas px-4 py-2.5">
         <p className="text-sm font-semibold text-tone-50">Lap Analyzer</p>
         <GameMenu />
         <button

@@ -23,7 +23,7 @@ function formatDelta(value: number | null): string {
   return `${value > 0 ? "+" : ""}${value.toFixed(3)}`;
 }
 
-function SectionTable({ sections }: { sections: TrackSection[] }) {
+function SectionTable({ sections, trackLength }: { sections: TrackSection[]; trackLength: number }) {
   const laps = useTelemetryStore((s) => s.laps);
   const activeSection = useTelemetryStore((s) => s.activeSection);
   const hoverSection = useTelemetryStore((s) => s.hoverSection);
@@ -45,13 +45,13 @@ function SectionTable({ sections }: { sections: TrackSection[] }) {
     return null;
   }
   return (
-    <table className="w-full text-xs">
+    <table className="w-full border-t border-tone-800 text-xs">
       <thead>
-        <tr className="text-left text-slate-500">
-          <th className="px-2 py-1 font-medium">Section</th>
-          {hasSpeed && <th className="px-2 py-1 text-right font-medium">Min A</th>}
+        <tr className="text-left text-tone-500">
+          <th className="px-3 py-1.5 font-medium" colSpan={2}>Section</th>
+          {hasSpeed && <th className="px-2 py-1.5 text-right font-medium whitespace-nowrap" style={{ color: LAP_SLOT_COLORS[0] }}>Min A</th>}
           {comparisonSlots.map((slot) => (
-            <th key={slot} className="px-2 py-1 text-right font-medium" style={{ color: LAP_SLOT_COLORS[slot] }}>
+            <th key={slot} className="px-2 py-1.5 text-right font-medium" style={{ color: LAP_SLOT_COLORS[slot] }}>
               Δ{LAP_SLOT_LETTERS[slot]}
             </th>
           ))}
@@ -72,26 +72,22 @@ function SectionTable({ sections }: { sections: TrackSection[] }) {
             }}
             onMouseEnter={() => setHoverSection(section)}
             onMouseLeave={() => setHoverSection(null)}
-            className={`cursor-pointer text-slate-300 hover:bg-slate-800 ${
-              same(activeSection, section) ? "bg-slate-800" : same(hoverSection, section) ? "bg-slate-800/60" : ""
+            className={`cursor-pointer text-tone-100 hover:bg-tone-800 ${
+              same(activeSection, section) ? "bg-tone-800" : same(hoverSection, section) ? "bg-tone-800/60" : ""
             }`}
           >
-            <td className="px-2 py-0.5">
-              <span className="font-medium text-slate-100">{sectionCode(section)}</span>
-              {showName && section.cornerNumbers.length > 0 && (
-                <span className="ml-2 text-slate-500">{section.label}</span>
-              )}
-            </td>
+            <td className="py-1.5 pr-2 pl-3 font-mono text-tone-400">{sectionCode(section, trackLength)}</td>
+            <td className="w-full max-w-0 truncate py-1.5 pr-2">{showName ? section.label : ""}</td>
             {hasSpeed && (
-              <td className="px-2 py-0.5 text-right font-mono">{minA === null ? "–" : Math.round(minA)}</td>
+              <td className="px-2 py-1.5 text-right font-mono">{minA === null ? "–" : Math.round(minA)}</td>
             )}
             {comparisonSlots.map((slot) => {
               const delta = deltas[slot];
               return (
                 <td
                   key={slot}
-                  className={`px-2 py-0.5 text-right font-mono ${
-                    delta === null ? "text-slate-600" : delta > 0 ? "text-red-400" : delta < 0 ? "text-green-400" : ""
+                  className={`px-2 py-1.5 text-right font-mono ${
+                    delta === null ? "text-tone-600" : delta > 0 ? "text-behind" : delta < 0 ? "text-ahead" : ""
                   }`}
                 >
                   {formatDelta(delta)}
@@ -133,7 +129,7 @@ export function MapPanel({ crosshairPosition }: { crosshairPosition: number | nu
       <button
         type="button"
         onClick={toggleMap}
-        className="sticky top-0 shrink-0 self-start border-l border-slate-800 bg-slate-900 px-2 py-3 text-xs text-slate-300 hover:text-white [writing-mode:vertical-rl]"
+        className="sticky top-0 shrink-0 self-start border-l border-tone-800/70 bg-chart-panel px-2 py-3 text-xs text-tone-300 hover:text-white [writing-mode:vertical-rl]"
       >
         Track map ‹
       </button>
@@ -143,12 +139,17 @@ export function MapPanel({ crosshairPosition }: { crosshairPosition: number | nu
   const sectionName = (activeSection ?? hoverSection)?.label;
 
   return (
-    <aside className="sticky top-0 flex max-h-screen w-[380px] shrink-0 flex-col self-start overflow-y-auto border-l border-slate-800 bg-slate-950">
-      <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900 px-3 py-2 text-xs">
-        <span className="font-medium text-slate-200">
-          Track{sectionName !== undefined && <span className="ml-2 text-slate-400">{sectionName}</span>}
+    <aside className="sticky top-0 flex max-h-screen w-[380px] shrink-0 flex-col self-start overflow-y-auto border-l border-tone-800/70 bg-chart-panel">
+      <div className="flex items-center justify-between px-3 py-2 text-xs">
+        <span className="font-semibold text-tone-50">
+          Track
+          <span className="ml-2 font-normal text-tone-400">
+            {sessions?.find((s) => s.id === laps[0]?.sessionId)?.trackName}
+            {meta !== null && ` · ${Math.round(meta.trackLength).toLocaleString()} m`}
+          </span>
+          {sectionName !== undefined && <span className="ml-2 font-normal text-tone-300">· {sectionName}</span>}
         </span>
-        <button type="button" onClick={toggleMap} className="text-slate-400 hover:text-white" title="Collapse the map">
+        <button type="button" onClick={toggleMap} className="text-tone-400 hover:text-white" title="Collapse the map">
           ›
         </button>
       </div>
@@ -162,12 +163,13 @@ export function MapPanel({ crosshairPosition }: { crosshairPosition: number | nu
           meta={meta}
           lines={lines}
           lapPresent={laps.map((lap) => isCompleteLap(lap))}
+          labels={laps.map((lap, slot) => `${LAP_SLOT_LETTERS[slot]} L${lap.lapNumber ?? ""}`)}
           crosshairPosition={crosshairPosition}
           activeSection={activeSection}
           hoverSection={hoverSection}
         />
       )}
-      <SectionTable sections={meta?.sections ?? []} />
+      <SectionTable sections={meta?.sections ?? []} trackLength={meta?.trackLength ?? 0} />
     </aside>
   );
 }

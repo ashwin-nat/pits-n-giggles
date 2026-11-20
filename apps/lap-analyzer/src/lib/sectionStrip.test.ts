@@ -15,6 +15,9 @@ test("sectionCode: turn numbers for corners, the label for straights", () => {
   assert.equal(sectionCode(section("Rettifilo", [1])), "T1");
   assert.equal(sectionCode(section("Variante", [1, 2])), "T1-2");
   assert.equal(sectionCode(section("Main straight", [])), "Main straight");
+  // With the track length, straights are shortened.
+  assert.equal(sectionCode({ ...section("Rettifilo Tribune", []), distanceStart: 0 }, 5800), "S/F");
+  assert.equal(sectionCode({ ...section("Curva del Serraglio", []), distanceStart: 3000, distanceEnd: 3400 }, 5800), "Serr.");
 });
 
 test("labelFits needs more room for longer text", () => {

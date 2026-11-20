@@ -7,7 +7,9 @@
 /* Dark only. Tone scale and semantic colours mirror the save viewer's index.css. */
 @theme {
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "iA Writer Quattro", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --font-mono:"iA Writer Quattro", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
   --color-tone-0: #fff;
   --color-tone-50: oklch(98.5% 0 0);

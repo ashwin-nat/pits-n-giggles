@@ -60,7 +60,7 @@ export function App() {
             padding-left; w-screen (100vw) would ignore that padding and render this div
             underneath the fixed sidebar instead of beside it. Same reasoning as
             f1-save-viewer's own root layout, which only sets h-screen for the same reason. */}
-        <div className="flex h-screen flex-col bg-slate-950">
+        <div className="flex h-screen flex-col bg-canvas">
           {/* Backend mode has no local file to browse for, it always talks to RemoteApiProvider. */}
           <Header onFileChange={IS_BACKEND_MODE ? undefined : handleFileChange} />
           <div className="min-h-0 flex-1">

@@ -21,7 +21,7 @@ import { LAP_SLOT_COLORS, LAP_SLOT_LETTERS } from "../../lib/chartConstants";
 import type { TrackMeta } from "../../lib/segments";
 import type { ActiveSection } from "../../types/store";
 
-const WHOLE_PAD_M = 30;
+const WHOLE_PAD_M = 80;
 const SEGMENT_TICK_OVERHANG = 0.35;
 const SECTOR_TICK_OVERHANG = 0.9;
 const WHEEL_ZOOM = 0.85;
@@ -33,16 +33,18 @@ interface MapSvgProps {
   lines: DrivenLine[];
   // Which slots hold a complete lap (an empty slot gets no legend entry).
   lapPresent: boolean[];
+  // Legend text per slot, e.g. "A L3".
+  labels: string[];
   crosshairPosition: number | null;
   activeSection: ActiveSection | null;
   hoverSection: ActiveSection | null;
 }
 
-const BUTTON = "rounded bg-slate-800/90 px-2 py-1 text-xs text-slate-300 hover:bg-slate-700 hover:text-white";
+const BUTTON = "rounded-md bg-tone-800/80 px-2 py-1 text-2xs text-tone-300 hover:bg-tone-700 hover:text-white";
 
 // Top-down map: road, white lines, segment and sector ticks, one driven line
 // and cursor dot per lap. The view box is state (null = the whole track).
-export function MapSvg({ geometry, meta, lines, lapPresent, crosshairPosition, activeSection, hoverSection }: MapSvgProps) {
+export function MapSvg({ geometry, meta, lines, lapPresent, labels, crosshairPosition, activeSection, hoverSection }: MapSvgProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [size, setSize] = useState({ width: 400, height: 320 });
   const [view, setView] = useState<Box | null>(null);
@@ -167,7 +169,7 @@ export function MapSvg({ geometry, meta, lines, lapPresent, crosshairPosition, a
         ref={svgRef}
         viewBox={vb.join(" ")}
         preserveAspectRatio="xMidYMid meet"
-        className="h-80 w-full cursor-grab touch-none select-none active:cursor-grabbing"
+        className="mt-9 h-[400px] w-full cursor-grab touch-none select-none active:cursor-grabbing"
         role="img"
         aria-label="Track map"
         onPointerDown={onPointerDown}
@@ -178,7 +180,7 @@ export function MapSvg({ geometry, meta, lines, lapPresent, crosshairPosition, a
           setFollow(false);
         }}
       >
-        <path d={road} fill="#1e293b" fillRule="evenodd" />
+        <path d={road} fill="#131a26" fillRule="evenodd" />
         {trackLength > 0 &&
           polygons.map(([section, fill], i) =>
             section === null ? null : (
@@ -237,19 +239,19 @@ export function MapSvg({ geometry, meta, lines, lapPresent, crosshairPosition, a
         )}
       </svg>
 
-      <div className="absolute left-2 top-2 flex flex-col gap-1 text-xs">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 px-3 py-2 text-2xs text-tone-300">
         {lapPresent.map((present, slot) =>
           present ? (
-            <span key={slot} className="flex items-center gap-1.5 rounded bg-slate-900/80 px-1.5 py-0.5 text-slate-200">
-              <span className="h-0.5 w-4" style={{ backgroundColor: LAP_SLOT_COLORS[slot] }} />
-              {LAP_SLOT_LETTERS[slot]}
-              {(lines[slot]?.pts.length ?? 0) === 0 && <span className="text-slate-500">no position data</span>}
+            <span key={slot} className="flex items-center gap-1.5">
+              <span className="h-0.5 w-3.5 rounded-full" style={{ backgroundColor: LAP_SLOT_COLORS[slot] }} />
+              {labels[slot] ?? LAP_SLOT_LETTERS[slot]}
+              {(lines[slot]?.pts.length ?? 0) === 0 && <span className="text-tone-500">(no position data)</span>}
             </span>
           ) : null
         )}
       </div>
 
-      <div className="absolute right-2 top-2 flex items-center gap-1">
+      <div className="absolute right-3 top-2 flex items-center gap-1">
         <button type="button" className={BUTTON} onClick={() => zoomButton(WHEEL_ZOOM)} title="Zoom in">
           +
         </button>
@@ -271,15 +273,13 @@ export function MapSvg({ geometry, meta, lines, lapPresent, crosshairPosition, a
           disabled={!canFollow}
           title={canFollow ? "Keep the car centred while hovering the charts" : "A has no position data"}
           onClick={() => setFollow((f) => !f)}
-          className={`${BUTTON} disabled:cursor-not-allowed disabled:opacity-40 ${follow && canFollow ? "bg-sky-700 text-white" : ""}`}
+          className={`${BUTTON} disabled:cursor-not-allowed disabled:opacity-40 ${follow && canFollow ? "bg-tone-100 text-tone-900 hover:bg-tone-100 hover:text-tone-900" : ""}`}
         >
           Follow
         </button>
       </div>
 
-      <div className="absolute bottom-2 left-2 rounded bg-slate-900/80 px-1.5 py-0.5 text-2xs text-slate-400">
-        ↔ {Math.round(size.width / sc)} m across
-      </div>
+      <div className="absolute top-3 left-3 text-2xs text-tone-500">↔ {Math.round(size.width / sc)} m across</div>
     </div>
   );
 }
