@@ -76,3 +76,9 @@ test("sensorAvailability names the slots missing each sensor, over the union of 
   assert.deepEqual(result.get("speed"), [3]);
   assert.deepEqual(result.get("gear"), [0]);
 });
+
+test("buildDeltas leaves out a lap with no lap_time_ms (older recordings)", () => {
+  const noTime: LoadedLap = { manifest: [speed], points: [0, 1, 2, 3, 4].map((d) => ({ lapDistance: d, speed: 100 })) };
+  assert.deepEqual(buildDeltas([lap([speed], 100), noTime], [0, 1, 2, 3, 4]), []);
+  assert.deepEqual(buildDeltas([noTime, lap([speed], 100)], [0, 1, 2, 3, 4]), []);
+});

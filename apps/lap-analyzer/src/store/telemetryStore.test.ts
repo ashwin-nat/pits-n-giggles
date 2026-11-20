@@ -72,14 +72,15 @@ test("moveLap swaps two slots", () => {
   assert.deepEqual(store.getState().laps.map((l) => l.driverIndex), [1, 0]);
 });
 
-test("the old primary / reference view follows laps and sensors", () => {
-  const s = store.getState();
-  s.setPrimary({ sessionId: "s1", driverIndex: 0, lapNumber: 1, sensors: ["speed"] });
-  assert.equal(store.getState().reference, null);
-  store.getState().setReference({ sessionId: "s1", driverIndex: 2, lapNumber: 3 });
-  const next = store.getState();
-  assert.deepEqual(next.primary, { sessionId: "s1", driverIndex: 0, lapNumber: 1, sensors: ["speed"] });
-  assert.deepEqual(next.reference, { sessionId: "s1", driverIndex: 2, lapNumber: 3, sensors: ["speed"] });
-  store.getState().setReference(null);
-  assert.equal(store.getState().reference, null);
+test("pickLap sets a lap, swaps one already held, and ignores a duplicate into a new slot", () => {
+  store.getState().pickLap(0, lapOf("s1", 0, 1));
+  store.getState().pickLap(1, lapOf("s1", 1, 2));
+  store.getState().pickLap(1, lapOf("s1", 1, 2));
+  assert.equal(store.getState().laps.length, 2);
+  // Picking A's lap for slot 1 swaps them.
+  store.getState().pickLap(1, lapOf("s1", 0, 1));
+  assert.deepEqual(store.getState().laps.map((l) => l.driverIndex), [1, 0]);
+  // A held lap offered for a new slot is not duplicated.
+  store.getState().pickLap(2, lapOf("s1", 1, 2));
+  assert.equal(store.getState().laps.length, 2);
 });

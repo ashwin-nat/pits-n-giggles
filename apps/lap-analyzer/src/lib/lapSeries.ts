@@ -70,14 +70,15 @@ export function buildDeltas(laps: readonly (LoadedLap | undefined)[], grid: read
       return;
     }
     const timeX = interpolateToGrid(lap.points, LAP_TIME_SENSOR, grid);
-    deltas.push({
-      slot,
-      points: grid.map((lapDistance, i) => {
-        const x = timeX[i].value;
-        const base = timeA[i].value;
-        return { lapDistance, value: x === null || base === null ? null : (base - x) / 1000 };
-      }),
+    const points = grid.map((lapDistance, i) => {
+      const x = timeX[i].value;
+      const base = timeA[i].value;
+      return { lapDistance, value: x === null || base === null ? null : (base - x) / 1000 };
     });
+    // Older recordings carry no lap_time_ms: nothing to draw, so no lane for them.
+    if (points.some((p) => p.value !== null)) {
+      deltas.push({ slot, points });
+    }
   });
   return deltas;
 }

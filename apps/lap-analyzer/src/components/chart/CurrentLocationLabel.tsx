@@ -31,7 +31,7 @@ function sectorNameAt(distance: number, sectorBoundaries: { s1: number; s2: numb
 // "position" -- position already means something else (race position) in
 // motorsport.
 export function CurrentLocationLabel({ crosshairPosition }: CurrentLocationLabelProps) {
-  const primarySessionId = useTelemetryStore((state) => state.primary.sessionId);
+  const primarySessionId = useTelemetryStore((state) => state.laps[0]?.sessionId ?? null);
   const { data: sessions } = useSessions();
   const trackId = sessions?.find((s) => s.id === primarySessionId)?.trackId ?? null;
   const meta = useTrackMeta(trackId);

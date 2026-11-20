@@ -51,3 +51,10 @@ test("buildSectionRows without A has no values", () => {
   assert.equal(rows[0].minA, null);
   assert.equal(rows[0].deltas[1], null);
 });
+
+test("a lap with no lap_time_ms has no section time or delta", () => {
+  const noTime: LoadedLap = { manifest, points: [0, 100, 200, 300].map((d) => ({ lapDistance: d, speed: 100 })) };
+  assert.equal(timeAt(noTime, 150), null);
+  const rows = buildSectionRows([lap(10, [1, 1, 1, 1]), noTime], sections);
+  assert.equal(rows[0].deltas[1], null);
+});

@@ -76,7 +76,7 @@ export function segmentTooltip(section: TrackSection): string {
 // instead of a wrapping list of buttons. Clicking a segment still sets
 // store.activeSection (focus zone); the bar doesn't change the viewport.
 export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
-  const primarySessionId = useTelemetryStore((state) => state.primary.sessionId);
+  const primarySessionId = useTelemetryStore((state) => state.laps[0]?.sessionId ?? null);
   const activeSection = useTelemetryStore((state) => state.activeSection);
   const setActiveSection = useTelemetryStore((state) => state.setActiveSection);
   const viewport = useTelemetryStore((state) => state.viewport);

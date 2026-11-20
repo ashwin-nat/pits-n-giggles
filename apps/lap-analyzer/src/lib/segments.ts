@@ -22,6 +22,7 @@ interface SegmentsFile {
 }
 
 export interface TrackMeta {
+  name: string;
   trackLength: number;
   sections: TrackSection[];
   // Sector *boundaries* -- s1/s2 are the distances where sector 1 ends and
@@ -42,6 +43,7 @@ function toSections(data: SegmentsFile): TrackSection[] {
 
 function toMeta(data: SegmentsFile): TrackMeta {
   return {
+    name: data.circuit_name,
     trackLength: data.track_length,
     sections: toSections(data),
     sectorBoundaries: data.sectors,
@@ -118,4 +120,10 @@ export async function getTrackSections(trackId: number): Promise<TrackSection[]>
 export async function getTrackMeta(trackId: number): Promise<TrackMeta | null> {
   const cache = await getCache();
   return cache.get(trackId) ?? null;
+}
+
+// Every bundled layout, keyed by track id -- the calendar the track picker
+// lists "not driven yet" from.
+export async function getAllTrackMeta(): Promise<Map<number, TrackMeta>> {
+  return getCache();
 }

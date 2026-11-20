@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { MAX_COMPARISON_LAPS } from "../lib/chartConstants";
-import type { ActiveSection, LapSelection, SelectionState, Viewport } from "../types/store";
+import type { ActiveSection, LapRef, LapSelection, Viewport } from "../types/store";
 
 const emptyLap: LapSelection = { sessionId: null, driverIndex: null, lapNumber: null };
 
@@ -14,13 +14,8 @@ function patchLap(current: LapSelection, patch: Partial<LapSelection>): LapSelec
   return { ...base, ...patch };
 }
 
-// primary / reference are the old two-lap view of `laps` + `sensors`, kept so
-// the existing pickers and charts run unchanged until slices 2 to 5 replace
-// them. They are rebuilt on every write so selectors get a stable reference.
 function derive(laps: LapSelection[], sensors: string[]) {
-  const primary: SelectionState = { ...(laps[0] ?? emptyLap), sensors };
-  const reference: SelectionState | null = laps[1] === undefined ? null : { ...laps[1], sensors };
-  return { laps, sensors, primary, reference };
+  return { laps, sensors };
 }
 
 export interface TelemetryStore {
@@ -35,14 +30,15 @@ export interface TelemetryStore {
   setLap: (slot: number, patch: Partial<LapSelection>) => void;
   // Removing A promotes nothing: it clears the whole selection.
   removeLap: (slot: number) => void;
+  // The Choose lap modal's result. A lap already held in another slot swaps
+  // with `slot` (nothing happens if `slot` is a new one); otherwise it is set.
+  pickLap: (slot: number, ref: LapRef) => void;
   // Moves a lap held in another slot to `toSlot`, swapping the two.
   moveLap: (fromSlot: number, toSlot: number) => void;
 
-  // Old two-lap view of the above (see derive).
-  primary: SelectionState;
-  setPrimary: (patch: Partial<SelectionState>) => void;
-  reference: SelectionState | null;
-  setReference: (patch: Partial<SelectionState> | null) => void;
+  // Game filter for the track and session lists, e.g. "F1 2025"; null = follow A's session.
+  game: string | null;
+  setGame: (game: string | null) => void;
 
   // Chart viewport -- shared across all chart lanes. null = full lap visible.
   viewport: Viewport | null;
@@ -78,7 +74,7 @@ export interface TelemetryStore {
   reset: () => void;
 }
 
-export const useTelemetryStore = create<TelemetryStore>((set) => ({
+export const useTelemetryStore = create<TelemetryStore>((set, get) => ({
   ...derive([], []),
 
   setSensors: (sensors) => set((state) => derive(state.laps, sensors)),
@@ -116,6 +112,23 @@ export const useTelemetryStore = create<TelemetryStore>((set) => ({
       );
     }),
 
+  pickLap: (slot, ref) => {
+    const { laps, moveLap, setLap } = get();
+    const held = laps.findIndex(
+      (l) => l.sessionId === ref.sessionId && l.driverIndex === ref.driverIndex && l.lapNumber === ref.lapNumber
+    );
+    if (held === slot) {
+      return;
+    }
+    if (held !== -1) {
+      if (slot < laps.length) {
+        moveLap(held, slot);
+      }
+      return;
+    }
+    setLap(slot, ref);
+  },
+
   moveLap: (fromSlot, toSlot) =>
     set((state) => {
       const { laps } = state;
@@ -127,39 +140,8 @@ export const useTelemetryStore = create<TelemetryStore>((set) => ({
       return derive(next, state.sensors);
     }),
 
-  setPrimary: (patch) =>
-    set((state) => {
-      const { sensors, ...lapPatch } = patch;
-      const sessionChanged = "sessionId" in lapPatch && lapPatch.sessionId !== (state.laps[0]?.sessionId ?? null);
-      // A session change resets sensors, then the same patch's sensors apply on top.
-      const baseSensors = sessionChanged ? [] : state.sensors;
-      const nextSensors = sensors ?? baseSensors;
-      if (sessionChanged) {
-        return {
-          ...derive([{ ...emptyLap, ...lapPatch }], nextSensors),
-          viewport: null,
-          activeSection: null,
-          hoverSection: null,
-        };
-      }
-      const laps = [...state.laps];
-      laps[0] = { ...(laps[0] ?? emptyLap), ...lapPatch };
-      return derive(laps, nextSensors);
-    }),
-
-  setReference: (patch) =>
-    set((state) => {
-      if (state.laps.length === 0) {
-        return state;
-      }
-      if (patch === null) {
-        return derive(state.laps.slice(0, 1), state.sensors);
-      }
-      const { sensors, ...lapPatch } = patch;
-      const laps = [...state.laps];
-      laps[1] = patchLap(laps[1] ?? emptyLap, lapPatch);
-      return derive(laps.slice(0, 2), sensors ?? state.sensors);
-    }),
+  game: null,
+  setGame: (game) => set({ game }),
 
   viewport: null,
   setViewport: (viewport) => set({ viewport }),

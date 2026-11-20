@@ -32,15 +32,6 @@ export const LANE_HEIGHT_STEP_PX = 20;
 export const MIN_LANE_HEIGHT_PX = 60;
 export const MAX_LANE_HEIGHT_PX = 400;
 
-// Fixed, not derived from team livery (TEAM_COLORS/getTeamColor() in
-// teamColors.ts, still used elsewhere -- e.g. the driver selector). Team
-// color meant two same-team drivers rendered in the *identical* color here,
-// distinguished only by solid-vs-dashed line style -- easy to miss. Every
-// chart trace is just "primary" or "comparison" now, no per-driver variation.
-export const PRIMARY_TRACE_COLOR = "#ef4444"; // red-500
-export const COMPARISON_TRACE_COLOR = "#3b82f6"; // blue-500
-export const DELTA_TRACE_COLOR = "#facc15"; // amber-400 -- distinct from both above
-
 // Lap slots: A is the reference lap, B to D comparison laps (C0 spec). Hex
 // mirrors --color-slot-* in index.css because uPlot and SVG need literals.
 export const MAX_COMPARISON_LAPS = 3;

@@ -26,7 +26,9 @@ export function timeAt(lap: LoadedLap, d: number): number | null {
   const a = pts[Math.max(0, lo - 1)];
   const span = b.lapDistance - a.lapDistance;
   const t = span === 0 ? 0 : (d - a.lapDistance) / span;
-  return a[TIME_KEY] + t * (b[TIME_KEY] - a[TIME_KEY]);
+  // Recordings without lap_time_ms (older files) have no time to interpolate.
+  const time = a[TIME_KEY] + t * (b[TIME_KEY] - a[TIME_KEY]);
+  return Number.isFinite(time) ? time : null;
 }
 
 // Seconds the lap took to cover [start, end]; null if it did not record that stretch.
