@@ -56,8 +56,8 @@ export function buildLapSeries(laps: readonly (LoadedLap | undefined)[], sensors
   return { grid, defs, bySensor };
 }
 
-// t_A(d) - t_X(d) in seconds for every comparison lap that is loaded. Positive
-// means A took longer to reach that distance, i.e. A is behind.
+// t_X(d) - t_A(d) in seconds for every comparison lap that is loaded, the same
+// sign as the lap chips: positive means X is slower than A, negative faster.
 export function buildDeltas(laps: readonly (LoadedLap | undefined)[], grid: readonly number[]): SlotSeries[] {
   const a = laps[0];
   if (a === undefined) {
@@ -73,7 +73,7 @@ export function buildDeltas(laps: readonly (LoadedLap | undefined)[], grid: read
     const points = grid.map((lapDistance, i) => {
       const x = timeX[i].value;
       const base = timeA[i].value;
-      return { lapDistance, value: x === null || base === null ? null : (base - x) / 1000 };
+      return { lapDistance, value: x === null || base === null ? null : (x - base) / 1000 };
     });
     // Older recordings carry no lap_time_ms: nothing to draw, so no lane for them.
     if (points.some((p) => p.value !== null)) {

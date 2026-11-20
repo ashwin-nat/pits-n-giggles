@@ -56,14 +56,14 @@ test("buildLapSeries clamps to A's grid: a longer comparison lap does not extend
   assert.equal(result.bySensor.get("speed")?.[1].points.length, 5);
 });
 
-test("buildDeltas: one line per loaded comparison lap, positive when A is behind", () => {
+test("buildDeltas: one line per loaded comparison lap, negative when the lap is faster", () => {
   const a = lap([speed], 100, 0);
-  const sooner = lap([speed], 100, -100); // X reaches each point sooner, so A is behind
-  const later = lap([speed], 100, 100); // X reaches each point later, so A is ahead
+  const sooner = lap([speed], 100, -100); // X reaches each point sooner: faster, negative
+  const later = lap([speed], 100, 100); // X reaches each point later: slower, positive
   const deltas = buildDeltas([a, sooner, undefined, later], [0, 1, 2, 3, 4]);
   assert.deepEqual(deltas.map((d) => d.slot), [1, 3]);
-  assert.equal(deltas[0].points[4].value, 0.4);
-  assert.equal(deltas[1].points[4].value, -0.4);
+  assert.equal(deltas[0].points[4].value, -0.4);
+  assert.equal(deltas[1].points[4].value, 0.4);
   assert.equal(deltas[0].points[0].value, 0);
 });
 

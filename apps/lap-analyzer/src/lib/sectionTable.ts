@@ -54,7 +54,7 @@ export interface SectionRow {
   section: TrackSection;
   // A's minimum speed; null when A has no speed.
   minA: number | null;
-  // One per slot (index 0 unused): (t_A - t_X) over the section, positive when A is slower.
+  // One per slot (index 0 unused): (t_X - t_A) over the section, positive when the lap is slower than A.
   deltas: (number | null)[];
 }
 
@@ -73,7 +73,7 @@ export function buildSectionRows(laps: readonly (LoadedLap | undefined)[], secti
             return null;
           }
           const timeX = sectionTime(lap, s, e);
-          return timeX === null ? null : timeA - timeX;
+          return timeX === null ? null : timeX - timeA;
         }),
       };
     });

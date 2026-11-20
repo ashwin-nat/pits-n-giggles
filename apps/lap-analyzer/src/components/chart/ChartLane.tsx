@@ -312,10 +312,10 @@ export function ChartLane({
             ctx.font = `italic ${10 * ratio}px Geist Variable, sans-serif`;
             ctx.textAlign = "right";
             ctx.textBaseline = "top";
-            ctx.fillText(signColored ? `A behind ${fmt(yMax)}` : fmt(yMax), right - 6 * ratio, u.bbox.top + 3 * ratio);
+            ctx.fillText(signColored ? `slower ${fmt(yMax)}` : fmt(yMax), right - 6 * ratio, u.bbox.top + 3 * ratio);
             ctx.textBaseline = "bottom";
             ctx.fillText(
-              signColored ? `A ahead ${fmt(yMin)}` : fmt(yMin),
+              signColored ? `faster ${fmt(yMin)}` : fmt(yMin),
               right - 6 * ratio,
               u.bbox.top + u.bbox.height - 3 * ratio
             );

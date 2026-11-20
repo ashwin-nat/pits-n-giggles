@@ -35,13 +35,13 @@ test("minSpeed is the lowest value inside the section, null with no speed", () =
   assert.equal(minSpeed({ manifest, points: [{ lapDistance: 0, lap_time_ms: 0 }] }, 0, 10), null);
 });
 
-test("buildSectionRows: rows in track order, delta positive when A is slower", () => {
+test("buildSectionRows: rows in track order, delta negative when the lap is faster than A", () => {
   const a = lap(10, [200, 90, 150, 80]);
   const faster = lap(9, [200, 90, 150, 80]);
   const rows = buildSectionRows([a, faster, undefined], sections);
   assert.deepEqual(rows.map((r) => r.section.label), ["T1", "T2"]);
   assert.equal(rows[0].minA, 90);
-  assert.ok(Math.abs((rows[0].deltas[1] ?? 0) - 0.2) < 1e-9);
+  assert.ok(Math.abs((rows[0].deltas[1] ?? 0) + 0.2) < 1e-9);
   assert.equal(rows[0].deltas[2], null);
   assert.equal(rows[0].deltas[0], null);
 });
