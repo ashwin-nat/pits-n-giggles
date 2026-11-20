@@ -58,6 +58,10 @@ export interface TelemetryStore {
   hoverSection: ActiveSection | null;
   setHoverSection: (section: ActiveSection | null) => void;
 
+  // Track map side panel: open, or collapsed to a slim button.
+  mapOpen: boolean;
+  toggleMap: () => void;
+
   // Whether to show the delta lane
   showDelta: boolean;
   toggleDelta: () => void;
@@ -165,6 +169,9 @@ export const useTelemetryStore = create<TelemetryStore>((set) => ({
 
   hoverSection: null,
   setHoverSection: (section) => set({ hoverSection: section }),
+
+  mapOpen: true,
+  toggleMap: () => set((state) => ({ mapOpen: !state.mapOpen })),
 
   showDelta: false,
   toggleDelta: () => set((state) => ({ showDelta: !state.showDelta })),

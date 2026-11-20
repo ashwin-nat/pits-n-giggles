@@ -1,0 +1,78 @@
+// Section table under the map: A's minimum speed and each comparison lap's
+// time delta per section. Pure functions for sectionTable.test.ts.
+import type { TrackSection } from "../types/api";
+import type { LoadedLap } from "./lapSeries";
+
+const SPEED_KEY = "speed";
+const TIME_KEY = "lap_time_ms";
+
+// Lap time at distance d, interpolated between samples; null outside the recorded range.
+export function timeAt(lap: LoadedLap, d: number): number | null {
+  const pts = lap.points;
+  if (pts.length === 0 || d < pts[0].lapDistance || d > pts[pts.length - 1].lapDistance) {
+    return null;
+  }
+  let lo = 0;
+  let hi = pts.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (pts[mid].lapDistance < d) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+  const b = pts[lo];
+  const a = pts[Math.max(0, lo - 1)];
+  const span = b.lapDistance - a.lapDistance;
+  const t = span === 0 ? 0 : (d - a.lapDistance) / span;
+  return a[TIME_KEY] + t * (b[TIME_KEY] - a[TIME_KEY]);
+}
+
+// Seconds the lap took to cover [start, end]; null if it did not record that stretch.
+export function sectionTime(lap: LoadedLap, start: number, end: number): number | null {
+  const t0 = timeAt(lap, start);
+  const t1 = timeAt(lap, end);
+  return t0 === null || t1 === null ? null : (t1 - t0) / 1000;
+}
+
+// Lowest speed inside [start, end]; null when the lap has no speed there.
+export function minSpeed(lap: LoadedLap, start: number, end: number): number | null {
+  let min: number | null = null;
+  for (const p of lap.points) {
+    const v = p[SPEED_KEY];
+    if (p.lapDistance >= start && p.lapDistance <= end && v !== undefined && !Number.isNaN(v)) {
+      min = min === null ? v : Math.min(min, v);
+    }
+  }
+  return min;
+}
+
+export interface SectionRow {
+  section: TrackSection;
+  // A's minimum speed; null when A has no speed.
+  minA: number | null;
+  // One per slot (index 0 unused): (t_A - t_X) over the section, positive when A is slower.
+  deltas: (number | null)[];
+}
+
+export function buildSectionRows(laps: readonly (LoadedLap | undefined)[], sections: readonly TrackSection[]): SectionRow[] {
+  const a = laps[0];
+  return [...sections]
+    .sort((x, y) => x.distanceStart - y.distanceStart)
+    .map((section) => {
+      const { distanceStart: s, distanceEnd: e } = section;
+      const timeA = a === undefined ? null : sectionTime(a, s, e);
+      return {
+        section,
+        minA: a === undefined ? null : minSpeed(a, s, e),
+        deltas: laps.map((lap, slot) => {
+          if (slot === 0 || lap === undefined || timeA === null) {
+            return null;
+          }
+          const timeX = sectionTime(lap, s, e);
+          return timeX === null ? null : timeA - timeX;
+        }),
+      };
+    });
+}
