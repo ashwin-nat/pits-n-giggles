@@ -31,7 +31,10 @@ import pytest
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.f1_types import TrackID
-from apps.dev_tools.extract_track_data import (FOLDER_ALIASES, build_geometry,
+from apps.dev_tools import extract_track_data
+from apps.dev_tools.extract_track_data import (FOLDER_ALIASES, FORMAT_VERSION,
+                                               SOURCE_YEAR,
+                                               OUT_DIR, build_geometry,
                                                circuit_for_folder,
                                                json_lengths, midpoint_length,
                                                parse_gates)
@@ -125,3 +128,43 @@ def test_parse_gates_reads_tokens():
     assert g["position"] == (1.5, 2.5, 3.5)
     assert g["normal"] == (1.0, 0.0, 0.0)
     assert g["wp"] == {"left_white_line": 4.25}
+
+
+@allure.story("Shipped files")
+@allure.title("Geometry files on disk match the shipped circuits")
+@allure.description("assets/track-data holds exactly one c<n>.npz per circuit in assets/track-segments: none missing, none extra.")
+def test_geometry_files_match_layout_table():
+    on_disk = {int(p.stem[1:]) for p in OUT_DIR.glob("c*.npz")}
+    assert on_disk == set(json_lengths())
+
+
+@allure.story("Shipped files")
+@allure.title("Geometry file for circuit {circuit} is well formed")
+@allure.description("Each file has edges (N, 6), frac (N,) of the same N, the current format version, the source game year, and frac in [0, 1).")
+@pytest.mark.parametrize("circuit", sorted(json_lengths()))
+def test_geometry_file_contents(circuit):
+    with np.load(OUT_DIR / f"c{circuit}.npz") as f:
+        edges, frac, version = f["edges"], f["frac"], int(f["version"])
+        source_year = int(f["source_year"])
+    assert version == FORMAT_VERSION
+    assert source_year == SOURCE_YEAR
+    assert edges.ndim == 2 and edges.shape[1] == 6
+    assert len(frac) == len(edges)
+    assert frac[0] == 0.0 and np.all(np.diff(frac) > 0) and frac[-1] < 1.0
+
+
+@allure.story("Shipped files")
+@allure.title("Partial extraction leaves other layouts alone, full run clears stale files")
+@allure.description("Passing --layout writes only those files; a default run removes files that are not in the table.")
+def test_output_dir_handling(tmp_path, monkeypatch):
+    monkeypatch.setattr(extract_track_data, "OUT_DIR", tmp_path)
+    monkeypatch.setattr(extract_track_data, "read_aispline", lambda _: b"")
+    monkeypatch.setattr(extract_track_data, "parse_gates", lambda _: _square_loop())
+    monkeypatch.setattr(extract_track_data, "game_layouts", lambda _: ["monza=11"])
+    (tmp_path / "c99.npz").write_bytes(b"stale")
+    monkeypatch.setattr("sys.argv", ["x", "--game-dir", str(tmp_path), "--layout", "melbourne=0"])
+    extract_track_data.main()
+    assert sorted(p.name for p in tmp_path.glob("*.npz")) == ["c0.npz", "c99.npz"]
+    monkeypatch.setattr("sys.argv", ["x", "--game-dir", str(tmp_path)])
+    extract_track_data.main()
+    assert sorted(p.name for p in tmp_path.glob("*.npz")) == ["c11.npz"]

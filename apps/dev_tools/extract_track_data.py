@@ -1,14 +1,13 @@
-"""Extract track geometry (white-line edges) from an F1 25 install into assets/track-data/track_geometry.npz.
-
-POC: geometry only.
+"""Extract track geometry (white-line edges) from an F1 25 install into assets/track-data/c<circuit>.npz.
 
 usage: poetry run python -m apps.dev_tools.extract_track_data --game-dir "E:\\...\\F1 25" [--layout monza=11 ...]
 
 With no --layout, every folder under <game>/2025_asset_groups/environment_package/tracks that maps to a
 TrackID is extracted. Each --layout is "<game track folder>=<circuit number>" and replaces that default.
 
-The output file is rewritten from scratch, so pass every layout you want in it. A length report compares
-each layout's midpoint lap length with track_length in assets/track-segments/*.json.
+One compressed file per layout, so a single layout can be re-extracted alone. A run over the default full
+table clears the folder first, so dropped layouts leave no stale file. A length report compares each
+layout's midpoint lap length with track_length in assets/track-segments/*.json.
 """
 import argparse
 import json
@@ -23,7 +22,9 @@ import zstandard
 from lib.f1_types import TrackID
 
 TRACKS_SUBDIR = Path("2025_asset_groups") / "environment_package" / "tracks"
-OUT_FILE = Path(__file__).resolve().parents[2] / "assets" / "track-data" / "track_geometry.npz"
+SOURCE_YEAR = 25  # F1 game year the data comes from; matches the 2025_asset_groups folder above
+OUT_DIR = Path(__file__).resolve().parents[2] / "assets" / "track-data"
+FORMAT_VERSION = 1  # keep in step with GEOMETRY_VERSION in apps/lap-analyzer/src/lib/trackGeometry.ts
 
 SEGMENTS_DIR = Path(__file__).resolve().parents[2] / "assets" / "track-segments"
 LENGTH_TOLERANCE = 0.01
@@ -153,7 +154,10 @@ def main() -> None:
 
     specs = args.layout or game_layouts(args.game_dir)
     real = json_lengths()
-    out: Dict[str, np.ndarray] = {}
+    if not args.layout:
+        for stale in OUT_DIR.glob("c*.npz"):
+            stale.unlink()
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
     flagged: List[str] = []
     for spec in specs:
         folder, _, number = spec.partition("=")
@@ -163,8 +167,8 @@ def main() -> None:
         erp = args.game_dir / TRACKS_SUBDIR / folder / "wep" / f"{folder}_common.erp"
         gates = parse_gates(read_aispline(erp))
         edges, frac = build_geometry(gates)
-        out[f"c{circuit}_edges"] = edges
-        out[f"c{circuit}_frac"] = frac
+        np.savez_compressed(OUT_DIR / f"c{circuit}.npz", edges=edges, frac=frac,
+                            version=np.int32(FORMAT_VERSION), source_year=np.int32(SOURCE_YEAR))
         length = midpoint_length(edges)
         expected = real.get(circuit)
         note = "no segment file"
@@ -176,9 +180,7 @@ def main() -> None:
                 note += "  <-- FLAG"
         print(f"{folder}: circuit {circuit}, {len(gates)} gates, {len(edges)} track gates, {note}")
 
-    OUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    np.savez(OUT_FILE, **out)
-    print(f"wrote {OUT_FILE}")
+    print(f"wrote {len(specs)} file(s) to {OUT_DIR}")
     if flagged:
         print(f"length gap over {LENGTH_TOLERANCE:.0%}: " + "; ".join(flagged))
 
