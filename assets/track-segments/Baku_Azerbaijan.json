@@ -83,26 +83,6 @@
           "distance_m": 50,
           "at_m": 267.5,
           "side": "right"
-        },
-        {
-          "distance_m": 200,
-          "at_m": 5625.4,
-          "side": "left"
-        },
-        {
-          "distance_m": 150,
-          "at_m": 5673.3,
-          "side": "left"
-        },
-        {
-          "distance_m": 100,
-          "at_m": 5722.2,
-          "side": "left"
-        },
-        {
-          "distance_m": 50,
-          "at_m": 5774.1,
-          "side": "left"
         }
       ]
     },
