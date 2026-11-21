@@ -58,6 +58,10 @@ export interface TelemetryStore {
   mapOpen: boolean;
   toggleMap: () => void;
 
+  // Track markers (zones, speed trap, overtake, brake boards) on the map.
+  showMarkers: boolean;
+  toggleMarkers: () => void;
+
   // Whether to show the delta lane
   showDelta: boolean;
   toggleDelta: () => void;
@@ -154,6 +158,9 @@ export const useTelemetryStore = create<TelemetryStore>((set, get) => ({
 
   mapOpen: true,
   toggleMap: () => set((state) => ({ mapOpen: !state.mapOpen })),
+
+  showMarkers: true,
+  toggleMarkers: () => set((state) => ({ showMarkers: !state.showMarkers })),
 
   showDelta: false,
   toggleDelta: () => set((state) => ({ showDelta: !state.showDelta })),

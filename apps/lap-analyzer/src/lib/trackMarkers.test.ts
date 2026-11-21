@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { splitWrapped, zoneRanges } from "./trackMarkers";
+import { buildMarkers, splitWrapped, zoneRanges } from "./trackMarkers";
+import { formulaRules } from "./formulas";
 import type { TrackMeta } from "./segments";
 
 test("splitWrapped keeps a plain range", () => {
@@ -27,4 +28,28 @@ test("zoneRanges groups and unwraps", () => {
   assert.equal(z.drs.length, 2);
   assert.deepEqual(z.aeroFull, [{ startM: 10, endM: 20 }]);
   assert.deepEqual(z.aeroPartial, [{ startM: 30, endM: 40 }]);
+});
+
+const full = {
+  trackLength: 5798,
+  speedTrapM: 716.3,
+  drsZones: [{ id: 1, detectionM: 2757.6, activation: [{ startM: 3055.8, endM: 3889.1 }] }],
+  overtake: { detectionM: 5154.4, activationM: 5253.6 },
+  activeAeroZones: [{ mode: "full", startM: 1158.3, endM: 2113.1 }],
+  brakeBoards: [{ cornerNumber: 1, distanceM: 150, atM: 776.3, side: "both" }],
+} as unknown as TrackMeta;
+
+test("buildMarkers: F1 26 has aero and overtake, no DRS", () => {
+  const m = buildMarkers(full, formulaRules("F1 26"));
+  assert.equal(m.aeroFull.length, 1);
+  assert.equal(m.drs.length, 0);
+  assert.deepEqual(m.points.map((p) => p.label), ["Overtake detection", "Overtake activation", "Speed trap"]);
+  assert.deepEqual(m.boards, [{ m: 776.3, label: "150", side: "both" }]);
+});
+
+test("buildMarkers: other formulas have DRS, no aero or overtake", () => {
+  const m = buildMarkers(full, formulaRules("F2"));
+  assert.equal(m.aeroFull.length, 0);
+  assert.equal(m.drs.length, 1);
+  assert.deepEqual(m.points.map((p) => p.label), ["DRS detection 1", "Speed trap"]);
 });

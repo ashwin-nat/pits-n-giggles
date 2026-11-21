@@ -18,9 +18,11 @@ import {
   type Pt,
 } from "../../lib/mapGeometry";
 import { formulaRules } from "../../lib/formulas";
-import { MapMarkers, MARKER_COLORS } from "./MapMarkers";
+import { MARKER_COLORS } from "../../lib/trackMarkers";
+import { MapMarkers } from "./MapMarkers";
 import { LAP_SLOT_COLORS, LAP_SLOT_LETTERS } from "../../lib/chartConstants";
 import type { TrackMeta } from "../../lib/segments";
+import { useTelemetryStore } from "../../store/telemetryStore";
 import type { ActiveSection } from "../../types/store";
 
 const WHOLE_PAD_M = 80;
@@ -53,7 +55,7 @@ export function MapSvg({ geometry, meta, formula, lines, lapPresent, labels, cro
   const [size, setSize] = useState({ width: 400, height: 320 });
   const [view, setView] = useState<Box | null>(null);
   const [follow, setFollow] = useState(false);
-  const [showMarkers, setShowMarkers] = useState(true);
+  const showMarkers = useTelemetryStore((state) => state.showMarkers);
   const rules = formulaRules(formula);
   const drag = useRef<{ x: number; y: number } | null>(null);
 
@@ -285,14 +287,6 @@ export function MapSvg({ geometry, meta, formula, lines, lapPresent, labels, cro
       )}
 
       <div className="absolute right-3 top-2 flex items-center gap-1">
-        <button
-          type="button"
-          className={`${BUTTON} ${showMarkers ? "bg-tone-100 text-tone-900 hover:bg-tone-100 hover:text-tone-900" : ""}`}
-          title="Show DRS, aero, speed trap, overtake and brake boards"
-          onClick={() => setShowMarkers((v) => !v)}
-        >
-          Markers
-        </button>
         <button type="button" className={BUTTON} onClick={() => zoomButton(WHEEL_ZOOM)} title="Zoom in">
           +
         </button>

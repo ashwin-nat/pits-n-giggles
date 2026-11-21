@@ -2,15 +2,7 @@ import { useMemo } from "react";
 import { edgeAt, lineAlong, toPath, type MapGeometry, type Pt } from "../../lib/mapGeometry";
 import type { DistanceRange, TrackMeta } from "../../lib/segments";
 import type { FormulaRules } from "../../lib/formulas";
-import { zoneRanges } from "../../lib/trackMarkers";
-
-export const MARKER_COLORS = {
-  drs: "#22c55e",
-  aero: "#ef4444",
-  speedTrap: "#d946ef",
-  overtake: "#34d399",
-  board: "#f87171",
-} as const;
+import { buildMarkers, MARKER_COLORS, type MarkerPoint } from "../../lib/trackMarkers";
 
 // Zone lines run outside the road by a fixed number of screen pixels: full aero 6 px past the left
 // edge, partial 11 px, DRS 6 px past the right edge.
@@ -38,10 +30,10 @@ interface MapMarkersProps {
 // Zone lines beside the road, plus speed trap, overtake and brake board marks.
 export function MapMarkers({ geometry, meta, scale, rules }: MapMarkersProps) {
   const frac = (m: number) => m / meta.trackLength;
-  const zones = useMemo(() => zoneRanges(meta), [meta]);
+  const markers = useMemo(() => buildMarkers(meta, rules), [meta, rules]);
 
   // A dot on the road centre at `m`: filled for a detection point or the speed trap, a ring for activation.
-  const dot = (m: number, color: string, key: string, text: string, ring = false) => {
+  const dot = ({ m, color, ring, label: text }: MarkerPoint, key: string) => {
     const { l, r } = edgeAt(geometry, frac(m));
     const x = (l[0] + r[0]) / 2;
     const y = (l[1] + r[1]) / 2;
@@ -76,17 +68,13 @@ export function MapMarkers({ geometry, meta, scale, rules }: MapMarkersProps) {
 
   return (
     <g>
-      {rules.activeAero && line(zones.aeroPartial, 0, AERO_PARTIAL_PX, MARKER_COLORS.aero, "aero-p", "2 4")}
-      {rules.activeAero && line(zones.aeroFull, 0, AERO_FULL_PX, MARKER_COLORS.aero, "aero-f")}
-      {rules.drs && line(zones.drs, 1, DRS_PX, MARKER_COLORS.drs, "drs")}
-      {rules.drs &&
-        meta.drsZones.map((z) => dot(z.detectionM, MARKER_COLORS.drs, `drs-det-${z.id}`, `DRS detection ${z.id}`))}
-      {rules.overtake && dot(meta.overtake.detectionM, MARKER_COLORS.overtake, "ot-det", "Overtake detection")}
-      {rules.overtake && dot(meta.overtake.activationM, MARKER_COLORS.overtake, "ot-act", "Overtake activation", true)}
-      {dot(meta.speedTrapM, MARKER_COLORS.speedTrap, "trap", "Speed trap")}
+      {line(markers.aeroPartial, 0, AERO_PARTIAL_PX, MARKER_COLORS.aero, "aero-p", "2 4")}
+      {line(markers.aeroFull, 0, AERO_FULL_PX, MARKER_COLORS.aero, "aero-f")}
+      {line(markers.drs, 1, DRS_PX, MARKER_COLORS.drs, "drs")}
+      {markers.points.map((pt, i) => dot(pt, `pt-${i}`))}
       {scale >= BOARD_MIN_SCALE &&
-        meta.brakeBoards.map((b, i) => {
-          const { l, r } = edgeAt(geometry, frac(b.atM));
+        markers.boards.map((b, i) => {
+          const { l, r } = edgeAt(geometry, frac(b.m));
           const dx = r[0] - l[0];
           const dy = r[1] - l[1];
           const marks: Pt[][] = [];
@@ -109,7 +97,7 @@ export function MapMarkers({ geometry, meta, scale, rules }: MapMarkersProps) {
                 textAnchor="middle"
                 dy={-4 / scale}
               >
-                {b.distanceM}
+                {b.label}
               </text>
             </g>
           ));

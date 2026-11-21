@@ -22,6 +22,8 @@ export function Header({ onFileChange }: HeaderProps) {
   const referenceSessionId = useTelemetryStore((s) => s.laps[0]?.sessionId ?? null);
   const mapOpen = useTelemetryStore((s) => s.mapOpen);
   const toggleMap = useTelemetryStore((s) => s.toggleMap);
+  const showMarkers = useTelemetryStore((s) => s.showMarkers);
+  const toggleMarkers = useTelemetryStore((s) => s.toggleMarkers);
   useDefaultSensors();
 
   const trackName = sessions?.find((s) => s.id === referenceSessionId)?.trackName;
@@ -58,6 +60,15 @@ export function Header({ onFileChange }: HeaderProps) {
             className="rounded-lg bg-tone-800 px-3 py-1.5 text-xs text-tone-100 hover:bg-tone-700 aria-pressed:bg-tone-700"
           >
             Map
+          </button>
+          <button
+            type="button"
+            onClick={toggleMarkers}
+            aria-pressed={showMarkers}
+            title="Zones, speed trap, overtake and brake boards on the map"
+            className="rounded-lg bg-tone-800 px-3 py-1.5 text-xs text-tone-100 hover:bg-tone-700 aria-pressed:bg-tone-700"
+          >
+            Markers
           </button>
         </div>
       </header>
