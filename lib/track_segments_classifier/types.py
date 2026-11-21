@@ -206,8 +206,10 @@ class CornerSegmentInfo(BaseSegmentInfo):
         }
 
     def to_file_dict(self) -> Dict[str, Any]:
-        out: Dict[str, Any] = {"type": "corner", "start_m": _num(self.start_m), "end_m": _num(self.end_m),
-                               "name": self.name, "corner_number": self.corner_number}
+        out: Dict[str, Any] = {"type": "corner", "start_m": _num(self.start_m), "end_m": _num(self.end_m)}
+        if self.name:
+            out["name"] = self.name
+        out["corner_number"] = self.corner_number
         if self.brake_boards:
             out["brake_boards"] = [b.to_file_dict() for b in self.brake_boards]
         return out
