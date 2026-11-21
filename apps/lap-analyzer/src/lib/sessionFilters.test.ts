@@ -29,6 +29,7 @@ test("listGames counts sessions per game, newest year first", () => {
   ]);
   assert.equal(gameLabel(session("a")), "F1 2025");
   assert.equal(gameLabel(session("a", { formula: "F1 Modern" })), "F1 2025");
+  assert.equal(gameLabel(session("a", { formula: "Supercars" })), "Supercars 2025");
   assert.equal(gameLabel(session("a", { formula: "F1 26", gameYear: 2026 })), "F1 26");
 });
 

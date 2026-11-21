@@ -2,6 +2,7 @@ import { useSessions } from "../../hooks/useSessions";
 import { useTrackMeta } from "../../hooks/useTrackMeta";
 import { useTelemetryStore } from "../../store/telemetryStore";
 import type { TrackSection } from "../../types/api";
+import { isCompleteLap } from "../../types/store";
 import type { ActiveSection } from "../../types/store";
 import { labelFits, sectionCode, sectionViewport } from "../../lib/sectionStrip";
 import { useLapTelemetries } from "../../hooks/useLapTelemetries";
@@ -222,7 +223,7 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
             return (
               <InfoTooltip
                 key={`${section.label}-${section.distanceStart}`}
-                text={<SegmentTooltipContent title={segmentTooltip(section)} section={section} laps={loadedLaps} loading={isFetching} />}
+                text={<SegmentTooltipContent title={segmentTooltip(section)} section={section} laps={loadedLaps} present={laps.map((lap) => isCompleteLap(lap))} loading={isFetching} />}
                 style={flexStyle}
                 className="h-full"
                 placement="bottom"

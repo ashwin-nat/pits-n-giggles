@@ -8,16 +8,18 @@ interface SegmentTooltipContentProps {
   section: TrackSection;
   // One per lap slot, A first; undefined while that lap is still loading.
   laps: readonly (LoadedLap | undefined)[];
+  // Which slots hold a complete lap; an empty slot gets no row.
+  present: readonly boolean[];
   // A lap change is still loading, so the times held belong to the previous laps.
   loading: boolean;
 }
 
 // A segment's name over each lap's time through it, and who was faster than A. Rendered only while the
 // tooltip is open, so the times are worked out on hover.
-export function SegmentTooltipContent({ title, section, laps, loading }: SegmentTooltipContentProps) {
+export function SegmentTooltipContent({ title, section, laps, present, loading }: SegmentTooltipContentProps) {
   const times = laps.map((lap) => (lap === undefined ? null : sectionTime(lap, section.distanceStart, section.distanceEnd)));
   const timeA = times[0] ?? null;
-  const rows = laps.map((_, slot) => slot);
+  const rows = laps.flatMap((_, slot) => (present[slot] ? [slot] : []));
 
   return (
     <span className="block">

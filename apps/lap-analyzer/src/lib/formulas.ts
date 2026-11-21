@@ -17,8 +17,21 @@ const TABLE: Record<string, FormulaRules> = {
   "f1 26": F1_26,
   f2: F2,
   "f2 2021": F2,
+  f1: F1,
+  "f1 modern": F1,
+  "f1 classic": F1,
+  "f1 generic": F1,
+  "f1 world": F1,
+  "f1 elimination": F1,
 };
 
+// Unlisted formulas (Supercars, Esports, Beta) get the F1 marks but keep their own name, so they are
+// not grouped with F1 in the game lists. "Unknown (n)" is treated as F1, as the backend does.
 export function formulaRules(formula: string): FormulaRules {
-  return TABLE[formula.trim().toLowerCase()] ?? F1;
+  const key = formula.trim().toLowerCase();
+  const known = TABLE[key];
+  if (known !== undefined) {
+    return known;
+  }
+  return key === "" || key.startsWith("unknown") ? F1 : { ...F1, name: formula.trim() };
 }

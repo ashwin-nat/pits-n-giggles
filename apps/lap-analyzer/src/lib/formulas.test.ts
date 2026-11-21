@@ -15,3 +15,9 @@ test("F2 and every other formula have DRS only", () => {
   assert.equal(formulaRules("f2 2021").name, "F2");
   assert.equal(formulaRules("F1 Modern").name, "F1");
 });
+
+test("a formula that is not F1 or F2 keeps its own name and gets the F1 marks", () => {
+  const r = formulaRules("Supercars");
+  assert.equal(r.name, "Supercars");
+  assert.deepEqual([r.drs, r.activeAero, r.overtake], [true, false, false]);
+});

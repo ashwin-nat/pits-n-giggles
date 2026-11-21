@@ -18,7 +18,7 @@ import {
   type Pt,
 } from "../../lib/mapGeometry";
 import { formulaRules } from "../../lib/formulas";
-import { MARKER_COLORS } from "../../lib/trackMarkers";
+import { buildMarkers, MARKER_COLORS } from "../../lib/trackMarkers";
 import { CornerBadges, MapMarkers } from "./MapMarkers";
 import { LAP_SLOT_COLORS, LAP_SLOT_LETTERS } from "../../lib/chartConstants";
 import type { CornerSpan, TrackMeta } from "../../lib/segments";
@@ -61,7 +61,8 @@ export function MapSvg({ geometry, meta, formula, lines, lapPresent, labels, cro
   const [follow, setFollow] = useState(false);
   const [cornerHover, setCornerHover] = useState<{ corner: CornerSpan; anchor: DOMRect } | null>(null);
   const showMarkers = useTelemetryStore((state) => state.showMarkers);
-  const rules = formulaRules(formula);
+  const rules = useMemo(() => formulaRules(formula), [formula]);
+  const markers = useMemo(() => (meta === null ? null : buildMarkers(meta, rules)), [meta, rules]);
   const drag = useRef<{ x: number; y: number } | null>(null);
 
   const whole = useMemo<Box>(() => {
@@ -76,6 +77,7 @@ export function MapSvg({ geometry, meta, formula, lines, lapPresent, labels, cro
   useEffect(() => {
     if (activeSection === null || trackLength === 0) {
       setView(null);
+      setFollow(false);
       return;
     }
     setView(sectionBox(geometry, frac(activeSection.distanceStart), frac(activeSection.distanceEnd)));
@@ -109,6 +111,11 @@ export function MapSvg({ geometry, meta, formula, lines, lapPresent, labels, cro
   }
   const vbRef = useRef(vb);
   vbRef.current = vb;
+  // The tooltip is placed from the badge's rect when hovered, so any move of the map drops it.
+  const vbKey = vb.join(",");
+  useEffect(() => {
+    setCornerHover(null);
+  }, [vbKey, meta]);
   const viewRef = useRef({ view, whole });
   viewRef.current = { view, whole };
 
@@ -292,25 +299,25 @@ export function MapSvg({ geometry, meta, formula, lines, lapPresent, labels, cro
         )}
       </div>
 
-      {showMarkers && meta !== null && (
+      {showMarkers && markers !== null && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 px-3 pb-2 text-2xs text-tone-300">
           {(
             [
-              [rules.drs, "DRS zone and detection", MARKER_COLORS.drs],
-              [rules.activeAero, "Aero full (solid)", MARKER_COLORS.aero],
-              [rules.activeAero, "Aero partial (dotted)", MARKER_COLORS.aero],
-              [true, "Speed trap", MARKER_COLORS.speedTrap],
-              [rules.overtake, "Overtake detection, ring = activation", MARKER_COLORS.overtake],
-              [true, "Brake boards (zoom in)", MARKER_COLORS.board],
+              [markers.drs.length > 0 || markers.points.some((p) => p.color === MARKER_COLORS.drs), "DRS zone and detection", MARKER_COLORS.drs],
+              [markers.aeroFull.length > 0, "Aero full (solid)", MARKER_COLORS.aero],
+              [markers.aeroPartial.length > 0, "Aero partial (dotted)", MARKER_COLORS.aero],
+              [markers.points.some((p) => p.color === MARKER_COLORS.speedTrap), "Speed trap", MARKER_COLORS.speedTrap],
+              [markers.points.some((p) => p.color === MARKER_COLORS.overtake), "Overtake detection, ring = activation", MARKER_COLORS.overtake],
+              [markers.boards.length > 0, "Brake boards (zoom in)", MARKER_COLORS.board],
             ] as const
           )
-            .filter(([applies]) => applies)
+            .filter(([present]) => present)
             .map(([, name, color]) => (
-            <span key={name} className="flex items-center gap-1.5">
-              <span className="h-2 w-3.5 rounded-sm" style={{ backgroundColor: color }} />
-              {name}
-            </span>
-          ))}
+              <span key={name} className="flex items-center gap-1.5">
+                <span className="h-2 w-3.5 rounded-sm" style={{ backgroundColor: color }} />
+                {name}
+              </span>
+            ))}
         </div>
       )}
 
