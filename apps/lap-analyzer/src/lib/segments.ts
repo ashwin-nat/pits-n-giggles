@@ -11,14 +11,54 @@ interface SegmentEntry {
   end_m: number;
   corner_number?: number;
   corner_numbers?: number[];
+  brake_boards?: RawBrakeBoard[];
+  // Sub-corners of a complex corner, each with its own boards.
+  corners?: { corner_number: number; brake_boards?: RawBrakeBoard[] }[];
+}
+
+interface RawBrakeBoard {
+  distance_m: number;
+  at_m: number;
+  side: BrakeBoardSide;
 }
 
 interface SegmentsFile {
   circuit_name: string;
   circuit_number: number;
   track_length: number;
+  speed_trap_m: number;
+  drs_zones: { id: number; detection_m: number; activation: { start_m: number; end_m: number }[] }[];
+  overtake_dist: { detection_m: number; activation_m: number };
+  active_aero_zones: { mode: AeroMode; start_m: number; end_m: number }[];
   segments: SegmentEntry[];
   sectors: { s1: number; s2: number };
+}
+
+export type BrakeBoardSide = "left" | "right" | "both";
+export type AeroMode = "full" | "partial";
+
+// A range of lap distance in metres. end < start means it crosses the start/finish line.
+export interface DistanceRange {
+  startM: number;
+  endM: number;
+}
+
+export interface DrsZone {
+  id: number;
+  detectionM: number;
+  activation: DistanceRange[];
+}
+
+export interface AeroZone extends DistanceRange {
+  mode: AeroMode;
+}
+
+// A "150 / 100 / 50" board: `distanceM` is its marked distance to the corner, `atM` where it stands.
+export interface BrakeBoard {
+  cornerNumber: number;
+  distanceM: number;
+  atM: number;
+  side: BrakeBoardSide;
 }
 
 export interface TrackMeta {
@@ -29,6 +69,28 @@ export interface TrackMeta {
   // sector 2 ends; sector 3 runs from s2 to trackLength. Matches the file
   // format's own s1/s2-only shape (no s3 key), not a full 3-tuple.
   sectorBoundaries: { s1: number; s2: number };
+  speedTrapM: number;
+  drsZones: DrsZone[];
+  overtake: { detectionM: number; activationM: number };
+  activeAeroZones: AeroZone[];
+  brakeBoards: BrakeBoard[];
+}
+
+function toBoards(data: SegmentsFile): BrakeBoard[] {
+  const out: BrakeBoard[] = [];
+  const add = (cornerNumber: number, boards: RawBrakeBoard[] | undefined) => {
+    for (const b of boards ?? []) {
+      out.push({ cornerNumber, distanceM: b.distance_m, atM: b.at_m, side: b.side });
+    }
+  };
+  for (const s of data.segments) {
+    if (s.corners !== undefined) {
+      s.corners.forEach((c) => add(c.corner_number, c.brake_boards));
+    } else if (s.corner_number !== undefined) {
+      add(s.corner_number, s.brake_boards);
+    }
+  }
+  return out;
 }
 
 function toSections(data: SegmentsFile): TrackSection[] {
@@ -47,6 +109,15 @@ function toMeta(data: SegmentsFile): TrackMeta {
     trackLength: data.track_length,
     sections: toSections(data),
     sectorBoundaries: data.sectors,
+    speedTrapM: data.speed_trap_m,
+    drsZones: data.drs_zones.map((z) => ({
+      id: z.id,
+      detectionM: z.detection_m,
+      activation: z.activation.map((a) => ({ startM: a.start_m, endM: a.end_m })),
+    })),
+    overtake: { detectionM: data.overtake_dist.detection_m, activationM: data.overtake_dist.activation_m },
+    activeAeroZones: data.active_aero_zones.map((z) => ({ mode: z.mode, startM: z.start_m, endM: z.end_m })),
+    brakeBoards: toBoards(data),
   };
 }
 
