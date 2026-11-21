@@ -19,9 +19,10 @@ import {
 } from "../../lib/mapGeometry";
 import { formulaRules } from "../../lib/formulas";
 import { MARKER_COLORS } from "../../lib/trackMarkers";
-import { MapMarkers } from "./MapMarkers";
+import { CornerBadges, MapMarkers } from "./MapMarkers";
 import { LAP_SLOT_COLORS, LAP_SLOT_LETTERS } from "../../lib/chartConstants";
-import type { TrackMeta } from "../../lib/segments";
+import type { CornerSpan, TrackMeta } from "../../lib/segments";
+import { CornerTooltip } from "./CornerTooltip";
 import { useTelemetryStore } from "../../store/telemetryStore";
 import type { ActiveSection } from "../../types/store";
 
@@ -55,6 +56,7 @@ export function MapSvg({ geometry, meta, formula, lines, lapPresent, labels, cro
   const [size, setSize] = useState({ width: 400, height: 320 });
   const [view, setView] = useState<Box | null>(null);
   const [follow, setFollow] = useState(false);
+  const [cornerHover, setCornerHover] = useState<{ corner: CornerSpan; anchor: DOMRect } | null>(null);
   const showMarkers = useTelemetryStore((state) => state.showMarkers);
   const rules = formulaRules(formula);
   const drag = useRef<{ x: number; y: number } | null>(null);
@@ -226,6 +228,7 @@ export function MapSvg({ geometry, meta, formula, lines, lapPresent, labels, cro
             />
           );
         })}
+        {meta !== null && <CornerBadges geometry={geometry} meta={meta} scale={sc} onHover={setCornerHover} />}
         {lines.map((line, slot) =>
           line.pts.length === 0 ? null : (
             <path
@@ -251,6 +254,7 @@ export function MapSvg({ geometry, meta, formula, lines, lapPresent, labels, cro
           )
         )}
       </svg>
+      {cornerHover !== null && <CornerTooltip corner={cornerHover.corner} anchor={cornerHover.anchor} />}
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 px-3 py-2 text-2xs text-tone-300">
         {lapPresent.map((present, slot) =>

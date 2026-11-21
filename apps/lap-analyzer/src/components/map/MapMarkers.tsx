@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { edgeAt, lineAlong, toPath, type MapGeometry, type Pt } from "../../lib/mapGeometry";
-import type { DistanceRange, TrackMeta } from "../../lib/segments";
+import { cornerBadgeAt, edgeAt, lineAlong, toPath, type MapGeometry, type Pt } from "../../lib/mapGeometry";
+import type { CornerSpan, DistanceRange, TrackMeta } from "../../lib/segments";
 import type { FormulaRules } from "../../lib/formulas";
 import { buildMarkers, MARKER_COLORS, type MarkerPoint } from "../../lib/trackMarkers";
 
@@ -102,6 +102,55 @@ export function MapMarkers({ geometry, meta, scale, rules }: MapMarkersProps) {
             </g>
           ));
         })}
+    </g>
+  );
+}
+
+const BADGE_PX = 9;
+
+// Corner numbers in dark circles on the outside of each bend, sized in screen pixels.
+export function CornerBadges({
+  geometry,
+  meta,
+  scale,
+  onHover,
+}: {
+  geometry: MapGeometry;
+  meta: TrackMeta;
+  scale: number;
+  // Called with the badge's screen rect on enter, and null on leave.
+  onHover: (hover: { corner: CornerSpan; anchor: DOMRect } | null) => void;
+}) {
+  return (
+    <g>
+      {meta.corners.map((c) => {
+        const [x, y] = cornerBadgeAt(
+          geometry,
+          c.startM / meta.trackLength,
+          c.endM / meta.trackLength,
+          (BADGE_PX + 4) / scale
+        );
+        return (
+          <g
+            key={c.number}
+            className="cursor-help"
+            onMouseEnter={(e) => onHover({ corner: c, anchor: e.currentTarget.getBoundingClientRect() })}
+            onMouseLeave={() => onHover(null)}
+          >
+            <circle
+              cx={x} cy={y} r={BADGE_PX / scale}
+              fill={ROAD_FILL} stroke="#e2e8f0" strokeWidth={1.5} vectorEffect="non-scaling-stroke"
+            />
+            <text
+              x={x} y={y}
+              fill="#e2e8f0" fontSize={(BADGE_PX * 1.1) / scale} fontWeight={600}
+              textAnchor="middle" dominantBaseline="central"
+            >
+              {c.number}
+            </text>
+          </g>
+        );
+      })}
     </g>
   );
 }

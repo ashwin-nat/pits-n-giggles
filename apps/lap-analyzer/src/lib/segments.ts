@@ -13,7 +13,7 @@ interface SegmentEntry {
   corner_numbers?: number[];
   brake_boards?: RawBrakeBoard[];
   // Sub-corners of a complex corner, each with its own boards.
-  corners?: { corner_number: number; brake_boards?: RawBrakeBoard[] }[];
+  corners?: { corner_number: number; start_m: number; end_m: number; brake_boards?: RawBrakeBoard[] }[];
 }
 
 interface RawBrakeBoard {
@@ -61,6 +61,15 @@ export interface BrakeBoard {
   side: BrakeBoardSide;
 }
 
+// One numbered corner's span, sub-corners of a complex corner counted separately.
+export interface CornerSpan {
+  number: number;
+  // The segment's name; a complex corner's sub-corners share it. Empty when the segment is unnamed.
+  name: string;
+  startM: number;
+  endM: number;
+}
+
 export interface TrackMeta {
   name: string;
   trackLength: number;
@@ -74,6 +83,7 @@ export interface TrackMeta {
   overtake: { detectionM: number; activationM: number };
   activeAeroZones: AeroZone[];
   brakeBoards: BrakeBoard[];
+  corners: CornerSpan[];
 }
 
 function toBoards(data: SegmentsFile): BrakeBoard[] {
@@ -88,6 +98,18 @@ function toBoards(data: SegmentsFile): BrakeBoard[] {
       s.corners.forEach((c) => add(c.corner_number, c.brake_boards));
     } else if (s.corner_number !== undefined) {
       add(s.corner_number, s.brake_boards);
+    }
+  }
+  return out;
+}
+
+function toCorners(data: SegmentsFile): CornerSpan[] {
+  const out: CornerSpan[] = [];
+  for (const s of data.segments) {
+    if (s.corners !== undefined) {
+      s.corners.forEach((c) => out.push({ number: c.corner_number, name: s.name ?? "", startM: c.start_m, endM: c.end_m }));
+    } else if (s.corner_number !== undefined) {
+      out.push({ number: s.corner_number, name: s.name ?? "", startM: s.start_m, endM: s.end_m });
     }
   }
   return out;
@@ -118,6 +140,7 @@ function toMeta(data: SegmentsFile): TrackMeta {
     overtake: { detectionM: data.overtake_dist.detection_m, activationM: data.overtake_dist.activation_m },
     activeAeroZones: data.active_aero_zones.map((z) => ({ mode: z.mode, startM: z.start_m, endM: z.end_m })),
     brakeBoards: toBoards(data),
+    corners: toCorners(data),
   };
 }
 

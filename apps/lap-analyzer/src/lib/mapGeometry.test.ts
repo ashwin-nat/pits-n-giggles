@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildMapGeometry,
   centreOn,
+  cornerBadgeAt,
   clampZoom,
   drivenLine,
   edgeAt,
@@ -101,6 +102,30 @@ test("lineAlong offset runs a fixed distance outside the left edge", () => {
   const [p] = lineAlong(g, 0.3, 0.35, 0, -4);
   assert.ok(Math.abs(Math.hypot(p[0] - l[0], p[1] - l[1]) - 4) < 1e-9);
   assert.ok(Math.hypot(p[0] - r[0], p[1] - r[1]) > w);
+});
+
+// A circular track of radius 100, 16 gates, road 10 wide. `outerIsRight` picks which edge is the outer one.
+function circleGeometry(outerIsRight: boolean): MapGeometry {
+  const edges: number[] = [];
+  const frac: number[] = [];
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    const at = (r: number): [number, number] => [Math.cos(a) * r, Math.sin(a) * r];
+    const [inX, inZ] = at(95);
+    const [outX, outZ] = at(105);
+    edges.push(...(outerIsRight ? [inX, 0, inZ, outX, 0, outZ] : [outX, 0, outZ, inX, 0, inZ]));
+    frac.push(i / 16);
+  }
+  const g = buildMapGeometry(Float32Array.from(edges), Float32Array.from(frac));
+  assert.ok(g);
+  return g;
+}
+
+test("cornerBadgeAt sits outside the bend whichever edge is the outer one", () => {
+  for (const outerIsRight of [true, false]) {
+    const [x, y] = cornerBadgeAt(circleGeometry(outerIsRight), 0.2, 0.3, 12);
+    assert.ok(Math.hypot(x, y) > 105 + 10, `outerIsRight=${outerIsRight}`);
+  }
 });
 
 test("tickAt reaches the overhang fraction past each edge", () => {
