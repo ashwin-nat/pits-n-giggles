@@ -64,7 +64,7 @@
     },
     {
       "type": "corner",
-      "start_m": 180,
+      "start_m": 115,
       "end_m": 400,
       "corner_number": 1,
       "brake_boards": [
