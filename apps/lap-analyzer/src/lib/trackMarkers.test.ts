@@ -53,3 +53,8 @@ test("buildMarkers: other formulas have DRS, no aero or overtake", () => {
   assert.equal(m.drs.length, 1);
   assert.deepEqual(m.points.map((p) => p.label), ["DRS detection 1", "Speed trap"]);
 });
+
+test("buildMarkers: a track with no speed trap or overtake gets no such points", () => {
+  const bare = { ...full, speedTrapM: null, overtake: null } as unknown as TrackMeta;
+  assert.deepEqual(buildMarkers(bare, formulaRules("F1 26")).points, []);
+});

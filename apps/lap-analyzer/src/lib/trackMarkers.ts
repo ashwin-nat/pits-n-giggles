@@ -63,11 +63,13 @@ export function buildMarkers(meta: TrackMeta, rules: FormulaRules): TrackMarkers
       points.push({ m: z.detectionM, color: MARKER_COLORS.drs, ring: false, label: `DRS detection ${z.id}` });
     }
   }
-  if (rules.overtake) {
+  if (rules.overtake && meta.overtake !== null) {
     points.push({ m: meta.overtake.detectionM, color: MARKER_COLORS.overtake, ring: false, label: "Overtake detection" });
     points.push({ m: meta.overtake.activationM, color: MARKER_COLORS.overtake, ring: true, label: "Overtake activation" });
   }
-  points.push({ m: meta.speedTrapM, color: MARKER_COLORS.speedTrap, ring: false, label: "Speed trap" });
+  if (meta.speedTrapM !== null) {
+    points.push({ m: meta.speedTrapM, color: MARKER_COLORS.speedTrap, ring: false, label: "Speed trap" });
+  }
   return {
     aeroFull: rules.activeAero ? zones.aeroFull : [],
     aeroPartial: rules.activeAero ? zones.aeroPartial : [],

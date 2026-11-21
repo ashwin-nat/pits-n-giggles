@@ -5,18 +5,19 @@ import { getTrackMeta, type TrackMeta } from "../lib/segments";
 // static assets (see segments.ts), not provider/session data, and already
 // caches internally, so a plain effect is enough.
 export function useTrackMeta(trackId: number | null): TrackMeta | null {
-  const [meta, setMeta] = useState<TrackMeta | null>(null);
+  // Tagged with its track, so a slow load for the previous track is never returned for this one.
+  const [loaded, setLoaded] = useState<{ trackId: number; meta: TrackMeta } | null>(null);
 
   useEffect(() => {
     if (trackId === null) {
-      setMeta(null);
+      setLoaded(null);
       return;
     }
     let cancelled = false;
     getTrackMeta(trackId)
       .then((result) => {
         if (!cancelled) {
-          setMeta(result);
+          setLoaded(result === null ? null : { trackId, meta: result });
         }
       })
       .catch((error: unknown) => {
@@ -34,5 +35,5 @@ export function useTrackMeta(trackId: number | null): TrackMeta | null {
     };
   }, [trackId]);
 
-  return meta;
+  return loaded !== null && loaded.trackId === trackId ? loaded.meta : null;
 }

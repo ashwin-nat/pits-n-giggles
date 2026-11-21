@@ -84,7 +84,7 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
   const setHoverSection = useTelemetryStore((state) => state.setHoverSection);
   const showMarkers = useTelemetryStore((state) => state.showMarkers);
   const laps = useTelemetryStore((state) => state.laps);
-  const { laps: loadedLaps } = useLapTelemetries(laps);
+  const { laps: loadedLaps, isFetching } = useLapTelemetries(laps);
 
   const { data: sessions } = useSessions();
   const session = sessions?.find((s) => s.id === primarySessionId);
@@ -222,7 +222,7 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
             return (
               <InfoTooltip
                 key={`${section.label}-${section.distanceStart}`}
-                text={<SegmentTooltipContent title={segmentTooltip(section)} section={section} laps={loadedLaps} />}
+                text={<SegmentTooltipContent title={segmentTooltip(section)} section={section} laps={loadedLaps} loading={isFetching} />}
                 style={flexStyle}
                 className="h-full"
                 placement="bottom"

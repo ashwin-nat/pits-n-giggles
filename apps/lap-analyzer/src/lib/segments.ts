@@ -13,7 +13,7 @@ interface SegmentEntry {
   corner_numbers?: number[];
   brake_boards?: RawBrakeBoard[];
   // Sub-corners of a complex corner, each with its own boards.
-  corners?: { corner_number: number; start_m: number; end_m: number; brake_boards?: RawBrakeBoard[] }[];
+  corners?: { corner_number: number; name?: string; start_m: number; end_m: number; brake_boards?: RawBrakeBoard[] }[];
 }
 
 interface RawBrakeBoard {
@@ -22,14 +22,15 @@ interface RawBrakeBoard {
   side: BrakeBoardSide;
 }
 
-interface SegmentsFile {
+export interface SegmentsFile {
   circuit_name: string;
   circuit_number: number;
   track_length: number;
-  speed_trap_m: number;
-  drs_zones: { id: number; detection_m: number; activation: { start_m: number; end_m: number }[] }[];
-  overtake_dist: { detection_m: number; activation_m: number };
-  active_aero_zones: { mode: AeroMode; start_m: number; end_m: number }[];
+  // The four below are optional in the schema: a track may carry none of them.
+  speed_trap_m?: number;
+  drs_zones?: { id: number; detection_m: number; activation: { start_m: number; end_m: number }[] }[];
+  overtake_dist?: { detection_m: number; activation_m: number };
+  active_aero_zones?: { mode: AeroMode; start_m: number; end_m: number }[];
   segments: SegmentEntry[];
   sectors: { s1: number; s2: number };
 }
@@ -78,9 +79,10 @@ export interface TrackMeta {
   // sector 2 ends; sector 3 runs from s2 to trackLength. Matches the file
   // format's own s1/s2-only shape (no s3 key), not a full 3-tuple.
   sectorBoundaries: { s1: number; s2: number };
-  speedTrapM: number;
+  // null when the track has none; the zone lists are empty then.
+  speedTrapM: number | null;
   drsZones: DrsZone[];
-  overtake: { detectionM: number; activationM: number };
+  overtake: { detectionM: number; activationM: number } | null;
   activeAeroZones: AeroZone[];
   brakeBoards: BrakeBoard[];
   corners: CornerSpan[];
@@ -107,7 +109,7 @@ function toCorners(data: SegmentsFile): CornerSpan[] {
   const out: CornerSpan[] = [];
   for (const s of data.segments) {
     if (s.corners !== undefined) {
-      s.corners.forEach((c) => out.push({ number: c.corner_number, name: s.name ?? "", startM: c.start_m, endM: c.end_m }));
+      s.corners.forEach((c) => out.push({ number: c.corner_number, name: c.name ?? s.name ?? "", startM: c.start_m, endM: c.end_m }));
     } else if (s.corner_number !== undefined) {
       out.push({ number: s.corner_number, name: s.name ?? "", startM: s.start_m, endM: s.end_m });
     }
@@ -125,20 +127,23 @@ function toSections(data: SegmentsFile): TrackSection[] {
   }));
 }
 
-function toMeta(data: SegmentsFile): TrackMeta {
+export function toMeta(data: SegmentsFile): TrackMeta {
   return {
     name: data.circuit_name,
     trackLength: data.track_length,
     sections: toSections(data),
     sectorBoundaries: data.sectors,
-    speedTrapM: data.speed_trap_m,
-    drsZones: data.drs_zones.map((z) => ({
+    speedTrapM: data.speed_trap_m ?? null,
+    drsZones: (data.drs_zones ?? []).map((z) => ({
       id: z.id,
       detectionM: z.detection_m,
       activation: z.activation.map((a) => ({ startM: a.start_m, endM: a.end_m })),
     })),
-    overtake: { detectionM: data.overtake_dist.detection_m, activationM: data.overtake_dist.activation_m },
-    activeAeroZones: data.active_aero_zones.map((z) => ({ mode: z.mode, startM: z.start_m, endM: z.end_m })),
+    overtake:
+      data.overtake_dist === undefined
+        ? null
+        : { detectionM: data.overtake_dist.detection_m, activationM: data.overtake_dist.activation_m },
+    activeAeroZones: (data.active_aero_zones ?? []).map((z) => ({ mode: z.mode, startM: z.start_m, endM: z.end_m })),
     brakeBoards: toBoards(data),
     corners: toCorners(data),
   };
