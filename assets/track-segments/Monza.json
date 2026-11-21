@@ -68,6 +68,12 @@
       ]
     },
     {
+      "type": "straight",
+      "start_m": 4240,
+      "end_m": 5000,
+      "name": "Back Straight"
+    },
+    {
       "type": "corner",
       "start_m": 5000,
       "end_m": 5540,
