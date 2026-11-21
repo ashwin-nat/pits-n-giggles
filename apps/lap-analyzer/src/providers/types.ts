@@ -1,9 +1,8 @@
-import type { Session, Driver, Lap, TelemetryPoint, TrackSection } from "../types/api";
+import type { Session, Driver, Lap, TelemetryPoint } from "../types/api";
 
 export interface ProviderCapabilities {
   mutations: boolean; // rename / mark-good / delete
   incidents: boolean; // collisions / overtakes
-  segments: boolean; // track section pills
 }
 
 // Every method here is something every implementation can actually do.
@@ -22,5 +21,4 @@ export interface LapAnalyzerProvider {
     lapNumber: number,
     sensors: string[]
   ): Promise<TelemetryPoint[]>;
-  getTrackSections(trackId: number): Promise<TrackSection[]>;
 }

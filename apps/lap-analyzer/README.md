@@ -6,8 +6,8 @@
 
 ```bash
 pnpm install
-pnpm sync-segments   # copies assets/track-segments/*.json and assets/track-data/*.npz from the
-                      # main repo into src/assets/ (gitignored, regenerate as needed)
+pnpm sync-track-data   # copies assets/track-segments/*.json and assets/track-data/*.npz from the
+                        # main repo into src/assets/track-data/ (gitignored, regenerate as needed)
 ```
 
 ## Scripts
@@ -15,11 +15,21 @@ pnpm sync-segments   # copies assets/track-segments/*.json and assets/track-data
 - `pnpm dev:manual-test` - loads `test-fixtures/sample-session.pngt` through
   `LocalFileProvider` and logs every interface method's output. Throwaway
   smoke test until Phase 4/5 UI exists.
-- `pnpm sync-segments` - re-syncs the bundled track-segments and track-geometry
+- `pnpm sync-track-data` - re-syncs the bundled track-segments and track-geometry
   assets from the main repo. Re-run whenever `assets/track-segments/` or
   `assets/track-data/` changes upstream.
 - `pnpm test:chart-math` - the pure-logic tests (`tsx --test`).
 - `pnpm typecheck` - `tsc --noEmit`.
+
+## Track data
+
+Track segments (`assets/track-segments/*.json`) and track geometry
+(`assets/track-data/c<n>.npz`) are static reference data: they change only with a
+release and are versioned with this app. Both are copied into the bundle at build time
+by `sync-track-data` and read from it (`src/lib/segments.ts`, `src/lib/trackGeometry.ts`).
+The provider carries only what varies by source: sessions, drivers, laps and telemetry.
+The release build fails if a layout has no geometry file (`--strict`). Python reads
+`assets/` directly.
 
 ## Track map and markers
 

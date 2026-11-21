@@ -13,7 +13,7 @@ export interface TrackGeometry {
 // Format version written by apps/dev_tools/extract_track_data.py; a file with another version is rejected.
 export const GEOMETRY_VERSION = 1;
 
-// One file per layout, c<circuit>.npz, synced by scripts/sync-segments.ts. Globbed so a missing
+// One file per layout, c<circuit>.npz, synced by scripts/sync-track-data.ts, read from the bundle (README, "Track data"). Globbed so a missing
 // file means "no geometry" rather than a build error.
 const files = import.meta.glob<string>("../assets/track-data/c*.npz", {
   query: "?url",

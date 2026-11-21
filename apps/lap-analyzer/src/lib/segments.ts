@@ -1,7 +1,7 @@
 import type { TrackSection } from "../types/api";
 
 // Bundled static asset, synced from the main repo's assets/track-segments/
-// via scripts/sync-segments.ts (see that script's header comment). Segments
+// via scripts/sync-track-data.ts. Read from the bundle, not through the provider: see README, "Track data". Segments
 // are keyed by circuit_number *inside* each file, not by filename -- mirrors
 // lib/track_segment_info/database.py's TrackSegmentsDatabase.
 interface SegmentEntry {
@@ -165,7 +165,7 @@ export function toMeta(data: SegmentsFile): TrackMeta {
 const runningUnderVite = typeof import.meta.env !== "undefined";
 
 async function loadViaVite(): Promise<Map<number, TrackMeta>> {
-  const modules = import.meta.glob<{ default: SegmentsFile }>("../assets/segments/*.json");
+  const modules = import.meta.glob<{ default: SegmentsFile }>("../assets/track-data/segments/*.json");
   const map = new Map<number, TrackMeta>();
   for (const load of Object.values(modules)) {
     const { default: data } = await load();
@@ -179,7 +179,7 @@ async function loadViaNodeFs(): Promise<Map<number, TrackMeta>> {
   const { dirname, join } = await import("node:path");
   const { fileURLToPath } = await import("node:url");
   const moduleDir = dirname(fileURLToPath(import.meta.url));
-  const segmentsDir = join(moduleDir, "..", "assets", "segments");
+  const segmentsDir = join(moduleDir, "..", "assets", "track-data", "segments");
 
   const map = new Map<number, TrackMeta>();
   for (const file of readdirSync(segmentsDir)) {
@@ -201,21 +201,7 @@ async function getCache(): Promise<Map<number, TrackMeta>> {
   return cachePromise;
 }
 
-// Part of the LapAnalyzerProvider interface (providers/types.ts) -- every
-// provider, including a future backend-backed one, must be able to answer
-// this the same way.
-export async function getTrackSections(trackId: number): Promise<TrackSection[]> {
-  const cache = await getCache();
-  return cache.get(trackId)?.sections ?? [];
-}
-
-// Not part of the provider interface -- track length and sector boundaries
-// are bundled static data same as segments themselves (see the file-level
-// comment), and TrackProgressBar/CurrentPositionLabel read them directly
-// rather than through the provider abstraction. If a future RemoteApiProvider
-// needs this too, it can grow its own endpoint for it then; nothing here
-// depends on session/driver/lap data the way the rest of the provider
-// interface does.
+// One track's bundled data; null when the track has no segment file.
 export async function getTrackMeta(trackId: number): Promise<TrackMeta | null> {
   const cache = await getCache();
   return cache.get(trackId) ?? null;

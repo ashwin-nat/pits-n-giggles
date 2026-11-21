@@ -38,14 +38,10 @@ from apps.web.lap_analyzer_api import (RenameSessionRequest, api_error,
                                        driver_to_api, laps_by_driver_to_api,
                                        lap_to_api, session_summary_to_api,
                                        session_to_api,
-                                       title_case_session_type,
-                                       track_section_to_api)
+                                       title_case_session_type)
 from apps.web.pngt_discovery import PngtSessionEntry
 from lib.pngt import (ParsedDriver, ParsedLap, ParsedSessionMetadata,
                       SensorConfig, SensorType, SessionBest, TrackInfo)
-from lib.track_segments_classifier.types import (ComplexCornerSegmentInfo,
-                                                 CornerSegmentInfo,
-                                                 StraightSegmentInfo)
 
 
 @pytest.mark.parametrize("raw,expected", [
@@ -179,35 +175,6 @@ def test_lap_to_api_out_lap_no_time():
     assert result['lapTime'] is None
     assert result['incompleteReason'] == "no lap time"
     assert result['valid'] is False
-
-
-def test_track_section_straight():
-    seg = StraightSegmentInfo(name="Kemmel Straight", start_m=890, end_m=2100)
-    assert track_section_to_api(seg) == {
-        'label': "Kemmel Straight", 'distanceStart': 890, 'distanceEnd': 2100,
-        'type': "straight", 'cornerNumbers': [],
-    }
-
-
-def test_track_section_corner():
-    seg = CornerSegmentInfo(name="La Source", start_m=0, end_m=210, corner_number=1)
-    result = track_section_to_api(seg)
-    assert result['type'] == "corner"
-    assert result['cornerNumbers'] == [1]
-
-
-def test_track_section_complex_corner():
-    seg = ComplexCornerSegmentInfo(name="Bus Stop", start_m=6500, end_m=7004, corner_numbers=(18, 19))
-    result = track_section_to_api(seg)
-    assert result['type'] == "complex_corner"
-    assert result['cornerNumbers'] == [18, 19]
-
-
-def test_track_section_unnamed_corner_uses_empty_label():
-    """Corners can have an empty name in the source data (see file format spec) --
-    the API's label is whatever's there, not synthesized from the corner number."""
-    seg = CornerSegmentInfo(name="", start_m=311, end_m=480, corner_number=1)
-    assert track_section_to_api(seg)['label'] == ""
 
 
 def test_rename_session_request_accepts_valid_name():

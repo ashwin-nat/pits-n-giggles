@@ -13,8 +13,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "dev:manual-test": "tsx src/dev/manual-test.ts",
-    "sync-segments": "tsx scripts/sync-segments.ts",
-    "test:sync-segments": "tsx --test scripts/sync-segments.test.ts",
+    "sync-track-data": "tsx scripts/sync-track-data.ts",
+    "test:sync-track-data": "tsx --test scripts/sync-track-data.test.ts",
     "test:chart-math": "tsx --test src/lib/interpolation.test.ts src/lib/rateOfChange.test.ts src/lib/lapSeries.test.ts src/lib/sectionStrip.test.ts src/lib/trackMarkers.test.ts src/lib/formulas.test.ts src/lib/segments.test.ts src/lib/mapGeometry.test.ts src/lib/sectionTable.test.ts src/lib/lapFormat.test.ts src/lib/sessionFilters.test.ts src/lib/sensorTree.test.ts src/store/telemetryStore.test.ts",
     "typecheck": "tsc --noEmit"
   },

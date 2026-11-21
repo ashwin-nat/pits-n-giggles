@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync, readFileSync, readdirSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { syncGeometry, syncSegments } from "./sync-segments";
+import { syncGeometry, syncSegments } from "./sync-track-data";
 
 function makeTempDir(): string {
-  return mkdtempSync(join(tmpdir(), "sync-segments-test-"));
+  return mkdtempSync(join(tmpdir(), "sync-track-data-test-"));
 }
 
 test("copies every .json file from source to dest and returns the count", () => {

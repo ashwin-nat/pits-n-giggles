@@ -1,9 +1,7 @@
-// Copies assets/track-segments/*.json from the main repo into
-// src/assets/segments/, so LocalFileProvider.getTrackSections() can read a
-// local asset with no network call and no runtime dependency on the main
-// app's directory layout. Run via `pnpm sync-segments` whenever the main
-// repo's track-segment data changes. See lap-analyzer-provider-spec.md's
-// "Bundled Segments Asset" section.
+// Copies the main repo's track data into src/assets/track-data/ so Vite bundles it:
+// assets/track-segments/*.json -> track-data/segments/, assets/track-data/c<n>.npz -> track-data/.
+// Track data is static reference data that ships with the app and is read from the bundle, not
+// through the provider (see README, "Track data"). Run via `pnpm sync-track-data` whenever it changes.
 import { readdirSync, readFileSync, copyFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -52,7 +50,7 @@ export function syncGeometry(
 function main(): void {
   const moduleDir = dirname(fileURLToPath(import.meta.url));
   const sourceDir = join(moduleDir, "..", "..", "..", "assets", "track-segments");
-  const destDir = join(moduleDir, "..", "src", "assets", "segments");
+  const destDir = join(moduleDir, "..", "src", "assets", "track-data", "segments");
 
   const count = syncSegments(sourceDir, destDir);
   console.log(`Synced ${count} track segment file(s) from ${sourceDir} to ${destDir}`);

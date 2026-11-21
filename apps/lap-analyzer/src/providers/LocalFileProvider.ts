@@ -1,8 +1,7 @@
-import type { Session, Driver, Lap, TelemetryPoint, TrackSection, SensorDefinition, SessionBest } from "../types/api";
+import type { Session, Driver, Lap, TelemetryPoint, SensorDefinition, SessionBest } from "../types/api";
 import type { LapAnalyzerProvider, ProviderCapabilities } from "./types";
 import { unzipArchive, readJsonEntry, type ZipEntries } from "../lib/unzip";
 import { npzToTelemetryPoints } from "../lib/parseNpy";
-import { getTrackSections as getBundledTrackSections } from "../lib/segments";
 import {
   InvalidHeaderError,
   InvalidManifestError,
@@ -91,7 +90,6 @@ export class LocalFileProvider implements LapAnalyzerProvider {
   readonly capabilities: ProviderCapabilities = {
     mutations: false,
     incidents: false,
-    segments: true,
   };
 
   private readonly file: File;
@@ -247,9 +245,5 @@ export class LocalFileProvider implements LapAnalyzerProvider {
     }
 
     return npzToTelemetryPoints(npzBytes, sensors, label);
-  }
-
-  async getTrackSections(trackId: number): Promise<TrackSection[]> {
-    return getBundledTrackSections(trackId);
   }
 }
