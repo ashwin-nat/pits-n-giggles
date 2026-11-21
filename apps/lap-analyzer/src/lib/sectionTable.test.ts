@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildSectionRows, minSpeed, sectionTime, timeAt } from "./sectionTable";
+import { buildSectionRows, minSpeed, sectionTime, timeAt, formatSectionDelta } from "./sectionTable";
 import type { LoadedLap } from "./lapSeries";
 import type { SensorDefinition, TrackSection } from "../types/api";
 
@@ -64,4 +64,10 @@ test("a lap with no lap_time_ms has no section time or delta", () => {
   assert.equal(timeAt(noTime, 150), null);
   const rows = buildSectionRows([lap(10, [1, 1, 1, 1]), noTime], sections);
   assert.equal(rows[0].deltas[1], null);
+});
+
+test("formatSectionDelta signs a slower lap and leaves a missing one as a dash", () => {
+  assert.equal(formatSectionDelta(0.1234), "+0.123");
+  assert.equal(formatSectionDelta(-0.05), "-0.050");
+  assert.equal(formatSectionDelta(null), "–");
 });

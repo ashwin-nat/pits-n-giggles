@@ -4,7 +4,9 @@ import { useTelemetryStore } from "../../store/telemetryStore";
 import type { TrackSection } from "../../types/api";
 import type { ActiveSection } from "../../types/store";
 import { labelFits, sectionCode, sectionViewport } from "../../lib/sectionStrip";
+import { useLapTelemetries } from "../../hooks/useLapTelemetries";
 import { InfoTooltip } from "./InfoTooltip";
+import { SegmentTooltipContent } from "./SegmentTooltipContent";
 import { StripMarkers } from "./StripMarkers";
 
 interface TrackProgressBarProps {
@@ -81,6 +83,8 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
   const setViewport = useTelemetryStore((state) => state.setViewport);
   const setHoverSection = useTelemetryStore((state) => state.setHoverSection);
   const showMarkers = useTelemetryStore((state) => state.showMarkers);
+  const laps = useTelemetryStore((state) => state.laps);
+  const { laps: loadedLaps } = useLapTelemetries(laps);
 
   const { data: sessions } = useSessions();
   const session = sessions?.find((s) => s.id === primarySessionId);
@@ -218,7 +222,7 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
             return (
               <InfoTooltip
                 key={`${section.label}-${section.distanceStart}`}
-                text={segmentTooltip(section)}
+                text={<SegmentTooltipContent title={segmentTooltip(section)} section={section} laps={loadedLaps} />}
                 style={flexStyle}
                 className="h-full"
                 placement="bottom"

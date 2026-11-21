@@ -61,6 +61,14 @@ export function minSpeed(lap: LoadedLap, start: number, end: number): number | n
   return min;
 }
 
+// "+0.123" / "-0.050" seconds, "–" when the lap did not record the section.
+export function formatSectionDelta(value: number | null): string {
+  if (value === null) {
+    return "–";
+  }
+  return `${value > 0 ? "+" : ""}${value.toFixed(3)}`;
+}
+
 export interface SectionRow {
   section: TrackSection;
   // A's minimum speed; null when A has no speed.
