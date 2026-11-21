@@ -1,7 +1,7 @@
 import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 interface InfoTooltipProps {
-  text: string;
+  text: ReactNode;
   children: ReactNode;
   // Forwarded onto the wrapping span, so a caller can lay it out as a flex/grid item.
   className?: string;

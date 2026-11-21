@@ -2,9 +2,13 @@ import { useSessions } from "../../hooks/useSessions";
 import { useTrackMeta } from "../../hooks/useTrackMeta";
 import { useTelemetryStore } from "../../store/telemetryStore";
 import type { TrackSection } from "../../types/api";
+import { isCompleteLap } from "../../types/store";
 import type { ActiveSection } from "../../types/store";
 import { labelFits, sectionCode, sectionViewport } from "../../lib/sectionStrip";
+import { useLapTelemetries } from "../../hooks/useLapTelemetries";
 import { InfoTooltip } from "./InfoTooltip";
+import { SegmentTooltipContent } from "./SegmentTooltipContent";
+import { StripMarkers } from "./StripMarkers";
 
 interface TrackProgressBarProps {
   // The shared chart crosshair (ChartLaneList/ChartArea-owned) -- drives the
@@ -79,9 +83,13 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
   const viewport = useTelemetryStore((state) => state.viewport);
   const setViewport = useTelemetryStore((state) => state.setViewport);
   const setHoverSection = useTelemetryStore((state) => state.setHoverSection);
+  const showMarkers = useTelemetryStore((state) => state.showMarkers);
+  const laps = useTelemetryStore((state) => state.laps);
+  const { laps: loadedLaps, isFetching } = useLapTelemetries(laps);
 
   const { data: sessions } = useSessions();
-  const trackId = sessions?.find((s) => s.id === primarySessionId)?.trackId ?? null;
+  const session = sessions?.find((s) => s.id === primarySessionId);
+  const trackId = session?.trackId ?? null;
   const meta = useTrackMeta(trackId);
 
   if (primarySessionId === null) {
@@ -179,7 +187,8 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
           ›
         </button>
       </div>
-      <div className="relative h-7 min-w-0 flex-1">
+      <div className="min-w-0 flex-1">
+      <div className="relative h-7">
         {/* No overflow-hidden on this row -- it would clip InfoTooltip's
             popup, which renders outside the row's box (bottom-full). */}
         <div className="flex h-full w-full">
@@ -214,7 +223,7 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
             return (
               <InfoTooltip
                 key={`${section.label}-${section.distanceStart}`}
-                text={segmentTooltip(section)}
+                text={<SegmentTooltipContent title={segmentTooltip(section)} section={section} laps={loadedLaps} present={laps.map((lap) => isCompleteLap(lap))} loading={isFetching} />}
                 style={flexStyle}
                 className="h-full"
                 placement="bottom"
@@ -258,6 +267,8 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
             style={{ left: `${markerPct}%` }}
           />
         )}
+      </div>
+      {showMarkers && meta !== null && trackLength > 0 && <StripMarkers meta={meta} formula={session?.formula ?? ""} />}
       </div>
     </div>
   );

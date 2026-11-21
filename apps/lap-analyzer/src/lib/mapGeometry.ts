@@ -108,6 +108,43 @@ export function tickAt(g: MapGeometry, frac: number, overhang: number): [Pt, Pt]
   ];
 }
 
+// A line along the road between two lap fractions, `t` of the way from the left edge to the right
+// (0.5 is the centre), then moved `offsetM` metres across the road (negative is left). Use t 0 or 1
+// with an offset to run outside the road by a fixed distance, whatever the road width.
+export function lineAlong(g: MapGeometry, startFrac: number, endFrac: number, t: number, offsetM: number = 0): Pt[] {
+  const samples = Math.max(4, Math.ceil(Math.abs(endFrac - startFrac) * 1500));
+  const out: Pt[] = [];
+  for (let i = 0; i <= samples; i++) {
+    const { l, r } = edgeAt(g, startFrac + ((endFrac - startFrac) * i) / samples);
+    const dx = r[0] - l[0];
+    const dy = r[1] - l[1];
+    const w = Math.hypot(dx, dy) || 1;
+    out.push([l[0] + dx * t + (dx / w) * offsetM, l[1] + dy * t + (dy / w) * offsetM]);
+  }
+  return out;
+}
+
+// Where to put a corner's number: `offsetM` past the road edge on the outside of the bend, found as
+// the side opposite the chord between the corner's ends. Falls back to the right edge when straight.
+export function cornerBadgeAt(g: MapGeometry, startFrac: number, endFrac: number, offsetM: number): Pt {
+  const centre = (f: number): Pt => {
+    const { l, r } = edgeAt(g, f);
+    return [(l[0] + r[0]) / 2, (l[1] + r[1]) / 2];
+  };
+  const mid = (startFrac + endFrac) / 2;
+  const a = centre(startFrac);
+  const b = centre(mid);
+  const c = centre(endFrac);
+  const { l, r } = edgeAt(g, mid);
+  const dx = r[0] - l[0];
+  const dy = r[1] - l[1];
+  const w = Math.hypot(dx, dy) || 1;
+  const outer: Pt = [b[0] - (a[0] + c[0]) / 2, b[1] - (a[1] + c[1]) / 2];
+  const side = outer[0] * dx + outer[1] * dy >= 0 ? 1 : -1;
+  const edge = side > 0 ? r : l;
+  return [edge[0] + (dx / w) * side * offsetM, edge[1] + (dy / w) * side * offsetM];
+}
+
 // The road between two lap fractions as one polygon: left edge forward, right edge back.
 export function sectionPolygon(g: MapGeometry, startFrac: number, endFrac: number, samples: number = 40): Pt[] {
   const left: Pt[] = [];

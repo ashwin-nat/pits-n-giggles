@@ -6,7 +6,7 @@ import { useTrackMeta } from "../../hooks/useTrackMeta";
 import { LAP_SLOT_COLORS, LAP_SLOT_LETTERS } from "../../lib/chartConstants";
 import { buildMapGeometry, drivenLine } from "../../lib/mapGeometry";
 import { sectionCode, sectionViewport } from "../../lib/sectionStrip";
-import { buildSectionRows } from "../../lib/sectionTable";
+import { buildSectionRows, formatSectionDelta } from "../../lib/sectionTable";
 import { useTelemetryStore } from "../../store/telemetryStore";
 import { isCompleteLap } from "../../types/store";
 import type { TrackSection } from "../../types/api";
@@ -17,13 +17,6 @@ const MIN_PANEL_PX = 280;
 const MAX_PANEL_PX = 800;
 // Past this many laps the table drops section names to keep the delta columns readable.
 const NAME_COLUMN_MAX_LAPS = 3;
-
-function formatDelta(value: number | null): string {
-  if (value === null) {
-    return "–";
-  }
-  return `${value > 0 ? "+" : ""}${value.toFixed(3)}`;
-}
 
 function SectionTable({ sections, trackLength }: { sections: TrackSection[]; trackLength: number }) {
   const laps = useTelemetryStore((s) => s.laps);
@@ -91,7 +84,7 @@ function SectionTable({ sections, trackLength }: { sections: TrackSection[]; tra
                     delta === null ? "text-tone-600" : delta > 0 ? "text-behind" : delta < 0 ? "text-ahead" : ""
                   }`}
                 >
-                  {formatDelta(delta)}
+                  {formatSectionDelta(delta)}
                 </td>
               );
             })}
@@ -189,6 +182,7 @@ export function MapPanel({ crosshairPosition }: { crosshairPosition: number | nu
         <MapSvg
           geometry={geometry}
           meta={meta}
+          formula={sessions?.find((s) => s.id === laps[0]?.sessionId)?.formula ?? ""}
           lines={lines}
           lapPresent={laps.map((lap) => isCompleteLap(lap))}
           labels={laps.map((lap, slot) => `${LAP_SLOT_LETTERS[slot]} L${lap.lapNumber ?? ""}`)}
