@@ -1,9 +1,11 @@
 // Session and track grouping for the picker modals. Pure, for sessionFilters.test.ts.
 import type { Session } from "../types/api";
+import { formulaRules } from "./formulas";
 
-// The game a session belongs to, e.g. "F1 2025". Filters every track and session list.
+// The game a session belongs to, e.g. "F1 2025" or "F1 26". Filters every track and session list.
 export function gameLabel(session: Pick<Session, "formula" | "gameYear">): string {
-  return `${session.formula} ${session.gameYear}`.trim();
+  const rules = formulaRules(session.formula);
+  return rules.yearInName ? rules.name : `${rules.name} ${session.gameYear}`.trim();
 }
 
 // Distinct games, newest year first.

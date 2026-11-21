@@ -17,18 +17,22 @@ import {
   type MapGeometry,
   type Pt,
 } from "../../lib/mapGeometry";
+import { formulaRules } from "../../lib/formulas";
+import { MapMarkers, MARKER_COLORS } from "./MapMarkers";
 import { LAP_SLOT_COLORS, LAP_SLOT_LETTERS } from "../../lib/chartConstants";
 import type { TrackMeta } from "../../lib/segments";
 import type { ActiveSection } from "../../types/store";
 
 const WHOLE_PAD_M = 80;
-const SEGMENT_TICK_OVERHANG = 0.35;
+const SEGMENT_TICK_OVERHANG = 0.6;
 const SECTOR_TICK_OVERHANG = 0.9;
 const WHEEL_ZOOM = 0.85;
 
 interface MapSvgProps {
   geometry: MapGeometry;
   meta: TrackMeta | null;
+  // The session's formula string; decides which zone marks are drawn.
+  formula: string;
   // One driven line per lap slot; an empty line means that lap has no position data.
   lines: DrivenLine[];
   // Which slots hold a complete lap (an empty slot gets no legend entry).
@@ -44,11 +48,13 @@ const BUTTON = "rounded-md bg-tone-800/80 px-2 py-1 text-2xs text-tone-300 hover
 
 // Top-down map: road, white lines, segment and sector ticks, one driven line
 // and cursor dot per lap. The view box is state (null = the whole track).
-export function MapSvg({ geometry, meta, lines, lapPresent, labels, crosshairPosition, activeSection, hoverSection }: MapSvgProps) {
+export function MapSvg({ geometry, meta, formula, lines, lapPresent, labels, crosshairPosition, activeSection, hoverSection }: MapSvgProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [size, setSize] = useState({ width: 400, height: 320 });
   const [view, setView] = useState<Box | null>(null);
   const [follow, setFollow] = useState(false);
+  const [showMarkers, setShowMarkers] = useState(true);
+  const rules = formulaRules(formula);
   const drag = useRef<{ x: number; y: number } | null>(null);
 
   const whole = useMemo<Box>(() => {
@@ -142,8 +148,8 @@ export function MapSvg({ geometry, meta, lines, lapPresent, labels, crosshairPos
     toPath(geometry.L, true) + toPath(geometry.R, true);
 
   const polygons: [ActiveSection | null, string][] = [
-    [hoverSection, "rgba(255,255,255,0.10)"],
-    [activeSection, "rgba(255,255,255,0.16)"],
+    [hoverSection, "rgba(255,255,255,0.30)"],
+    [activeSection, "rgba(255,255,255,0.20)"],
   ];
 
   // Segment boundaries, minus any that coincide with a sector boundary.
@@ -193,6 +199,9 @@ export function MapSvg({ geometry, meta, lines, lapPresent, labels, crosshairPos
               />
             )
           )}
+        {showMarkers && meta !== null && (
+          <MapMarkers geometry={geometry} meta={meta} scale={sc} rules={rules} />
+        )}
         <path d={toPath(geometry.L, true)} fill="none" stroke="#94a3b8" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
         <path d={toPath(geometry.R, true)} fill="none" stroke="#94a3b8" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
         {segmentDistances.map((d) => {
@@ -201,7 +210,7 @@ export function MapSvg({ geometry, meta, lines, lapPresent, labels, crosshairPos
             <line
               key={`seg-${d}`}
               x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]}
-              stroke="#64748b" strokeWidth={1} vectorEffect="non-scaling-stroke"
+              stroke="#cbd5e1" strokeWidth={1.5} vectorEffect="non-scaling-stroke"
             />
           );
         })}
@@ -253,7 +262,37 @@ export function MapSvg({ geometry, meta, lines, lapPresent, labels, crosshairPos
         )}
       </div>
 
+      {showMarkers && meta !== null && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 px-3 pb-2 text-2xs text-tone-300">
+          {(
+            [
+              [rules.drs, "DRS zone and detection", MARKER_COLORS.drs],
+              [rules.activeAero, "Aero full (solid)", MARKER_COLORS.aero],
+              [rules.activeAero, "Aero partial (dotted)", MARKER_COLORS.aero],
+              [true, "Speed trap", MARKER_COLORS.speedTrap],
+              [rules.overtake, "Overtake detection, ring = activation", MARKER_COLORS.overtake],
+              [true, "Brake boards (zoom in)", MARKER_COLORS.board],
+            ] as const
+          )
+            .filter(([applies]) => applies)
+            .map(([, name, color]) => (
+            <span key={name} className="flex items-center gap-1.5">
+              <span className="h-2 w-3.5 rounded-sm" style={{ backgroundColor: color }} />
+              {name}
+            </span>
+          ))}
+        </div>
+      )}
+
       <div className="absolute right-3 top-2 flex items-center gap-1">
+        <button
+          type="button"
+          className={`${BUTTON} ${showMarkers ? "bg-tone-100 text-tone-900 hover:bg-tone-100 hover:text-tone-900" : ""}`}
+          title="Show DRS, aero, speed trap, overtake and brake boards"
+          onClick={() => setShowMarkers((v) => !v)}
+        >
+          Markers
+        </button>
         <button type="button" className={BUTTON} onClick={() => zoomButton(WHEEL_ZOOM)} title="Zoom in">
           +
         </button>

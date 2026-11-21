@@ -189,6 +189,7 @@ export function MapPanel({ crosshairPosition }: { crosshairPosition: number | nu
         <MapSvg
           geometry={geometry}
           meta={meta}
+          formula={sessions?.find((s) => s.id === laps[0]?.sessionId)?.formula ?? ""}
           lines={lines}
           lapPresent={laps.map((lap) => isCompleteLap(lap))}
           labels={laps.map((lap, slot) => `${LAP_SLOT_LETTERS[slot]} L${lap.lapNumber ?? ""}`)}

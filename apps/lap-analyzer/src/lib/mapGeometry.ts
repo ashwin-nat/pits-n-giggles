@@ -108,6 +108,22 @@ export function tickAt(g: MapGeometry, frac: number, overhang: number): [Pt, Pt]
   ];
 }
 
+// A line along the road between two lap fractions, `t` of the way from the left edge to the right
+// (0.5 is the centre), then moved `offsetM` metres across the road (negative is left). Use t 0 or 1
+// with an offset to run outside the road by a fixed distance, whatever the road width.
+export function lineAlong(g: MapGeometry, startFrac: number, endFrac: number, t: number, offsetM: number = 0): Pt[] {
+  const samples = Math.max(4, Math.ceil(Math.abs(endFrac - startFrac) * 1500));
+  const out: Pt[] = [];
+  for (let i = 0; i <= samples; i++) {
+    const { l, r } = edgeAt(g, startFrac + ((endFrac - startFrac) * i) / samples);
+    const dx = r[0] - l[0];
+    const dy = r[1] - l[1];
+    const w = Math.hypot(dx, dy) || 1;
+    out.push([l[0] + dx * t + (dx / w) * offsetM, l[1] + dy * t + (dy / w) * offsetM]);
+  }
+  return out;
+}
+
 // The road between two lap fractions as one polygon: left edge forward, right edge back.
 export function sectionPolygon(g: MapGeometry, startFrac: number, endFrac: number, samples: number = 40): Pt[] {
   const left: Pt[] = [];

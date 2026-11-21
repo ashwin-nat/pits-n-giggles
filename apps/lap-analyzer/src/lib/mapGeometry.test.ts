@@ -6,6 +6,7 @@ import {
   clampZoom,
   drivenLine,
   edgeAt,
+  lineAlong,
   pointAt,
   sectionBox,
   sectionPolygon,
@@ -81,6 +82,25 @@ test("edgeAt past the last subdivided point interpolates back to the first (the 
   const from = g.L[g.L.length - 1];
   const to = g.L[0];
   assert.ok(Math.abs(l[0] - (from[0] + to[0]) / 2) < 1e-9);
+});
+
+test("lineAlong follows the road at the asked share of its width", () => {
+  const g = geometry();
+  const { l, r } = edgeAt(g, 0.3);
+  const [first] = lineAlong(g, 0.3, 0.35, 0.5);
+  assert.ok(Math.abs(first[0] - (l[0] + r[0]) / 2) < 1e-9);
+  assert.ok(Math.abs(first[1] - (l[1] + r[1]) / 2) < 1e-9);
+  const [outside] = lineAlong(g, 0.3, 0.35, -1);
+  assert.ok(Math.abs(outside[0] - (2 * l[0] - r[0])) < 1e-9);
+});
+
+test("lineAlong offset runs a fixed distance outside the left edge", () => {
+  const g = geometry();
+  const { l, r } = edgeAt(g, 0.3);
+  const w = Math.hypot(r[0] - l[0], r[1] - l[1]);
+  const [p] = lineAlong(g, 0.3, 0.35, 0, -4);
+  assert.ok(Math.abs(Math.hypot(p[0] - l[0], p[1] - l[1]) - 4) < 1e-9);
+  assert.ok(Math.hypot(p[0] - r[0], p[1] - r[1]) > w);
 });
 
 test("tickAt reaches the overhang fraction past each edge", () => {

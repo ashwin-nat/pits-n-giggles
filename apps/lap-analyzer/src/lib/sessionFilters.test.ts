@@ -28,6 +28,8 @@ test("listGames counts sessions per game, newest year first", () => {
     { label: "F1 2024", count: 1 },
   ]);
   assert.equal(gameLabel(session("a")), "F1 2025");
+  assert.equal(gameLabel(session("a", { formula: "F1 Modern" })), "F1 2025");
+  assert.equal(gameLabel(session("a", { formula: "F1 26", gameYear: 2026 })), "F1 26");
 });
 
 test("effectiveGame: the pick, else A's game, else the newest game", () => {
