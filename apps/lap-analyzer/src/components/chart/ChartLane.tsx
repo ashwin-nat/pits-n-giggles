@@ -220,7 +220,9 @@ export function ChartLane({
         stroke: LAP_SLOT_COLORS[s.slot],
         width: s.slot === 0 ? 2 : 1.5,
         spanGaps: false,
-        paths: sensor.type === "discrete" ? uPlot.paths.stepped!({ align: 1 }) : undefined,
+        // Splines and no pixel snapping smooth the sample-to-sample steps.
+        paths: sensor.type === "discrete" ? uPlot.paths.stepped!({ align: 1 }) : uPlot.paths.spline!(),
+        pxAlign: 0,
       })),
     ];
 
