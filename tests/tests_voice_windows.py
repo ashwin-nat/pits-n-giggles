@@ -5,6 +5,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import pytest
+
 from apps.voice import paths, tts
 
 
@@ -130,3 +132,71 @@ def test_stereo_mix_is_never_picked(monkeypatch):
 def test_explicit_index_still_wins_over_name(monkeypatch):
     vc, _ = _fake_audio(monkeypatch, WINDOWS_INPUTS)
     assert vc._pick_device_index(2, "jabra") == 2
+
+
+# ---- Windows: candidates are test-opened, WDM-KS last -------------------------------------
+
+HOST_APIS = {0: "MME", 1: "Windows DirectSound", 2: "Windows WASAPI", 3: "Windows WDM-KS"}
+
+
+def _windows_audio(monkeypatch, devices, opens, default_input=None):
+    """``opens`` = set of device indexes whose open() succeeds."""
+    vc, audio = _fake_audio(monkeypatch, devices, default_input=default_input)
+    monkeypatch.setattr(vc.sys, "platform", "win32")
+    audio.get_host_api_info_by_index.side_effect = lambda i: {"name": HOST_APIS[i]}
+
+    def fake_open(**kwargs):
+        if kwargs["input_device_index"] in opens:
+            return Mock()
+        raise OSError(-9999, "Unanticipated host error")
+
+    audio.open.side_effect = fake_open
+    return vc, audio
+
+
+# The user's PC as seen from the restricted account: only WDM-KS, which fails.
+WDMKS_JABRA = dict(name="Headset (@System32\\drivers\\bthhfenum.sys,#2;%1 Hands-Free%0\r\n;(Jabra Evolve2 85))",
+                   maxInputChannels=1, hostApi=3, index=0, defaultSampleRate=8000.0)
+MME_JABRA = dict(name="Headset (Jabra Evolve2 85)", maxInputChannels=1, hostApi=0, index=1,
+                 defaultSampleRate=16000.0)
+MME_REALTEK = dict(name="Microphone (Realtek HD Audio Mic input)", maxInputChannels=2, hostApi=0,
+                   index=2, defaultSampleRate=44100.0)
+
+
+def test_windows_skips_jabra_entry_that_fails_to_open(monkeypatch, capsys):
+    vc, _ = _windows_audio(monkeypatch, [WDMKS_JABRA, MME_JABRA, MME_REALTEK], opens={1, 2})
+    assert vc._pick_device_index(None, "jabra") == 1
+    assert "Using microphone: Headset (Jabra Evolve2 85) (MME)" in capsys.readouterr().out
+
+
+def test_windows_tries_mme_before_wdmks(monkeypatch):
+    vc, audio = _windows_audio(monkeypatch, [WDMKS_JABRA, MME_JABRA], opens={0, 1})
+    assert vc._pick_device_index(None, "jabra") == 1
+    first = audio.open.call_args_list[0].kwargs
+    assert first["input_device_index"] == 1 and first["rate"] == 16000
+
+
+def test_windows_falls_back_to_another_input_when_named_fails(monkeypatch, capsys):
+    vc, _ = _windows_audio(monkeypatch, [WDMKS_JABRA, MME_REALTEK | {"index": 1}], opens={1})
+    assert vc._pick_device_index(None, "jabra") == 1
+    assert "Realtek" in capsys.readouterr().out
+
+
+def test_windows_no_openable_input_raises_clear_error(monkeypatch):
+    vc, audio = _windows_audio(monkeypatch, [WDMKS_JABRA], opens=set())
+    with pytest.raises(RuntimeError, match="could be opened"):
+        vc._pick_device_index(None, "jabra")
+    audio.terminate.assert_called_once()
+
+
+def test_listen_loop_reports_unopened_microphone(monkeypatch, capsys):
+    from apps.voice import voice_controller as vc
+
+    controller = vc.VoiceController.__new__(vc.VoiceController)
+    mic = Mock()
+    mic.__enter__ = Mock(return_value=SimpleNamespace(stream=None))
+    mic.__exit__ = Mock()
+    controller._mic = mic
+    controller._listen_loop()
+    assert "Microphone could not be opened" in capsys.readouterr().out
+    mic.__exit__.assert_not_called()

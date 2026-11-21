@@ -17,6 +17,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import threading
 import time
 from typing import Callable, Optional
@@ -147,14 +148,89 @@ def _match_by_name(audio, devices, usable, name_contains: str) -> Optional[int]:
     return matches[0]
 
 
-def _pick_device_index(requested: Optional[int] = None, name_contains: str = "") -> int:
-    """Inspect input metadata without opening a microphone stream.
+# Windows lists each input once per host API. MME and DirectSound open Bluetooth
+# hands-free and USB headsets reliably; WDM-KS entries often fail with
+# "Unanticipated host error", so they are tried last.
+_HOST_API_RANK = {"mme": 0, "windows directsound": 1, "windows wasapi": 2, "windows wdm-ks": 3}
 
-    ``name_contains`` (``mic_name_contains`` in png_voice.json) selects the input by
-    name where PulseAudio/PipeWire routing is unavailable, e.g. on Windows. If no
-    input matches, the default input is used as before.
+
+def _host_api_name(audio, device) -> str:
+    try:
+        return str(audio.get_host_api_info_by_index(device["hostApi"])["name"])
+    except Exception:  # pylint: disable=broad-except
+        return "?"
+
+
+def _clean_name(device) -> str:
+    """Windows can report raw driver strings with embedded line breaks."""
+    return " ".join(str(device.get("name", "?")).split())
+
+
+def _can_open(audio, device, pa_format) -> bool:
+    """Briefly open ``device`` the way speech_recognition will, then close it."""
+    try:
+        stream = audio.open(
+            input_device_index=device["index"],
+            channels=1,
+            format=pa_format,
+            rate=int(device.get("defaultSampleRate") or 16000),
+            frames_per_buffer=1024,
+            input=True,
+        )
+        stream.close()
+        return True
+    except Exception as exc:  # pylint: disable=broad-except
+        LOGGER.info("Microphone %r did not open: %s", _clean_name(device), exc)
+        return False
+
+
+def _pick_windows_input(audio, devices, usable, name_contains: str, pa_format) -> int:
+    """Choose the first input that actually opens, named matches first."""
+
+    def rank(index):
+        return _HOST_API_RANK.get(_host_api_name(audio, devices[index]).lower(), 5)
+
+    wanted = name_contains.strip().lower()
+    named = sorted(
+        (i for i in usable if wanted and wanted in devices[i]["name"].lower()), key=rank
+    )
+    if wanted and not named:
+        LOGGER.warning("No microphone matching %r; trying other inputs", name_contains)
+        print(f"[Voice] No microphone matching '{name_contains}'; trying other inputs")
+    try:
+        default = int(audio.get_default_input_device_info()["index"])
+    except (OSError, ValueError, KeyError, TypeError):
+        default = None
+    rest = sorted((i for i in usable if i not in named), key=rank)
+    if default in rest:
+        rest.remove(default)
+        rest.insert(0, default)
+    tried = []
+    for index in named + rest:
+        if _can_open(audio, devices[index], pa_format):
+            label = f"{_clean_name(devices[index])} ({_host_api_name(audio, devices[index])})"
+            LOGGER.info("Voice input: %s", label)
+            print(f"[Voice] Using microphone: {label}")
+            return index
+        tried.append(_clean_name(devices[index]))
+    raise RuntimeError(
+        "No microphone input could be opened (tried: "
+        + (", ".join(tried) or "none")
+        + "). Connect a microphone and check Windows privacy settings allow "
+        "desktop apps to use it."
+    )
+
+
+def _pick_device_index(requested: Optional[int] = None, name_contains: str = "") -> int:
+    """Choose the input device index for speech_recognition.
+
+    On Linux this only inspects metadata. ``name_contains`` (``mic_name_contains`` in
+    png_voice.json) selects the input by name where PulseAudio/PipeWire routing is
+    unavailable. On Windows each candidate is briefly test-opened, because a matching
+    entry on the wrong host API (e.g. WDM-KS) can fail to open.
     """
-    audio = sr.Microphone.get_pyaudio().PyAudio()
+    pa_module = sr.Microphone.get_pyaudio()
+    audio = pa_module.PyAudio()
     try:
         devices = [
             audio.get_device_info_by_index(i) for i in range(audio.get_device_count())
@@ -180,6 +256,10 @@ def _pick_device_index(requested: Optional[int] = None, name_contains: str = "")
             raise RuntimeError(
                 "Cannot route the microphone source through PulseAudio; "
                 "install its ALSA plugin or select a matching input device."
+            )
+        if sys.platform == "win32":
+            return _pick_windows_input(
+                audio, devices, usable, name_contains, getattr(pa_module, "paInt16", 8)
             )
         named = _match_by_name(audio, devices, usable, name_contains)
         if named is not None:
@@ -446,7 +526,18 @@ class VoiceController:
         return None
 
     def _listen_loop(self) -> None:
-        with self._mic as source:
+        # speech_recognition swallows the PyAudio open error and leaves stream None,
+        # which then fails confusingly inside the with-block. Check it explicitly.
+        source = self._mic.__enter__()
+        if getattr(source, "stream", None) is None:
+            message = (
+                "Microphone could not be opened. Check the headset is connected and "
+                "not in use by another app, or set mic_name_contains in png_voice.json."
+            )
+            LOGGER.error(message)
+            print(f"[Voice] {message}")
+            return
+        try:
             self._recognizer.adjust_for_ambient_noise(source, duration=1.0)
             while self._running.is_set():
                 if self.speaker.speaking.is_set():
@@ -505,6 +596,8 @@ class VoiceController:
                     self._submit_control("ack", "Go ahead.")
                 else:
                     self.submit_question(question, captured_mono=captured)
+        finally:
+            self._mic.__exit__(None, None, None)
 
     def _current(self, work, cancelled):
         return (
