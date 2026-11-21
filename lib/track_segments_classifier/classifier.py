@@ -25,14 +25,14 @@
 import bisect
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Dict, Iterator, Literal, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterator, Optional, Sequence, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from lib.f1_types.packet_2_lap_data import LapData
 
 from .types import (ActiveAeroZoneInfo, ComplexCornerSegmentInfo,
-                    CornerSegmentInfo, DrsZoneInfo, OvertakeZoneInfo,
+                    CornerSegmentInfo, DrsZoneInfo, OvertakeDistInfo,
                     SectorBoundaries, SegmentInfo, _num)
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -56,8 +56,7 @@ class TrackSegmentsClassifier(BaseModel):
     sectors : sector boundaries (required); must satisfy s1 < s2 < track_length
     use_cache : required. True memoizes the last hit, which helps a single car moving
         along the track and hurts random access (e.g. looking up many cars).
-    schema_version : 1 when absent, 2 for files carrying the fields below
-    speed_trap_m, drs_zones, overtake_zones, active_aero_zones : optional; every lap
+    speed_trap_m, drs_zones, overtake_dist, active_aero_zones : optional; every lap
         distance in them, and in brake boards, satisfies 0 <= value < track_length.
         Zones may cross the start line (end_m < start_m); segments may not.
     """
@@ -71,10 +70,9 @@ class TrackSegmentsClassifier(BaseModel):
     sectors: SectorBoundaries
     use_cache: bool
 
-    schema_version: Literal[1, 2] = 1
     speed_trap_m: Optional[float] = None
     drs_zones: Tuple[DrsZoneInfo, ...] = ()
-    overtake_zones: Tuple[OvertakeZoneInfo, ...] = ()
+    overtake_dist: Optional[OvertakeDistInfo] = None
     active_aero_zones: Tuple[ActiveAeroZoneInfo, ...] = ()
 
     # Public field for read speed (PrivateAttr reads are far slower); a dataclass so cache writes skip pydantic's __setattr__.
@@ -137,11 +135,10 @@ class TrackSegmentsClassifier(BaseModel):
 
     @model_validator(mode="after")
     def _check_zone_ids(self) -> "TrackSegmentsClassifier":
-        for kind, zones in (("drs_zones", self.drs_zones), ("overtake_zones", self.overtake_zones)):
-            ids = [z.id for z in zones]
-            dupes = sorted({i for i in ids if ids.count(i) > 1})
-            if dupes:
-                raise ValueError(f"{kind}: duplicate id {', '.join(str(i) for i in dupes)}")
+        ids = [z.id for z in self.drs_zones]
+        dupes = sorted({i for i in ids if ids.count(i) > 1})
+        if dupes:
+            raise ValueError(f"drs_zones: duplicate id {', '.join(str(i) for i in dupes)}")
         return self
 
     @model_validator(mode="after")
@@ -160,9 +157,9 @@ class TrackSegmentsClassifier(BaseModel):
             for a in z.activation:
                 yield f"drs zone {z.id} activation start_m", a.start_m
                 yield f"drs zone {z.id} activation end_m", a.end_m
-        for z in self.overtake_zones:
-            yield f"overtake zone {z.id} detection_m", z.detection_m
-            yield f"overtake zone {z.id} activation_m", z.activation_m
+        if self.overtake_dist is not None:
+            yield "overtake_dist detection_m", self.overtake_dist.detection_m
+            yield "overtake_dist activation_m", self.overtake_dist.activation_m
         for i, z in enumerate(self.active_aero_zones):
             yield f"active aero zone {i} start_m", z.start_m
             yield f"active aero zone {i} end_m", z.end_m
@@ -226,23 +223,17 @@ class TrackSegmentsClassifier(BaseModel):
     def to_file_dict(self) -> Dict[str, Any]:
         """The track as it is written to a JSON file, in the files' key order.
 
-        Loading a shipped file and dumping it gives the same data. A track with no v2 data gets no v2 keys. A
-        track carrying any v2 data, or marked v2, is written as v2 with all three zone lists, even when empty
-        (Monaco has no active aero), so v2 data supplied without a `schema_version` is not dropped.
+        Loading a shipped file and dumping it gives the same data. The DRS and active aero zone lists are always
+        written, even when empty (Monaco has no active aero); the speed trap and overtake_dist only when set.
         """
-        v2 = (self.schema_version == 2 or self.speed_trap_m is not None
-              or bool(self.drs_zones or self.overtake_zones or self.active_aero_zones))
-        out: Dict[str, Any] = {}
-        if v2:
-            out["schema_version"] = 2
-        out |= {"circuit_name": self.circuit_name, "circuit_number": self.circuit_number,
-                "track_length": _num(self.track_length)}
-        if v2:
-            if self.speed_trap_m is not None:
-                out["speed_trap_m"] = _num(self.speed_trap_m)
-            out["drs_zones"] = [z.to_file_dict() for z in self.drs_zones]
-            out["overtake_zones"] = [z.to_file_dict() for z in self.overtake_zones]
-            out["active_aero_zones"] = [z.to_file_dict() for z in self.active_aero_zones]
+        out: Dict[str, Any] = {"circuit_name": self.circuit_name, "circuit_number": self.circuit_number,
+                               "track_length": _num(self.track_length)}
+        if self.speed_trap_m is not None:
+            out["speed_trap_m"] = _num(self.speed_trap_m)
+        out["drs_zones"] = [z.to_file_dict() for z in self.drs_zones]
+        if self.overtake_dist is not None:
+            out["overtake_dist"] = self.overtake_dist.to_file_dict()
+        out["active_aero_zones"] = [z.to_file_dict() for z in self.active_aero_zones]
         out["segments"] = [s.to_file_dict() for s in self.segments]
         out["sectors"] = {"s1": self.sectors.s1, "s2": self.sectors.s2}
         return out

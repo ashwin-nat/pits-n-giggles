@@ -209,7 +209,10 @@ def knot_mapper(knots: np.ndarray, track_length: float) -> Callable[[float], flo
 
 
 def extract_zones(markup: BxmlNode, to_m: Callable[[float], float]) -> Dict[str, Any]:
-    """Speed trap, DRS, overtake and active aero fields from a parsed .trackmarkup, main track only."""
+    """Speed trap, DRS, overtake and active aero fields from a parsed .trackmarkup, main track only.
+
+    Raises ValueError when the markup holds more than one complete overtake pair: the schema has one per track.
+    """
     drs: Dict[int, Dict[str, Any]] = {}
     overtake: Dict[int, Dict[str, Any]] = {}
     aero: List[Dict[str, Any]] = []
@@ -238,10 +241,13 @@ def extract_zones(markup: BxmlNode, to_m: Callable[[float], float]) -> Dict[str,
         "drs_zones": [{"id": i, "detection_m": z["detection_m"],
                        "activation": sorted(z["activation"], key=lambda a: a["start_m"])}
                       for i, z in sorted(drs.items()) if "detection_m" in z and z["activation"]],
-        "overtake_zones": [{"id": i, **z} for i, z in sorted(overtake.items())
-                           if "detection_m" in z and "activation_m" in z],
-        "active_aero_zones": sorted(aero, key=lambda a: (a["mode"], a["start_m"])),
     }
+    complete = [z for _, z in sorted(overtake.items()) if "detection_m" in z and "activation_m" in z]
+    if len(complete) > 1:
+        raise ValueError(f"{len(complete)} overtake detection and activation pairs in the markup, the schema holds one")
+    if complete:
+        out["overtake_dist"] = {"detection_m": complete[0]["detection_m"], "activation_m": complete[0]["activation_m"]}
+    out["active_aero_zones"] = sorted(aero, key=lambda a: (a["mode"], a["start_m"]))
     return out
 
 
@@ -483,10 +489,11 @@ def update_segment_file(path: Path, wep_dir: Path, folder: str) -> List[str]:
     old = TrackSegmentsClassifier.model_validate({**json.loads(raw), "use_cache": False})
     common = wep_dir / f"{folder}_common.erp"
     knots = parse_maintrack_knots(read_erp_resource(common, ".trackspacespline"))
-    zones = extract_zones(parse_bxml(read_erp_resource(common, ".trackmarkup")), knot_mapper(knots, old.track_length))
+    markup = parse_bxml(read_erp_resource(common, ".trackmarkup"))
     game = game_corners(parse_bxml(read_erp_resource(common, ".taprogram")), old.track_length)
     notes = corner_report(old.segments, game)
     try:
+        zones = extract_zones(markup, knot_mapper(knots, old.track_length))
         seeded = tuple(_replace(seg, corners=seed_sub_corners(seg, game))
                        if isinstance(seg, ComplexCornerSegmentInfo) and not seg.corners else seg
                        for seg in old.segments)
@@ -495,7 +502,7 @@ def update_segment_file(path: Path, wep_dir: Path, folder: str) -> List[str]:
         new = TrackSegmentsClassifier.model_validate({
             "circuit_name": old.circuit_name, "circuit_number": old.circuit_number,
             "track_length": old.track_length, "sectors": old.sectors, "use_cache": False,
-            "segments": segments, "schema_version": 2, **zones})
+            "segments": segments, **zones})
     except ValueError as err:
         return notes + [f"NOT WRITTEN, fails validation: {str(err).splitlines()[0]}"]
     text = json.dumps(new.to_file_dict(), indent=2, ensure_ascii=False)

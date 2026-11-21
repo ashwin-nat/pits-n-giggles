@@ -124,16 +124,15 @@ class DrsZoneInfo(BaseModel):
                 "activation": [a.to_file_dict() for a in self.activation]}
 
 
-class OvertakeZoneInfo(BaseModel):
-    """An overtake mode detection point and its activation point."""
+class OvertakeDistInfo(BaseModel):
+    """The track's overtake mode detection point and its activation point. There is one per track."""
     model_config = ConfigDict(frozen=True, allow_inf_nan=False)
 
-    id: int
     detection_m: float
     activation_m: float
 
     def to_file_dict(self) -> Dict[str, Any]:
-        return {"id": self.id, "detection_m": _num(self.detection_m), "activation_m": _num(self.activation_m)}
+        return {"detection_m": _num(self.detection_m), "activation_m": _num(self.activation_m)}
 
 
 class ActiveAeroZoneInfo(LapRangeInfo):

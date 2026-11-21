@@ -322,7 +322,7 @@ def test_parse_maintrack_knots_stops_at_next_spline():
 @allure.story("Zones")
 @allure.title("Markup becomes speed trap, DRS, overtake and active aero zones")
 def test_extract_zones():
-    """A markup with a speed trap, one DRS zone with two activations, an overtake zone, two aero zones
+    """A markup with a speed trap, one DRS zone with two activations, an overtake_dist, two aero zones
     (one crossing the line) and a pit-spline aero zone, on a 4000 m lap.
 
     Expected: pit-spline elements are ignored, activations sorted, aero sorted by mode and start."""
@@ -343,7 +343,7 @@ def test_extract_zones():
         "speed_trap_m": 100,
         "drs_zones": [{"id": 1, "detection_m": 1000,
                        "activation": [{"start_m": 100, "end_m": 1000}, {"start_m": 3000, "end_m": 3500}]}],
-        "overtake_zones": [{"id": 1, "detection_m": 1000, "activation_m": 100}],
+        "overtake_dist": {"detection_m": 1000, "activation_m": 100},
         "active_aero_zones": [{"mode": "full", "start_m": 100, "end_m": 1000},
                               {"mode": "partial", "start_m": 3000, "end_m": 100}],
     }
@@ -352,15 +352,31 @@ def test_extract_zones():
 @allure.story("Zones")
 @allure.title("A zone missing its detection or activation point is dropped")
 def test_extract_zones_drops_incomplete_zones():
-    """A DRS zone with activation but no detection, and an overtake zone with detection but no activation.
+    """A DRS zone with activation but no detection, and an overtake pair with detection but no activation.
 
-    Expected: neither is written, since the schema requires both points. No speed trap gives no key."""
+    Expected: neither is written, since the schema requires both points. No speed trap or overtake_dist gives no key."""
     markup = _parse(_markup(
         ("drs_activation_1", 0.2, 0.4, "maintrack", "drs_act", {"ID": "1"}),
         ("ers_override_detection_1", 0.4, 0.41, "maintrack", "ers_over_det", {"ID": "1"}),
     ))
     assert extract_zones(markup, knot_mapper(_KNOTS, 4000)) == {
-        "drs_zones": [], "overtake_zones": [], "active_aero_zones": []}
+        "drs_zones": [], "active_aero_zones": []}
+
+
+@allure.story("Zones")
+@allure.title("Markup with two overtake pairs is refused")
+def test_extract_zones_refuses_two_overtake_pairs():
+    """Two complete overtake detection and activation pairs, ids 1 and 2.
+
+    Expected: ValueError, since the schema holds one overtake pair per track and dropping one would be silent."""
+    markup = _parse(_markup(
+        ("ers_override_detection_1", 0.4, 0.41, "maintrack", "ers_over_det", {"ID": "1"}),
+        ("ers_override_activation_1", 0.2, 0.25, "maintrack", "ers_over_act", {"ID": "1"}),
+        ("ers_override_detection_2", 0.6, 0.61, "maintrack", "ers_over_det", {"ID": "2"}),
+        ("ers_override_activation_2", 0.8, 0.85, "maintrack", "ers_over_act", {"ID": "2"}),
+    ))
+    with pytest.raises(ValueError, match="2 overtake detection and activation pairs"):
+        extract_zones(markup, knot_mapper(_KNOTS, 4000))
 
 
 def _parse(blob: bytes):
@@ -454,7 +470,7 @@ def test_attach_boards_rejects_a_board_outside_the_lap_later():
     segments, _ = attach_boards(_layout(), [_board(2500)], 2000)
     with pytest.raises(ValueError, match="must be in"):
         TrackSegmentsClassifier(circuit_name="t", circuit_number=1, track_length=2000, sectors={"s1": 600, "s2": 1300},
-                                segments=segments, use_cache=False, schema_version=2)
+                                segments=segments, use_cache=False)
 
 
 @allure.story("Corners")
@@ -507,7 +523,7 @@ def test_corner_report(case, game, expected):
 
 # --- update_segment_file ---------------------------------------------------------------------------------------------
 
-_V1_FILE = {
+_BASE_FILE = {
     "circuit_name": "Test", "circuit_number": 99, "track_length": 2000,
     "segments": [
         {"type": "corner", "start_m": 100, "end_m": 200, "name": "One", "corner_number": 1},
@@ -543,24 +559,24 @@ def _write(tmp_path, data: dict, newline: str = "\r\n", final: bool = True):
 
 
 @allure.story("Updating segment files")
-@allure.title("--update writes zones, sub-corners and boards into a v1 file")
+@allure.title("--update writes zones, sub-corners and boards into a file without them")
 def test_update_segment_file(tmp_path, game_files):
-    """A v1 file for a 2000 m square lap, with synthetic game data.
+    """A file for a 2000 m square lap with no zones, sub-corners or boards, and synthetic game data.
 
-    Expected: schema_version 2 first, zones before segments, sub-corners seeded from the game points,
+    Expected: zones before segments, sub-corners seeded from the game points,
     the board on sub-corner 2, existing fields unchanged, and a clean run reports nothing."""
-    path = _write(tmp_path, _V1_FILE)
+    path = _write(tmp_path, _BASE_FILE)
     assert update_segment_file(path, tmp_path, "test") == []
     out = json.loads(path.read_text())
-    assert list(out) == ["schema_version", "circuit_name", "circuit_number", "track_length", "speed_trap_m",
-                         "drs_zones", "overtake_zones", "active_aero_zones", "segments", "sectors"]
+    assert list(out) == ["circuit_name", "circuit_number", "track_length", "speed_trap_m",
+                         "drs_zones", "active_aero_zones", "segments", "sectors"]
     assert out["speed_trap_m"] == 500
     assert out["drs_zones"] == [{"id": 1, "detection_m": 1000, "activation": [{"start_m": 1500, "end_m": 1800}]}]
     complex_corner = out["segments"][1]
     assert [(c["corner_number"], c["start_m"], c["end_m"]) for c in complex_corner["corners"]] == \
         [(2, 1000, 1100), (3, 1100, 1200)]
     assert complex_corner["corners"][0]["brake_boards"] == [{"distance_m": 100, "at_m": 980, "side": "both"}]
-    assert out["segments"][0] == _V1_FILE["segments"][0] and out["sectors"] == _V1_FILE["sectors"]
+    assert out["segments"][0] == _BASE_FILE["segments"][0] and out["sectors"] == _BASE_FILE["sectors"]
 
 
 @allure.story("Updating segment files")
@@ -570,7 +586,7 @@ def test_update_segment_file_is_idempotent(tmp_path, game_files, newline, final)
     """The same file updated twice, with CRLF and a trailing newline, and with LF and none.
 
     Expected: identical bytes after the second run, with the file's own line endings and trailing newline kept."""
-    path = _write(tmp_path, _V1_FILE, newline, final)
+    path = _write(tmp_path, _BASE_FILE, newline, final)
     update_segment_file(path, tmp_path, "test")
     first = path.read_bytes()
     update_segment_file(path, tmp_path, "test")
@@ -585,7 +601,7 @@ def test_update_segment_file_keeps_existing_sub_corners(tmp_path, game_files):
     """A file whose complex corner already has hand-set sub-corners at 1000 to 1050 and 1050 to 1200.
 
     Expected: the ranges stay, since `corners` is only seeded when missing; the board moves to sub-corner 2."""
-    data = json.loads(json.dumps(_V1_FILE))
+    data = json.loads(json.dumps(_BASE_FILE))
     data["segments"][1]["corners"] = [{"corner_number": 2, "start_m": 1000, "end_m": 1050},
                                       {"corner_number": 3, "start_m": 1050, "end_m": 1200}]
     path = _write(tmp_path, data)
@@ -601,7 +617,7 @@ def test_update_segment_file_refuses_invalid_result(tmp_path, game_files, monkey
 
     Expected: the file is byte-identical afterwards and the report says it was not written."""
     monkeypatch.setattr(extract_track_data, "extract_zones", lambda *_: {"speed_trap_m": 5000})
-    path = _write(tmp_path, _V1_FILE)
+    path = _write(tmp_path, _BASE_FILE)
     before = path.read_bytes()
     notes = update_segment_file(path, tmp_path, "test")
     assert path.read_bytes() == before

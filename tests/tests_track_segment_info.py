@@ -1104,7 +1104,6 @@ _V2_LENGTH = 5798
 
 # Trimmed from the generated Monza prototype; DRS 2 and the last aero zone cross the start line
 _V2_TRACK = {
-    "schema_version": 2,
     "circuit_name": "Monza",
     "circuit_number": 11,
     "track_length": _V2_LENGTH,
@@ -1114,7 +1113,7 @@ _V2_TRACK = {
         {"id": 1, "detection_m": 2757.6, "activation": [{"start_m": 3055.8, "end_m": 3889.1}]},
         {"id": 2, "detection_m": 5502.6, "activation": [{"start_m": 9.2, "end_m": 881.3}]},
     ],
-    "overtake_zones": [{"id": 1, "detection_m": 5154.4, "activation_m": 5253.6}],
+    "overtake_dist": {"detection_m": 5154.4, "activation_m": 5253.6},
     "active_aero_zones": [
         {"mode": "full", "start_m": 1158.3, "end_m": 2113.1},
         {"mode": "full", "start_m": 5529.7, "end_m": 881.3},
@@ -1144,7 +1143,7 @@ _V2_TRACK = {
     ],
 }
 
-_V2_KEYS = ("schema_version", "speed_trap_m", "drs_zones", "overtake_zones", "active_aero_zones")
+_V2_KEYS = ("speed_trap_m", "drs_zones", "overtake_dist", "active_aero_zones")
 
 
 def _v2() -> dict:
@@ -1172,15 +1171,15 @@ def _assert_rejected(track: dict, message: str) -> None:
 # --- v1 compatibility -------------------------------------------------------------------------------------------------
 
 @allure.story("Schema v2: v1 compatibility")
-@allure.title("A v1 file loads with every v2 field at its default")
-def test_v1_file_gets_v2_defaults():
-    """Alpha Circuit, a v1 file with no v2 keys.
+@allure.title("A file with no v2 fields loads with every one at its default")
+def test_file_without_v2_fields_gets_defaults():
+    """Alpha Circuit, which has no speed trap, zones, sub-corners or brake boards.
 
-    Expected: schema_version 1, no speed trap, no zones, and no brake boards on its corner."""
+    Expected: no speed trap, no zones, and no brake boards on its corner."""
     ts = load(_CIRCUIT_A, use_cache=False)
-    assert ts.schema_version == 1
     assert ts.speed_trap_m is None
-    assert ts.drs_zones == ts.overtake_zones == ts.active_aero_zones == ()
+    assert ts.overtake_dist is None
+    assert ts.drs_zones == ts.active_aero_zones == ()
     assert ts.segments[1].brake_boards == ()
 
 
@@ -1213,18 +1212,6 @@ def test_to_dict_unchanged(seg_type, index):
 
 
 @allure.story("Schema v2: v1 compatibility")
-@allure.title("schema_version {version} is rejected")
-@pytest.mark.parametrize("version", [0, 3])
-def test_unknown_schema_version_rejected(version):
-    """The v2 Monza track with an unsupported schema_version.
-
-    Expected: rejected, so a newer file cannot load half-understood."""
-    track = _v2()
-    track["schema_version"] = version
-    _assert_rejected(track, "schema_version")
-
-
-@allure.story("Schema v2: v1 compatibility")
 @allure.title("A v2 file loads through TrackSegmentsDatabase")
 def test_v2_file_loads_through_database(tmp_path):
     """The v2 Monza track written to a JSON file in an otherwise empty directory.
@@ -1232,7 +1219,6 @@ def test_v2_file_loads_through_database(tmp_path):
     Expected: the database loads it, keeping its zones and sub-corners."""
     (tmp_path / "Monza.json").write_text(json.dumps(_V2_TRACK), encoding="utf-8")
     ts = TrackSegmentsDatabase(tmp_path, cache=False)[11]
-    assert ts.schema_version == 2
     assert len(ts.drs_zones) == 2
     assert len(ts.segments[1].corners) == 2
 
@@ -1413,16 +1399,26 @@ def test_active_aero_bad_mode_rejected(mode):
 
 
 @allure.story("Schema v2: zones")
-@allure.title("Duplicate {kind} ids are rejected")
-@pytest.mark.parametrize("kind", ["drs_zones", "overtake_zones"])
-def test_duplicate_zone_ids_rejected(kind):
-    """Two zones of one kind sharing id 1.
+@allure.title("Duplicate DRS zone ids are rejected")
+def test_duplicate_drs_zone_ids_rejected():
+    """Two DRS zones sharing id 1.
 
-    Expected: rejected, naming the kind and the id."""
+    Expected: rejected, naming the field and the id."""
     track = _v2()
-    track[kind].append(copy.deepcopy(track[kind][0]))
-    track[kind][-1]["id"] = 1
-    _assert_rejected(track, f"{kind}: duplicate id 1")
+    track["drs_zones"].append(copy.deepcopy(track["drs_zones"][0]))
+    track["drs_zones"][-1]["id"] = 1
+    _assert_rejected(track, "drs_zones: duplicate id 1")
+
+
+@allure.story("Schema v2: zones")
+@allure.title("The overtake pair is a single pair, not a list")
+def test_overtake_dist_is_single():
+    """The v2 Monza track with its overtake_dist given as a one-item list.
+
+    Expected: rejected, so a list cannot load in place of the single pair."""
+    track = _v2()
+    track["overtake_dist"] = [track["overtake_dist"]]
+    _assert_rejected(track, "overtake_dist")
 
 
 # --- Lap positions ----------------------------------------------------------------------------------------------------
@@ -1435,7 +1431,7 @@ def _set_position(track: dict, field: str, value: float) -> None:
     elif field == "drs activation end_m":
         track["drs_zones"][0]["activation"][0]["end_m"] = value
     elif field == "overtake activation_m":
-        track["overtake_zones"][0]["activation_m"] = value
+        track["overtake_dist"]["activation_m"] = value
     elif field == "active aero start_m":
         track["active_aero_zones"][0]["start_m"] = value
     elif field == "corner board at_m":
@@ -1507,10 +1503,10 @@ def test_shipped_file_round_trips(filename):
 def test_v2_file_dict_key_order():
     """The v2 Monza track, dumped.
 
-    Expected: schema_version first, then the identity keys, speed trap and zones, segments, and sectors last."""
+    Expected: the identity keys first, then speed trap and zones, segments, and sectors last."""
     assert list(load(_v2(), use_cache=False).to_file_dict()) == [
-        "schema_version", "circuit_name", "circuit_number", "track_length", "speed_trap_m",
-        "drs_zones", "overtake_zones", "active_aero_zones", "segments", "sectors"]
+        "circuit_name", "circuit_number", "track_length", "speed_trap_m",
+        "drs_zones", "overtake_dist", "active_aero_zones", "segments", "sectors"]
 
 
 @allure.story("Schema v2: file form")
@@ -1523,13 +1519,15 @@ def test_v2_file_dict_matches_input():
 
 
 @allure.story("Schema v2: file form")
-@allure.title("A v1 track dumps with no v2 keys")
-def test_v1_file_dict_has_no_v2_keys():
-    """Alpha Circuit, a v1 file.
+@allure.title("A track with no zone data dumps empty zone lists, no speed trap and no overtake_dist")
+def test_file_dict_without_zone_data():
+    """Alpha Circuit, which has no speed trap or zones.
 
-    Expected: none of the v2 keys appear, and the dump loads back to the same dump."""
+    Expected: no speed_trap_m or overtake_dist, the two zone lists present and empty, and the dump loads back
+    to the same dump."""
     dumped = load(_CIRCUIT_A, use_cache=False).to_file_dict()
-    assert not set(dumped) & set(_V2_KEYS)
+    assert "speed_trap_m" not in dumped and "overtake_dist" not in dumped
+    assert dumped["drs_zones"] == dumped["active_aero_zones"] == []
     assert load(dumped, use_cache=False).to_file_dict() == dumped
 
 
@@ -1544,7 +1542,7 @@ def test_file_dict_whole_numbers_are_ints():
     dumped = load(track, use_cache=False).to_file_dict()
     assert type(dumped["speed_trap_m"]) is int
     assert type(dumped["segments"][2]["brake_boards"][0]["at_m"]) is int
-    assert dumped["overtake_zones"][0]["activation_m"] == 5253.6
+    assert dumped["overtake_dist"]["activation_m"] == 5253.6
 
 
 @allure.story("Schema v2: file form")
@@ -1552,26 +1550,11 @@ def test_file_dict_whole_numbers_are_ints():
 def test_v2_file_dict_keeps_empty_zone_lists():
     """The v2 Monza track with every zone removed.
 
-    Expected: the three zone lists are still written, empty, as on Monaco, which has no active aero."""
+    Expected: the two zone lists are still written, empty, as on Monaco, which has no active aero; the
+    overtake_dist is left out."""
     track = _v2()
-    track.update(drs_zones=[], overtake_zones=[], active_aero_zones=[])
+    track.update(drs_zones=[], active_aero_zones=[])
+    track.pop("overtake_dist")
     dumped = load(track, use_cache=False).to_file_dict()
-    assert dumped["drs_zones"] == dumped["overtake_zones"] == dumped["active_aero_zones"] == []
-
-
-@allure.story("Schema v2: file form")
-@allure.title("{field} supplied without schema_version is not dropped")
-@pytest.mark.parametrize("field", ["speed_trap_m", "drs_zones", "overtake_zones", "active_aero_zones"])
-def test_v2_field_without_schema_version_is_written(field):
-    """The v2 Monza track with schema_version removed, and every v2 field but one removed.
-
-    Expected: the dump marks the track as v2 and keeps the field, with all three zone lists."""
-    track = _v2()
-    track.pop("schema_version")
-    for other in _V2_KEYS[1:]:
-        if other != field:
-            track.pop(other)
-    dumped = load(track, use_cache=False).to_file_dict()
-    assert dumped["schema_version"] == 2
-    assert dumped[field] == _v2()[field]
-    assert {"drs_zones", "overtake_zones", "active_aero_zones"} <= set(dumped)
+    assert dumped["drs_zones"] == dumped["active_aero_zones"] == []
+    assert "overtake_dist" not in dumped
