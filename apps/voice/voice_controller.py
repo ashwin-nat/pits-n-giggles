@@ -114,8 +114,46 @@ def select_headset_mic(name_contains: str = "jabra") -> None:
         LOGGER.info("Voice input: %s", source)
 
 
-def _pick_device_index(requested: Optional[int] = None) -> int:
-    """Inspect input metadata without opening a microphone stream."""
+# Capture devices that record the speakers rather than a microphone (PipeWire/Pulse
+# monitors, Windows "Stereo Mix" and similar loopback inputs).
+_LOOPBACK_MARKERS = ("monitor", "stereo mix", "what u hear", "wave out mix", "loopback")
+
+
+def _is_loopback(name: str) -> bool:
+    lowered = name.lower()
+    return any(marker in lowered for marker in _LOOPBACK_MARKERS)
+
+
+def _match_by_name(audio, devices, usable, name_contains: str) -> Optional[int]:
+    """Return the usable input whose name contains ``name_contains``.
+
+    Windows lists each microphone once per host API (MME, DirectSound, WASAPI,
+    WDM-KS). Prefer the one on PortAudio's default host API, which is the one
+    ``speech_recognition`` opens most reliably.
+    """
+    wanted = name_contains.strip().lower()
+    if not wanted:
+        return None
+    matches = [i for i in usable if wanted in devices[i]["name"].lower()]
+    if not matches:
+        return None
+    try:
+        default_api = audio.get_default_host_api_info()["index"]
+    except Exception:  # pylint: disable=broad-except
+        default_api = None
+    for index in matches:
+        if default_api is not None and devices[index].get("hostApi") == default_api:
+            return index
+    return matches[0]
+
+
+def _pick_device_index(requested: Optional[int] = None, name_contains: str = "") -> int:
+    """Inspect input metadata without opening a microphone stream.
+
+    ``name_contains`` (``mic_name_contains`` in png_voice.json) selects the input by
+    name where PulseAudio/PipeWire routing is unavailable, e.g. on Windows. If no
+    input matches, the default input is used as before.
+    """
     audio = sr.Microphone.get_pyaudio().PyAudio()
     try:
         devices = [
@@ -125,7 +163,7 @@ def _pick_device_index(requested: Optional[int] = None) -> int:
             i
             for i, device in enumerate(devices)
             if device.get("maxInputChannels", 0) > 0
-            and "monitor" not in device["name"].lower()
+            and not _is_loopback(device["name"])
         ]
         if requested is not None:
             if requested in usable:
@@ -142,6 +180,14 @@ def _pick_device_index(requested: Optional[int] = None) -> int:
             raise RuntimeError(
                 "Cannot route the microphone source through PulseAudio; "
                 "install its ALSA plugin or select a matching input device."
+            )
+        named = _match_by_name(audio, devices, usable, name_contains)
+        if named is not None:
+            LOGGER.info("Voice input: %s", devices[named]["name"])
+            return named
+        if name_contains.strip():
+            LOGGER.warning(
+                "No microphone matching %r; using the default input", name_contains
             )
         try:
             default = int(audio.get_default_input_device_info()["index"])
@@ -192,7 +238,7 @@ class VoiceController:
         self._recognizer = sr.Recognizer()
         self._recognizer.pause_threshold = 0.6  # snappier end-of-phrase
         self._recognizer.dynamic_energy_threshold = True
-        idx = _pick_device_index(device_index)
+        idx = _pick_device_index(device_index, self.cfg.get("mic_name_contains", ""))
         self._mic = sr.Microphone(device_index=idx)
 
         self.local = self.cfg.get("backend", "local") != "cloud"
