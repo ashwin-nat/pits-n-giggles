@@ -228,6 +228,55 @@ def extract_zones(markup: BxmlNode, to_m: Callable[[float], float]) -> Dict[str,
     return out
 
 
+def game_corners(taprogram: BxmlNode, track_length: float) -> Dict[int, List[float]]:
+    """Corner number -> sorted lap distances of its points, from the .taprogram.
+
+    These are rough positions, not apexes. Positions are a plain lap fraction, unlike markup.
+    """
+    program = taprogram.find(f"practice_programmes_{SOURCE_YEAR}")
+    out: Dict[int, List[float]] = {}
+    for corner in (program.findall("Corner") if program else []):
+        points = [float(pos.attrs["progressDelta"]) * track_length
+                  for apex in corner.findall("Apex") for pos in apex.findall("Position")]
+        out[int(corner.text.strip())] = sorted(round(p, 1) for p in points)
+    return out
+
+
+def seed_sub_corners(segment: Dict[str, Any], game: Dict[int, List[float]]) -> List[Dict[str, Any]]:
+    """Sub-corner ranges tiling a complex corner, split midway between neighbouring corners' game points.
+
+    Falls back to an even split where a corner has no points or the midpoints would not increase.
+    """
+    start, end, numbers = segment["start_m"], segment["end_m"], segment["corner_numbers"]
+    even = [round(start + (end - start) * k / len(numbers)) for k in range(1, len(numbers))]
+    cuts = []
+    for k in range(len(numbers) - 1):
+        a, b = game.get(numbers[k]), game.get(numbers[k + 1])
+        cuts.append(round((a[-1] + b[0]) / 2) if a and b else even[k])
+    if not all(lo < hi for lo, hi in zip([start] + cuts, cuts + [end])):
+        cuts = even
+    edges = [start] + cuts + [end]
+    return [{"corner_number": n, "start_m": edges[k], "end_m": edges[k + 1]} for k, n in enumerate(numbers)]
+
+
+def corner_report(segments: List[Dict[str, Any]], game: Dict[int, List[float]]) -> List[str]:
+    """Differences between the game's corners and a segment file's: missing numbers and misplaced points."""
+    ours: Dict[int, Dict[str, Any]] = {}
+    for seg in segments:
+        for number in seg.get("corner_numbers", [seg["corner_number"]] if "corner_number" in seg else []):
+            ours[number] = seg
+    notes = []
+    if set(game) != set(ours):
+        notes.append(f"corner numbers differ: game only {sorted(set(game) - set(ours))}, "
+                     f"file only {sorted(set(ours) - set(game))}")
+    for number, points in sorted(game.items()):
+        seg = ours.get(number)
+        if seg and points and not any(seg["start_m"] <= p < seg["end_m"] for p in points):
+            notes.append(f"corner {number} points {points[0]:.0f}-{points[-1]:.0f} m outside "
+                         f"{seg['start_m']}-{seg['end_m']} m")
+    return notes
+
+
 def circuit_for_folder(folder: str) -> Optional[int]:
     """Circuit number for a game track folder, or None if it is not a known TrackID."""
     return TrackID.lowercase_names().get(FOLDER_ALIASES.get(folder, folder))
