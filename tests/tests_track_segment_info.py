@@ -1474,3 +1474,86 @@ def test_lap_position_at_zero_valid(field):
     _set_position(track, field, 0)
     load(track, use_cache=False)
 
+
+
+# --- file form --------------------------------------------------------------------------------------------------------
+
+_ASSETS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'assets', 'track-segments'))
+_SHIPPED_FILES = sorted(name for name in os.listdir(_ASSETS_DIR) if name.endswith('.json'))
+
+
+def _file_text(track: dict, newline: str) -> str:
+    """Text as the track files are written: 2-space indent, UTF-8, trailing newline."""
+    return json.dumps(track, indent=2, ensure_ascii=False).replace("\n", newline) + newline
+
+
+@allure.story("Schema v2: file form")
+@allure.title("{filename} loads and dumps back to the same file")
+@pytest.mark.parametrize("filename", _SHIPPED_FILES)
+def test_shipped_file_round_trips(filename):
+    """Each shipped track file, loaded and written back with to_file_dict().
+
+    Expected: identical text, so the lib is the one place that knows the file format and a tool rewriting
+    a file cannot drift from it."""
+    with open(os.path.join(_ASSETS_DIR, filename), "rb") as fh:
+        raw = fh.read().decode("utf-8")
+    newline = "\r\n" if "\r\n" in raw else "\n"
+    ts = load(json.loads(raw), use_cache=False)
+    assert _file_text(ts.to_file_dict(), newline) == raw.rstrip("\r\n") + newline
+
+
+@allure.story("Schema v2: file form")
+@allure.title("A v2 track dumps with the files' key order")
+def test_v2_file_dict_key_order():
+    """The v2 Monza track, dumped.
+
+    Expected: schema_version first, then the identity keys, speed trap and zones, segments, and sectors last."""
+    assert list(load(_v2(), use_cache=False).to_file_dict()) == [
+        "schema_version", "circuit_name", "circuit_number", "track_length", "speed_trap_m",
+        "drs_zones", "overtake_zones", "active_aero_zones", "segments", "sectors"]
+
+
+@allure.story("Schema v2: file form")
+@allure.title("A v2 track dumps back to the data it was loaded from")
+def test_v2_file_dict_matches_input():
+    """The v2 Monza track, loaded and dumped.
+
+    Expected: equal to the input, including the sub-corners, brake boards and zones that cross the start line."""
+    assert load(_v2(), use_cache=False).to_file_dict() == _v2()
+
+
+@allure.story("Schema v2: file form")
+@allure.title("A v1 track dumps with no v2 keys")
+def test_v1_file_dict_has_no_v2_keys():
+    """Alpha Circuit, a v1 file.
+
+    Expected: none of the v2 keys appear, and the dump loads back to the same dump."""
+    dumped = load(_CIRCUIT_A, use_cache=False).to_file_dict()
+    assert not set(dumped) & set(_V2_KEYS)
+    assert load(dumped, use_cache=False).to_file_dict() == dumped
+
+
+@allure.story("Schema v2: file form")
+@allure.title("Whole lap distances are written as integers")
+def test_file_dict_whole_numbers_are_ints():
+    """The v2 Monza track with a speed trap at 716.0 and a board at 1030.0 m.
+
+    Expected: both are ints in the dump, and a fractional value such as 5253.6 is left alone."""
+    track = _v2()
+    track["speed_trap_m"] = 716.0
+    dumped = load(track, use_cache=False).to_file_dict()
+    assert type(dumped["speed_trap_m"]) is int
+    assert type(dumped["segments"][2]["brake_boards"][0]["at_m"]) is int
+    assert dumped["overtake_zones"][0]["activation_m"] == 5253.6
+
+
+@allure.story("Schema v2: file form")
+@allure.title("A v2 track with no zones keeps its empty zone lists")
+def test_v2_file_dict_keeps_empty_zone_lists():
+    """The v2 Monza track with every zone removed.
+
+    Expected: the three zone lists are still written, empty, as on Monaco, which has no active aero."""
+    track = _v2()
+    track.update(drs_zones=[], overtake_zones=[], active_aero_zones=[])
+    dumped = load(track, use_cache=False).to_file_dict()
+    assert dumped["drs_zones"] == dumped["overtake_zones"] == dumped["active_aero_zones"] == []
