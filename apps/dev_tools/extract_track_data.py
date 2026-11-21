@@ -14,7 +14,7 @@ import json
 import re
 import struct
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 import zstandard
@@ -36,8 +36,8 @@ _TOKEN = re.compile(rb"[\x20-\x7e]{1,200}\x00")
 _ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"
 
 
-def read_aispline(erp_path: Path) -> bytes:
-    """Return the decompressed .aispline blob from an ERP v3 archive."""
+def read_erp_resource(erp_path: Path, suffix: str) -> bytes:
+    """Return the decompressed first resource whose name ends with `suffix` from an ERP v3 archive."""
     with open(erp_path, "rb") as f:
         hdr = f.read(0x38)
         assert hdr[:4] == b"ERPK", f"{erp_path} is not an ERP archive"
@@ -61,14 +61,60 @@ def read_aispline(erp_path: Path) -> bytes:
                 packed = struct.unpack("<Q", f.read(8))[0]
                 frags.append((off, size, packed))
             f.read(16)
-            if name.endswith(".aispline"):
+            if name.endswith(suffix):
                 off, size, packed = frags[0]
                 f.seek(data_off + off)
                 raw = f.read(packed)
                 if raw[:4] == _ZSTD_MAGIC:
                     raw = zstandard.ZstdDecompressor().decompress(raw, max_output_size=size)
                 return raw
-    raise ValueError(f"no .aispline in {erp_path}")
+    raise ValueError(f"no {suffix} resource in {erp_path}")
+
+
+def read_aispline(erp_path: Path) -> bytes:
+    """Return the decompressed .aispline blob from an ERP v3 archive."""
+    return read_erp_resource(erp_path, ".aispline")
+
+
+class BxmlNode:
+    """One BXML element: tag, attributes, text and children."""
+    __slots__ = ("tag", "attrs", "text", "children")
+
+    def __init__(self, tag: str, attrs: Dict[str, str]):
+        self.tag = tag
+        self.attrs = attrs
+        self.text = ""
+        self.children: List["BxmlNode"] = []
+
+    def find(self, tag: str) -> Optional["BxmlNode"]:
+        return next((c for c in self.children if c.tag == tag), None)
+
+    def findall(self, tag: str) -> List["BxmlNode"]:
+        return [c for c in self.children if c.tag == tag]
+
+
+def parse_bxml(data: bytes) -> BxmlNode:
+    """Parse a BXML blob into a tree. Nodes are int16 length, type (0 element, 1 text, 5 end), pad, int16 attrs."""
+    assert data[:5] == b"\x01BXML", "not a BXML blob"
+    pos, stack, root = 5, [], None
+    while pos < len(data):
+        length, kind, _, nattr = struct.unpack_from("<HBBH", data, pos)
+        parts = data[pos + 6:pos + 2 + length].split(b"\0")
+        pos += 2 + length
+        if kind == 5:
+            stack.pop()
+        elif kind == 1:
+            stack[-1].text = parts[0].decode("latin1")
+        else:
+            strs = [p.decode("latin1") for p in parts]
+            node = BxmlNode(strs[0], dict(zip(strs[1:1 + 2 * nattr:2], strs[2:2 + 2 * nattr:2])))
+            if stack:
+                stack[-1].children.append(node)
+            elif root is None:
+                root = node
+            stack.append(node)
+    assert root is not None
+    return root
 
 
 def parse_gates(data: bytes) -> List[Dict[str, Any]]:
@@ -120,6 +166,66 @@ def midpoint_length(edges: np.ndarray) -> float:
     """Closed-loop length in metres of the midpoint between the white lines."""
     mid = (edges[:, :3] + edges[:, 3:]) / 2
     return float(np.linalg.norm(np.diff(np.vstack([mid, mid[:1]])[:, [0, 2]], axis=0), axis=1).sum())
+
+
+_KNOT = re.compile(rb"Knot\0position\0([^\0]+)\0")
+
+
+def parse_maintrack_knots(data: bytes) -> np.ndarray:
+    """(N, 2) x, z of the `maintrack` spline knots from a .trackspacespline blob."""
+    start = data.find(b"maintrack\0")
+    end = data.find(b"TrackSpaceSpline\0", start)
+    body = data[start:end if end > 0 else len(data)]
+    return np.array([[float(v) for v in m.group(1).split(b",")] for m in _KNOT.finditer(body)])[:, [0, 2]]
+
+
+def knot_mapper(knots: np.ndarray, track_length: float) -> Callable[[float], float]:
+    """Markup position (fraction of the knot count, wrapping) -> lap distance in metres.
+
+    Knots are unevenly spaced, so a plain lap fraction is wrong by over 100 m on some tracks.
+    """
+    closed = np.vstack([knots, knots[:1]])
+    arc = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(closed, axis=0), axis=1))])
+    index = np.arange(len(arc))
+    return lambda frac: round(float(np.interp((frac % 1.0) * len(knots), index, arc) / arc[-1] * track_length), 1)
+
+
+def extract_zones(markup: BxmlNode, to_m: Callable[[float], float]) -> Dict[str, Any]:
+    """Speed trap, DRS, overtake and active aero fields from a parsed .trackmarkup, main track only."""
+    drs: Dict[int, Dict[str, Any]] = {}
+    overtake: Dict[int, Dict[str, Any]] = {}
+    aero: List[Dict[str, Any]] = []
+    trap: Optional[float] = None
+    for el in markup.find("MarkupList").findall("MarkupElement"):
+        if el.attrs.get("SplineName") != "maintrack":
+            continue
+        start, end = to_m(float(el.attrs["Start"])), to_m(float(el.attrs["End"]))
+        if el.attrs.get("Name") == "speed_trap":
+            trap = start
+        for attr in (el.find("Attributes") or BxmlNode("", {})).findall("Attribute"):
+            props = {p.attrs["Type"]: p.attrs["Value"] for p in (attr.find("Properties") or BxmlNode("", {})).findall("Property")}
+            kind, ident = attr.attrs.get("Type"), int(float(props.get("ID", 0)))
+            if kind == "drs_det":
+                drs.setdefault(ident, {"activation": []})["detection_m"] = start
+            elif kind == "drs_act":
+                drs.setdefault(ident, {"activation": []})["activation"].append({"start_m": start, "end_m": end})
+            elif kind == "ers_over_det":
+                overtake.setdefault(ident, {})["detection_m"] = start
+            elif kind == "ers_over_act":
+                overtake.setdefault(ident, {})["activation_m"] = start
+            elif kind == "x_mode":
+                aero.append({"mode": props.get("type", "").lower(), "start_m": start, "end_m": end})
+    out: Dict[str, Any] = {
+        "drs_zones": [{"id": i, "detection_m": z["detection_m"],
+                       "activation": sorted(z["activation"], key=lambda a: a["start_m"])}
+                      for i, z in sorted(drs.items()) if "detection_m" in z and z["activation"]],
+        "overtake_zones": [{"id": i, **z} for i, z in sorted(overtake.items())
+                           if "detection_m" in z and "activation_m" in z],
+        "active_aero_zones": sorted(aero, key=lambda a: (a["mode"], a["start_m"])),
+    }
+    if trap is not None:
+        out["speed_trap_m"] = trap
+    return out
 
 
 def circuit_for_folder(folder: str) -> Optional[int]:
