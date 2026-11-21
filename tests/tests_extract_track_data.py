@@ -168,3 +168,441 @@ def test_output_dir_handling(tmp_path, monkeypatch):
     monkeypatch.setattr("sys.argv", ["x", "--game-dir", str(tmp_path)])
     extract_track_data.main()
     assert sorted(p.name for p in tmp_path.glob("*.npz")) == ["c11.npz"]
+
+
+# -------------------------------------- SEGMENT DATA (zones, corners, brake boards) -----------------------------------
+
+import struct
+
+from lib.track_segments_classifier import (BrakeBoardInfo, ComplexCornerSegmentInfo, CornerSegmentInfo,
+                                           StraightSegmentInfo, SubCornerInfo)
+from lib.track_segments_classifier.classifier import TrackSegmentsClassifier
+
+from apps.dev_tools.extract_track_data import (attach_boards, board_objects, corner_report, extract_zones,
+                                               game_corners, group_boards, knot_mapper, parse_bxml,
+                                               parse_maintrack_knots, seed_sub_corners, update_segment_file)
+
+
+def _el(tag: str, attrs: dict = None, *children: bytes, text: str = "") -> bytes:
+    """One BXML element: header, name and attributes, optional text node, children, end marker."""
+    attrs = attrs or {}
+    body = tag.encode() + b"\0" + b"".join(k.encode() + b"\0" + v.encode() + b"\0" for k, v in attrs.items())
+    out = struct.pack("<HBBH", 4 + len(body), 0, 0, len(attrs)) + body
+    if text:
+        out += struct.pack("<HBBH", 4 + len(text) + 1, 1, 0, 0) + text.encode() + b"\0"
+    return out + b"".join(children) + struct.pack("<HBBH", 4, 5, 0, 0)
+
+
+def _bxml(root: bytes) -> bytes:
+    return b"\x01BXML" + root
+
+
+def _markup(*elements: tuple) -> bytes:
+    """A .trackmarkup with (name, start, end, spline, attribute type, {property: value}) elements."""
+    items = []
+    for name, start, end, spline, kind, props in elements:
+        properties = _el("Properties", None, *[_el("Property", {"Type": k, "Value": v}) for k, v in props.items()])
+        attribute = _el("Attribute", {"Type": kind}, properties)
+        items.append(_el("MarkupElement", {"Name": name, "Start": str(start), "End": str(end), "SplineName": spline},
+                         _el("Attributes", None, attribute)))
+    return _bxml(_el("TrackspaceMarkup", {"Version": "ts_data_v3.002"}, _el("MarkupList", None, *items)))
+
+
+# Knots 10, 90, 100, 100, 100 m apart: uneven on purpose, so a plain lap fraction would be wrong
+_KNOTS = np.array([[0.0, 0.0], [10.0, 0.0], [100.0, 0.0], [100.0, 100.0], [0.0, 100.0]])
+_SQUARE = np.array([[0.0, 0.0], [1000.0, 0.0], [1000.0, 1000.0], [0.0, 1000.0]])
+
+
+def _pkg(instances: list) -> bytes:
+    """A minimal !pkg layer. `instances` is [(name, 16-float matrix, [refs])]."""
+    strings, sdata = {}, bytearray()
+
+    def string(text: str) -> int:
+        if text not in strings:
+            strings[text] = len(sdata)
+            sdata.append(len(text.encode()))
+            sdata.extend(text.encode())
+        return strings[text]
+
+    for key in ("instances", "name", "transform", "refs"):
+        string(key)
+    for name, _, refs in instances:
+        string(name)
+        for ref in refs:
+            string(ref)
+    mats = b"".join(struct.pack("<16f", *m) for _, m, _ in instances)
+    out = bytearray(b"!pkg" + bytes(4) + bytes(4))
+    vca = len(out)
+    out += b"!vca" + struct.pack("<I", 2) + bytes(8)
+    sbi = len(out)
+    out += b"!sbi" + bytes(4) + sdata
+    mat4 = len(out)
+    out += b"!arr" + b"mat4" + struct.pack("<II", len(instances), 64) + mats
+    struct.pack_into("<II", out, vca + 8, sbi, mat4)
+
+    def put(blob: bytes) -> int:
+        offset = len(out)
+        out.extend(blob)
+        return (0x80 << 24) | offset
+
+    def dict_obj(entries: list) -> int:
+        return put(b"!idi" + struct.pack("<I", len(entries)) + b"".join(struct.pack("<III", k, v, 0) for k, v in entries))
+
+    def list_obj(values: list) -> int:
+        return put(b"!ili" + struct.pack("<I", len(values)) + b"".join(struct.pack("<I", v) for v in values))
+
+    insts = []
+    for i, (name, _, refs) in enumerate(instances):
+        ref_list = list_obj([string(r) for r in refs])
+        insts.append(dict_obj([(string("name"), string(name)), (string("transform"), (1 << 24) | i),
+                               (string("refs"), ref_list)]))
+    root = dict_obj([(string("instances"), list_obj(insts))])
+    struct.pack_into("<I", out, 8, root & 0xFFFFFF)
+    return bytes(out)
+
+
+def _matrix(x: float, z: float) -> tuple:
+    return (1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, 0.0, z, 1)
+
+
+@allure.story("BXML parser")
+@allure.title("parse_bxml builds the tree with attributes, text and children")
+def test_parse_bxml_tree():
+    """A root with an attribute, a text child and two nested elements.
+
+    Expected: tags, attributes, text and child order all survive."""
+    root = parse_bxml(_bxml(_el("Root", {"Version": "1"}, _el("Corner", None, text="7"), _el("Other", {"a": "b"}))))
+    assert (root.tag, root.attrs) == ("Root", {"Version": "1"})
+    assert [c.tag for c in root.children] == ["Corner", "Other"]
+    assert root.find("Corner").text == "7"
+    assert root.find("Other").attrs == {"a": "b"}
+    assert root.find("Missing") is None
+
+
+@allure.story("BXML parser")
+@allure.title("parse_bxml ignores a stray node after the root")
+def test_parse_bxml_ignores_trailing_node():
+    """Game blobs end with a node outside the root.
+
+    Expected: the first element stays the root."""
+    root = parse_bxml(_bxml(_el("Root") + _el("Stray")))
+    assert root.tag == "Root"
+
+
+@allure.story("BXML parser")
+@allure.title("parse_bxml rejects a blob without the BXML header")
+def test_parse_bxml_rejects_other_data():
+    with pytest.raises(AssertionError):
+        parse_bxml(b"not bxml")
+
+
+@allure.story("Lap distance mapping")
+@allure.title("Knots are mapped by index, not by plain lap fraction")
+@pytest.mark.parametrize("frac, expected", [(0.0, 0), (0.2, 100), (0.4, 1000), (0.8, 3000), (1.2, 100), (-0.8, 100)])
+def test_knot_mapper_uneven_knots(frac, expected):
+    """Five knots 10, 90, 100, 100 and 100 m apart on a 4000 m lap.
+
+    Expected: fraction 0.4 is knot 2, at 1000 m (a plain fraction gives 1600), 0.8 is knot 4, and fractions wrap."""
+    assert knot_mapper(_KNOTS, 4000)(frac) == expected
+
+
+@allure.story("Lap distance mapping")
+@allure.title("Knots are read from the maintrack spline only")
+def test_parse_maintrack_knots_stops_at_next_spline():
+    """A spline blob with knots for maintrack and for another spline after it.
+
+    Expected: only maintrack's knots, as (x, z) pairs."""
+    def knot(x, y, z):
+        return b"Knot\0position\0" + f"{x},{y},{z}".encode() + b"\0"
+
+    blob = b"x\0maintrack\0" + knot(1, 9, 2) + knot(3, 9, 4) + b"TrackSpaceSpline\0" + knot(5, 9, 6)
+    assert parse_maintrack_knots(blob).tolist() == [[1.0, 2.0], [3.0, 4.0]]
+
+
+@allure.story("Zones")
+@allure.title("Markup becomes speed trap, DRS, overtake and active aero zones")
+def test_extract_zones():
+    """A markup with a speed trap, one DRS zone with two activations, an overtake zone, two aero zones
+    (one crossing the line) and a pit-spline aero zone, on a 4000 m lap.
+
+    Expected: pit-spline elements are ignored, activations sorted, aero sorted by mode and start."""
+    props = lambda **kw: {k: str(v) for k, v in kw.items()}
+    markup = _parse(_markup(
+        ("speed_trap", 0.2, 0.25, "maintrack", "spd_trp", {}),
+        ("drs_detection_1", 0.4, 0.41, "maintrack", "drs_det", props(ID=1)),
+        ("drs_activation_1b", 0.8, 0.9, "maintrack", "drs_act", props(ID=1)),
+        ("drs_activation_1a", 0.2, 0.4, "maintrack", "drs_act", props(ID=1)),
+        ("ers_override_detection_1", 0.4, 0.41, "maintrack", "ers_over_det", props(ID=1)),
+        ("ers_override_activation_1", 0.2, 0.25, "maintrack", "ers_over_act", props(ID=1)),
+        ("x_mode_2", 0.8, 0.2, "maintrack", "x_mode", props(ID=2, type="Partial")),
+        ("x_mode_1", 0.2, 0.4, "maintrack", "x_mode", props(ID=1, type="Full")),
+        ("x_mode_1_pit", 0.5, 0.6, "pit_1", "x_mode", props(ID=1, type="Full")),
+    ))
+    zones = extract_zones(markup, knot_mapper(_KNOTS, 4000))
+    assert zones == {
+        "speed_trap_m": 100,
+        "drs_zones": [{"id": 1, "detection_m": 1000,
+                       "activation": [{"start_m": 100, "end_m": 1000}, {"start_m": 3000, "end_m": 3500}]}],
+        "overtake_zones": [{"id": 1, "detection_m": 1000, "activation_m": 100}],
+        "active_aero_zones": [{"mode": "full", "start_m": 100, "end_m": 1000},
+                              {"mode": "partial", "start_m": 3000, "end_m": 100}],
+    }
+
+
+@allure.story("Zones")
+@allure.title("A zone missing its detection or activation point is dropped")
+def test_extract_zones_drops_incomplete_zones():
+    """A DRS zone with activation but no detection, and an overtake zone with detection but no activation.
+
+    Expected: neither is written, since the schema requires both points. No speed trap gives no key."""
+    markup = _parse(_markup(
+        ("drs_activation_1", 0.2, 0.4, "maintrack", "drs_act", {"ID": "1"}),
+        ("ers_override_detection_1", 0.4, 0.41, "maintrack", "ers_over_det", {"ID": "1"}),
+    ))
+    assert extract_zones(markup, knot_mapper(_KNOTS, 4000)) == {
+        "drs_zones": [], "overtake_zones": [], "active_aero_zones": []}
+
+
+def _parse(blob: bytes):
+    return parse_bxml(blob)
+
+
+@allure.story("Brake boards")
+@allure.title("Board distance is read from {source}")
+@pytest.mark.parametrize("source, name, refs, expected", [
+    ("the sponsor material context", "dynamic_sponsor_brake_a",
+     ["x.emb?context=sp_150_white_sp_aramco&v=1"], 150),
+    ("the object name", "mza_brakeboard_left_200_a002", [], 200),
+    ("a pole name", "spa_dressing_brakemarker_pole100_l", [], 100),
+    ("nothing, for an unnumbered sponsor sign", "dynamic_sponsor_brake_c", ["x.emb?context=sp_drs_white&v=1"], None),
+])
+def test_board_objects_distance(source, name, refs, expected):
+    """One brake object in a synthetic !pkg layer at world (12, 34).
+
+    Expected: the labelled distance from the right place, None where it cannot be resolved, and the
+    object's x and z."""
+    (obj,) = board_objects(_pkg([(f"layer$tree${name}", _matrix(12.0, 34.0), refs)]))
+    assert (obj["name"], obj["dist"], obj["x"], obj["z"]) == (f"{name}", expected, 12.0, 34.0)
+
+
+@allure.story("Brake boards")
+@allure.title("Layers without brake objects, and non-brake instances, give no boards")
+def test_board_objects_ignores_other_objects():
+    """A layer with a tree and a layer with no 'brake' text at all.
+
+    Expected: no boards from either."""
+    assert board_objects(_pkg([("layer$tree_a", _matrix(0, 0), [])])) == []
+    assert board_objects(b"no markers in here") == []
+
+
+def _obj(x, z, dist, name="b"):
+    return {"name": name, "dist": dist, "x": x, "z": z}
+
+
+@allure.story("Brake boards")
+@allure.title("Boards are projected onto the lap and left and right boards merge")
+def test_group_boards():
+    """Boards along the first side of a 4000 m square: a 100 m pair on both sides, a 50 m board on one side,
+    a duplicate position, a 75 m board (not a schema distance), an unresolved one and one 50 m off the road.
+
+    Expected: a `both` entry and a `right` entry, sorted by lap distance, and nothing else."""
+    objects = [_obj(100, 5, 100), _obj(100, -5, 100), _obj(150, 5, 50), _obj(150, 5, 50),
+               _obj(200, 5, 75), _obj(250, 5, None), _obj(300, 50, 50)]
+    assert group_boards(objects, _SQUARE, 4000) == [
+        {"distance_m": 100, "at_m": 100.0, "side": "both"},
+        {"distance_m": 50, "at_m": 150.0, "side": "right"},
+    ]
+
+
+def _board(at, dist=100):
+    return BrakeBoardInfo(distance_m=dist, at_m=at, side="both")
+
+
+def _layout():
+    return (
+        CornerSegmentInfo(name="One", start_m=100, end_m=200, corner_number=1,
+                          brake_boards=(_board(99),)),
+        ComplexCornerSegmentInfo(start_m=1000, end_m=1200, corner_numbers=(2, 3), corners=(
+            SubCornerInfo(corner_number=2, start_m=1000, end_m=1100),
+            SubCornerInfo(corner_number=3, start_m=1100, end_m=1200))),
+        StraightSegmentInfo(name="Back", start_m=1200, end_m=2000),
+    )
+
+
+@allure.story("Brake boards")
+@allure.title("Boards attach to the corner they warn about")
+def test_attach_boards():
+    """Three boards on a 2000 m lap: one just before the line (wraps to corner 1), one before the complex
+    corner, and one 700 m before it. Corner 1 held an old board.
+
+    Expected: the old board is replaced, the first two land on corner 1 and sub-corner 2, the far one
+    on sub-corner 2 with a note."""
+    segments, notes = attach_boards(_layout(), [_board(1950), _board(300), _board(900)], 2000)
+    corner, complex_corner, _ = segments
+    assert [b.at_m for b in corner.brake_boards] == [1950]
+    assert [b.at_m for b in complex_corner.corners[0].brake_boards] == [300, 900]
+    assert complex_corner.corners[1].brake_boards == ()
+    assert len(notes) == 1 and "300" in notes[0]
+
+
+@allure.story("Brake boards")
+@allure.title("Replacing boards revalidates the segments")
+def test_attach_boards_rejects_a_board_outside_the_lap_later():
+    """A board beyond track_length passes attach_boards, which only places it.
+
+    Expected: the classifier refuses the track, so such a file is never written."""
+    segments, _ = attach_boards(_layout(), [_board(2500)], 2000)
+    with pytest.raises(ValueError, match="must be in"):
+        TrackSegmentsClassifier(circuit_name="t", circuit_number=1, track_length=2000, sectors={"s1": 600, "s2": 1300},
+                                segments=segments, use_cache=False, schema_version=2)
+
+
+@allure.story("Corners")
+@allure.title("Game corners come from the taprogram of the source year")
+def test_game_corners():
+    """A taprogram with two corners for the current year, one with a messy number, and one for another year.
+
+    Expected: points scaled by track length, sorted and rounded; the other year ignored."""
+    def corner(number, *points):
+        return _el("Corner", None, *[_el("Apex", None, _el("Position", {"progressDelta": str(p)})) for p in points],
+                   text=number)
+
+    tap = parse_bxml(_bxml(_el("CornerData", None,
+                               _el(f"practice_programmes_{SOURCE_YEAR}", None, corner(" 1 \r\n  ", 0.5, 0.25), corner("2", 0.75)),
+                               _el("practice_programmes_0", None, corner("9", 0.1)))))
+    assert game_corners(tap, 1000) == {1: [250.0, 500.0], 2: [750.0]}
+
+
+@allure.story("Corners")
+@allure.title("Sub-corners split {case}")
+@pytest.mark.parametrize("case, numbers, game, expected", [
+    ("midway between the neighbours' game points", (1, 2), {1: [200, 300], 2: [600, 700]}, [(1, 0, 450), (2, 450, 1000)]),
+    ("evenly when a corner has no game points", (1, 2, 3), {1: [100], 2: []}, [(1, 0, 333), (2, 333, 667), (3, 667, 1000)]),
+    ("evenly when the midpoint would not increase", (1, 2), {1: [0, 0], 2: [0, 0]}, [(1, 0, 500), (2, 500, 1000)]),
+])
+def test_seed_sub_corners(case, numbers, game, expected):
+    """A complex corner over 0 to 1000 m.
+
+    Expected: ranges that tile the segment, from the game points where they are usable."""
+    segment = ComplexCornerSegmentInfo(start_m=0, end_m=1000, corner_numbers=numbers)
+    assert [(c.corner_number, c.start_m, c.end_m) for c in seed_sub_corners(segment, game)] == expected
+
+
+@allure.story("Corners")
+@allure.title("The corner report flags {case}")
+@pytest.mark.parametrize("case, game, expected", [
+    ("nothing when the file agrees", {1: [150.0], 2: [1050.0], 3: [1150.0]}, []),
+    ("a corner the file lacks", {1: [150.0], 2: [1050.0], 3: [1150.0], 4: [1500.0]}, ["game only [4]"]),
+    ("a corner only the file has", {1: [150.0], 2: [1050.0]}, ["file only [3]"]),
+    ("points outside the same-numbered segment", {1: [500.0], 2: [1050.0], 3: [1150.0]}, ["corner 1 points 500-500"]),
+])
+def test_corner_report(case, game, expected):
+    """Corners 1 (100 to 200 m) and a complex corner 2, 3 (1000 to 1200 m) against game points.
+
+    Expected: one note per difference, none when they agree."""
+    notes = corner_report(_layout(), game)
+    assert len(notes) == len(expected)
+    assert all(want in note for want, note in zip(expected, notes))
+
+
+# --- update_segment_file ---------------------------------------------------------------------------------------------
+
+_V1_FILE = {
+    "circuit_name": "Test", "circuit_number": 99, "track_length": 2000,
+    "segments": [
+        {"type": "corner", "start_m": 100, "end_m": 200, "name": "One", "corner_number": 1},
+        {"type": "complex_corner", "start_m": 1000, "end_m": 1200, "corner_numbers": [2, 3]},
+        {"type": "straight", "start_m": 1200, "end_m": 2000, "name": "Back"},
+    ],
+    "sectors": {"s1": 600, "s2": 1300},
+}
+
+
+@pytest.fixture
+def game_files(monkeypatch):
+    """Synthetic game data for circuit 99: a square lap, a speed trap and DRS zone, corners 1 to 3 and a board."""
+    markup = _markup(
+        ("speed_trap", 0.25, 0.3, "maintrack", "spd_trp", {}),
+        ("drs_detection_1", 0.5, 0.51, "maintrack", "drs_det", {"ID": "1"}),
+        ("drs_activation_1", 0.75, 0.9, "maintrack", "drs_act", {"ID": "1"}),
+    )
+    corner = lambda n, p: _el("Corner", None, _el("Apex", None, _el("Position", {"progressDelta": str(p)})), text=str(n))
+    taprogram = _bxml(_el("CornerData", None, _el(f"practice_programmes_{SOURCE_YEAR}", None,
+                                                 corner(1, 0.075), corner(2, 0.52), corner(3, 0.58))))
+    blobs = {".trackmarkup": markup, ".taprogram": taprogram, ".trackspacespline": b""}
+    monkeypatch.setattr(extract_track_data, "read_erp_resource", lambda _, suffix: blobs[suffix])
+    monkeypatch.setattr(extract_track_data, "parse_maintrack_knots", lambda _: _SQUARE / 10)
+    monkeypatch.setattr(extract_track_data, "layout_boards",
+                        lambda *_: [BrakeBoardInfo(distance_m=100, at_m=980, side="both")])
+
+
+def _write(tmp_path, data: dict, newline: str = "\r\n", final: bool = True):
+    path = tmp_path / "Test.json"
+    path.write_bytes((json.dumps(data, indent=2).replace("\n", newline) + (newline if final else "")).encode())
+    return path
+
+
+@allure.story("Updating segment files")
+@allure.title("--update writes zones, sub-corners and boards into a v1 file")
+def test_update_segment_file(tmp_path, game_files):
+    """A v1 file for a 2000 m square lap, with synthetic game data.
+
+    Expected: schema_version 2 first, zones before segments, sub-corners seeded from the game points,
+    the board on sub-corner 2, existing fields unchanged, and a clean run reports nothing."""
+    path = _write(tmp_path, _V1_FILE)
+    assert update_segment_file(path, tmp_path, "test") == []
+    out = json.loads(path.read_text())
+    assert list(out) == ["schema_version", "circuit_name", "circuit_number", "track_length", "speed_trap_m",
+                         "drs_zones", "overtake_zones", "active_aero_zones", "segments", "sectors"]
+    assert out["speed_trap_m"] == 500
+    assert out["drs_zones"] == [{"id": 1, "detection_m": 1000, "activation": [{"start_m": 1500, "end_m": 1800}]}]
+    complex_corner = out["segments"][1]
+    assert [(c["corner_number"], c["start_m"], c["end_m"]) for c in complex_corner["corners"]] == \
+        [(2, 1000, 1100), (3, 1100, 1200)]
+    assert complex_corner["corners"][0]["brake_boards"] == [{"distance_m": 100, "at_m": 980, "side": "both"}]
+    assert out["segments"][0] == _V1_FILE["segments"][0] and out["sectors"] == _V1_FILE["sectors"]
+
+
+@allure.story("Updating segment files")
+@allure.title("A second --update changes nothing")
+@pytest.mark.parametrize("newline, final", [("\r\n", True), ("\n", False)])
+def test_update_segment_file_is_idempotent(tmp_path, game_files, newline, final):
+    """The same file updated twice, with CRLF and a trailing newline, and with LF and none.
+
+    Expected: identical bytes after the second run, with the file's own line endings and trailing newline kept."""
+    path = _write(tmp_path, _V1_FILE, newline, final)
+    update_segment_file(path, tmp_path, "test")
+    first = path.read_bytes()
+    update_segment_file(path, tmp_path, "test")
+    assert path.read_bytes() == first
+    text = first.decode()
+    assert ("\r\n" in text) == (newline == "\r\n") and text.endswith(newline) == final
+
+
+@allure.story("Updating segment files")
+@allure.title("Existing sub-corners are kept and only their boards are rewritten")
+def test_update_segment_file_keeps_existing_sub_corners(tmp_path, game_files):
+    """A file whose complex corner already has hand-set sub-corners at 1000 to 1050 and 1050 to 1200.
+
+    Expected: the ranges stay, since `corners` is only seeded when missing; the board moves to sub-corner 2."""
+    data = json.loads(json.dumps(_V1_FILE))
+    data["segments"][1]["corners"] = [{"corner_number": 2, "start_m": 1000, "end_m": 1050},
+                                      {"corner_number": 3, "start_m": 1050, "end_m": 1200}]
+    path = _write(tmp_path, data)
+    update_segment_file(path, tmp_path, "test")
+    corners = json.loads(path.read_text())["segments"][1]["corners"]
+    assert [(c["start_m"], c["end_m"]) for c in corners] == [(1000, 1050), (1050, 1200)]
+
+
+@allure.story("Updating segment files")
+@allure.title("A file that would fail validation is left untouched")
+def test_update_segment_file_refuses_invalid_result(tmp_path, game_files, monkeypatch):
+    """Zones extracted beyond the track length.
+
+    Expected: the file is byte-identical afterwards and the report says it was not written."""
+    monkeypatch.setattr(extract_track_data, "extract_zones", lambda *_: {"speed_trap_m": 5000})
+    path = _write(tmp_path, _V1_FILE)
+    before = path.read_bytes()
+    notes = update_segment_file(path, tmp_path, "test")
+    assert path.read_bytes() == before
+    assert any("NOT WRITTEN" in note for note in notes)
