@@ -132,7 +132,6 @@
       "type": "corner",
       "start_m": 1415,
       "end_m": 1655,
-      "name": "",
       "corner_number": 5,
       "brake_boards": [
         {
@@ -241,7 +240,6 @@
       "type": "corner",
       "start_m": 3110,
       "end_m": 3310,
-      "name": "",
       "corner_number": 12,
       "brake_boards": [
         {
@@ -266,7 +264,6 @@
       "type": "corner",
       "start_m": 3900,
       "end_m": 4230,
-      "name": "",
       "corner_number": 13
     },
     {
@@ -324,7 +321,6 @@
       "type": "corner",
       "start_m": 5945,
       "end_m": 6200,
-      "name": "",
       "corner_number": 17
     }
   ],

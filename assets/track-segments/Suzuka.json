@@ -161,7 +161,6 @@
       "type": "corner",
       "start_m": 2720,
       "end_m": 2830,
-      "name": "",
       "corner_number": 10
     },
     {
@@ -291,7 +290,6 @@
       "type": "corner",
       "start_m": 5500,
       "end_m": 5809,
-      "name": "",
       "corner_number": 18
     }
   ],

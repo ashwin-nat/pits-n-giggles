@@ -100,7 +100,6 @@
       "type": "corner",
       "start_m": 780,
       "end_m": 1060,
-      "name": "",
       "corner_number": 2
     },
     {
@@ -168,7 +167,6 @@
       "type": "corner",
       "start_m": 2130,
       "end_m": 2280,
-      "name": "",
       "corner_number": 10
     },
     {
@@ -215,7 +213,6 @@
       "type": "corner",
       "start_m": 3650,
       "end_m": 3860,
-      "name": "",
       "corner_number": 12,
       "brake_boards": [
         {
@@ -275,7 +272,6 @@
       "type": "corner",
       "start_m": 4235,
       "end_m": 4375,
-      "name": "",
       "corner_number": 15
     },
     {
@@ -309,7 +305,6 @@
       "type": "corner",
       "start_m": 4960,
       "end_m": 5150,
-      "name": "",
       "corner_number": 19
     },
     {

@@ -71,7 +71,6 @@
       "type": "corner",
       "start_m": 575,
       "end_m": 940,
-      "name": "",
       "corner_number": 1,
       "brake_boards": [
         {
@@ -100,7 +99,6 @@
       "type": "corner",
       "start_m": 975,
       "end_m": 1200,
-      "name": "",
       "corner_number": 2,
       "brake_boards": [
         {
@@ -124,7 +122,6 @@
       "type": "corner",
       "start_m": 1225,
       "end_m": 1410,
-      "name": "",
       "corner_number": 3
     },
     {
@@ -205,7 +202,6 @@
       "type": "corner",
       "start_m": 2435,
       "end_m": 2740,
-      "name": "",
       "corner_number": 7,
       "brake_boards": [
         {
@@ -250,14 +246,12 @@
       "type": "corner",
       "start_m": 3060,
       "end_m": 3280,
-      "name": "",
       "corner_number": 10
     },
     {
       "type": "corner",
       "start_m": 3320,
       "end_m": 3565,
-      "name": "",
       "corner_number": 11
     },
     {
@@ -320,7 +314,6 @@
       "type": "corner",
       "start_m": 4415,
       "end_m": 4635,
-      "name": "",
       "corner_number": 15,
       "brake_boards": [
         {
@@ -344,7 +337,6 @@
       "type": "corner",
       "start_m": 4850,
       "end_m": 5100,
-      "name": "",
       "corner_number": 16,
       "brake_boards": [
         {

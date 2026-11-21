@@ -86,7 +86,6 @@
       "type": "corner",
       "start_m": 331,
       "end_m": 680,
-      "name": "",
       "corner_number": 1,
       "brake_boards": [
         {
@@ -110,35 +109,30 @@
       "type": "corner",
       "start_m": 681,
       "end_m": 845,
-      "name": "",
       "corner_number": 2
     },
     {
       "type": "corner",
       "start_m": 845,
       "end_m": 970,
-      "name": "",
       "corner_number": 3
     },
     {
       "type": "corner",
       "start_m": 975,
       "end_m": 1110,
-      "name": "",
       "corner_number": 4
     },
     {
       "type": "corner",
       "start_m": 1200,
       "end_m": 1390,
-      "name": "",
       "corner_number": 5
     },
     {
       "type": "corner",
       "start_m": 1430,
       "end_m": 1670,
-      "name": "",
       "corner_number": 6,
       "brake_boards": [
         {
@@ -162,14 +156,12 @@
       "type": "corner",
       "start_m": 1880,
       "end_m": 2200,
-      "name": "",
       "corner_number": 7
     },
     {
       "type": "corner",
       "start_m": 2200,
       "end_m": 2450,
-      "name": "",
       "corner_number": 8
     },
     {
@@ -209,7 +201,6 @@
       "type": "corner",
       "start_m": 3000,
       "end_m": 3165,
-      "name": "",
       "corner_number": 11,
       "brake_boards": [
         {
@@ -228,14 +219,12 @@
       "type": "corner",
       "start_m": 3165,
       "end_m": 3285,
-      "name": "",
       "corner_number": 12
     },
     {
       "type": "corner",
       "start_m": 3285,
       "end_m": 3550,
-      "name": "",
       "corner_number": 13
     },
     {
@@ -293,7 +282,6 @@
       "type": "corner",
       "start_m": 5000,
       "end_m": 5230,
-      "name": "",
       "corner_number": 16,
       "brake_boards": [
         {
