@@ -61,9 +61,15 @@
     {
       "type": "corner",
       "start_m": 2030,
-      "end_m": 2100,
+      "end_m": 2325,
       "name": "",
       "corner_number": 8
+    },
+    {
+      "type": "straight",
+      "start_m": 2325,
+      "end_m": 3175,
+      "name": "Back Straight 1"
     },
     {
       "type": "corner",
@@ -78,6 +84,12 @@
       "end_m": 3600,
       "name": "",
       "corner_number": 10
+    },
+    {
+      "type": "straight",
+      "start_m": 3600,
+      "end_m": 4000,
+      "name": "Back Straight 2"
     },
     {
       "type": "corner",

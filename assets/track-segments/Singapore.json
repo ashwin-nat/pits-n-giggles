@@ -169,17 +169,11 @@
     {
       "type": "complex_corner",
       "start_m": 4620,
-      "end_m": 4800,
+      "end_m": 4928,
       "corner_numbers": [
         18,
         19
       ]
-    },
-    {
-      "type": "straight",
-      "start_m": 4800,
-      "end_m": 4928,
-      "name": "Pit Straight"
     }
   ],
   "sectors": {

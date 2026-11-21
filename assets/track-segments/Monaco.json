@@ -1,8 +1,14 @@
 {
   "circuit_name": "Monaco",
   "circuit_number": 5,
-  "track_length": 3067,
+  "track_length": 3323,
   "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 100,
+      "name": "Pit Straight"
+    },
     {
       "type": "corner",
       "start_m": 100,
@@ -110,21 +116,27 @@
       ]
     },
     {
-      "type": "corner",
+      "type": "complex_corner",
       "start_m": 2820,
       "end_m": 2960,
       "name": "La Rascasse",
-      "corner_number": 17
+      "corner_numbers": [
+        17,
+        18
+      ]
     },
     {
-      "type": "complex_corner",
+      "type": "corner",
       "start_m": 2970,
       "end_m": 3067,
       "name": "Anthony Noghes",
-      "corner_numbers": [
-        18,
-        19
-      ]
+      "corner_number": 19
+    },
+    {
+      "type": "straight",
+      "start_m": 3067,
+      "end_m": 3323,
+      "name": "Pit Straight"
     }
   ],
   "sectors": {

@@ -112,10 +112,11 @@
       ]
     },
     {
-      "type": "straight",
+      "type": "corner",
       "start_m": 5500,
       "end_m": 5809,
-      "name": "Pit Straight"
+      "name": "",
+      "corner_number": 18
     }
   ],
   "sectors": {

@@ -144,13 +144,36 @@
     {
       "type": "corner",
       "start_m": 4020,
-      "end_m": 4210,
+      "end_m": 4250,
       "name": "",
       "corner_number": 16
     },
     {
+      "type": "complex_corner",
+      "start_m": 4250,
+      "end_m": 4750,
+      "corner_numbers": [
+        17,
+        18,
+        19
+      ]
+    },
+    {
       "type": "straight",
-      "start_m": 4210,
+      "start_m": 4750,
+      "end_m": 4980,
+      "name": "Neftchilar Avenue"
+    },
+    {
+      "type": "corner",
+      "start_m": 4980,
+      "end_m": 5140,
+      "name": "",
+      "corner_number": 20
+    },
+    {
+      "type": "straight",
+      "start_m": 5140,
       "end_m": 5994,
       "name": "Neftchilar Avenue"
     }
