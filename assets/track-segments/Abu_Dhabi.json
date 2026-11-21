@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Abu_Dhabi",
   "circuit_number": 14,
   "track_length": 5280,
@@ -26,13 +25,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 5050.9,
-      "activation_m": 5107.9
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 5050.9,
+    "activation_m": 5107.9
+  },
   "active_aero_zones": [
     {
       "mode": "full",

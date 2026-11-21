@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Austria_Reverse",
   "circuit_number": 40,
   "track_length": 4323,
@@ -36,13 +35,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 3761,
-      "activation_m": 3899.2
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 3761,
+    "activation_m": 3899.2
+  },
   "active_aero_zones": [
     {
       "mode": "full",

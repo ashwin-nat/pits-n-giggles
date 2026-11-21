@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Texas",
   "circuit_number": 15,
   "track_length": 5514,
@@ -26,13 +25,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 5329.9,
-      "activation_m": 5420.7
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 5329.9,
+    "activation_m": 5420.7
+  },
   "active_aero_zones": [
     {
       "mode": "full",

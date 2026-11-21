@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Melbourne",
   "circuit_number": 0,
   "track_length": 5276,
@@ -34,13 +33,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 4628.1,
-      "activation_m": 4711.4
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 4628.1,
+    "activation_m": 4711.4
+  },
   "active_aero_zones": [
     {
       "mode": "full",

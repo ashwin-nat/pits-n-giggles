@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Las_Vegas",
   "circuit_number": 31,
   "track_length": 6200,
@@ -26,13 +25,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 5169.1,
-      "activation_m": 5297.9
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 5169.1,
+    "activation_m": 5297.9
+  },
   "active_aero_zones": [
     {
       "mode": "full",

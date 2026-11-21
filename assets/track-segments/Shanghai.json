@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Shanghai",
   "circuit_number": 2,
   "track_length": 5441,
@@ -26,13 +25,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 5120.5,
-      "activation_m": 5240.1
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 5120.5,
+    "activation_m": 5240.1
+  },
   "active_aero_zones": [
     {
       "mode": "full",

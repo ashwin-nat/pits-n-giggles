@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Austria",
   "circuit_number": 17,
   "track_length": 4323,
@@ -36,13 +35,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 3940.3,
-      "activation_m": 4092.3
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 3940.3,
+    "activation_m": 4092.3
+  },
   "active_aero_zones": [
     {
       "mode": "full",

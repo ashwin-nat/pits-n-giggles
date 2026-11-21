@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Mexico",
   "circuit_number": 19,
   "track_length": 4525,
@@ -30,13 +29,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 4069.8,
-      "activation_m": 4258.9
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 4069.8,
+    "activation_m": 4258.9
+  },
   "active_aero_zones": [
     {
       "mode": "full",

@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Montreal",
   "circuit_number": 6,
   "track_length": 4371,
@@ -30,13 +29,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 3879.1,
-      "activation_m": 3991
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 3879.1,
+    "activation_m": 3991
+  },
   "active_aero_zones": [
     {
       "mode": "full",

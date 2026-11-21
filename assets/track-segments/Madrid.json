@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Madrid",
   "circuit_number": 42,
   "track_length": 5411,
@@ -20,13 +19,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 5122.1,
-      "activation_m": 5311.1
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 5122.1,
+    "activation_m": 5311.1
+  },
   "active_aero_zones": [
     {
       "mode": "full",

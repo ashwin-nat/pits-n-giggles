@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Suzuka",
   "circuit_number": 13,
   "track_length": 5809,
@@ -16,13 +15,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 5441.9,
-      "activation_m": 5564
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 5441.9,
+    "activation_m": 5564
+  },
   "active_aero_zones": [
     {
       "mode": "full",

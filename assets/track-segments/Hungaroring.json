@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Hungaroring",
   "circuit_number": 9,
   "track_length": 4378,
@@ -20,13 +19,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 3971.2,
-      "activation_m": 4118.2
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 3971.2,
+    "activation_m": 4118.2
+  },
   "active_aero_zones": [
     {
       "mode": "full",

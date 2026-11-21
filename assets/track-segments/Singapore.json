@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Singapore",
   "circuit_number": 12,
   "track_length": 4928,
@@ -40,13 +39,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 4289.4,
-      "activation_m": 4369.1
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 4289.4,
+    "activation_m": 4369.1
+  },
   "active_aero_zones": [
     {
       "mode": "full",

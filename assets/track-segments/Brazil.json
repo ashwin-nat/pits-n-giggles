@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Brazil",
   "circuit_number": 16,
   "track_length": 4294,
@@ -26,13 +25,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 3228.7,
-      "activation_m": 3399.1
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 3228.7,
+    "activation_m": 3399.1
+  },
   "active_aero_zones": [
     {
       "mode": "full",

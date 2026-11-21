@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Baku_Azerbaijan",
   "circuit_number": 20,
   "track_length": 5994,
@@ -26,13 +25,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 4073.4,
-      "activation_m": 4169.8
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 4073.4,
+    "activation_m": 4169.8
+  },
   "active_aero_zones": [
     {
       "mode": "full",

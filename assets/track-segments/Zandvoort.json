@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Zandvoort",
   "circuit_number": 26,
   "track_length": 4258,
@@ -26,13 +25,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 3430.1,
-      "activation_m": 3646.8
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 3430.1,
+    "activation_m": 3646.8
+  },
   "active_aero_zones": [
     {
       "mode": "full",

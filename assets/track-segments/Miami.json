@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Miami",
   "circuit_number": 30,
   "track_length": 5410,
@@ -36,13 +35,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 4966,
-      "activation_m": 5122.8
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 4966,
+    "activation_m": 5122.8
+  },
   "active_aero_zones": [
     {
       "mode": "full",

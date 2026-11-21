@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Monza",
   "circuit_number": 11,
   "track_length": 5798,
@@ -26,13 +25,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 5154.4,
-      "activation_m": 5253.6
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 5154.4,
+    "activation_m": 5253.6
+  },
   "active_aero_zones": [
     {
       "mode": "full",

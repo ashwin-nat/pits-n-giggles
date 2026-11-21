@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Silverstone_Reverse",
   "circuit_number": 39,
   "track_length": 5890,
@@ -26,13 +25,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 4830.1,
-      "activation_m": 4977.4
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 4830.1,
+    "activation_m": 4977.4
+  },
   "active_aero_zones": [
     {
       "mode": "full",

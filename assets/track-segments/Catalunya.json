@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Catalunya",
   "circuit_number": 4,
   "track_length": 4664,
@@ -26,13 +25,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 4053,
-      "activation_m": 4277.2
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 4053,
+    "activation_m": 4277.2
+  },
   "active_aero_zones": [
     {
       "mode": "full",

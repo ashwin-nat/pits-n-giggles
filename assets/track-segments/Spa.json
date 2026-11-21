@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "circuit_name": "Spa",
   "circuit_number": 10,
   "track_length": 7007,
@@ -26,13 +25,10 @@
       ]
     }
   ],
-  "overtake_zones": [
-    {
-      "id": 1,
-      "detection_m": 6747.8,
-      "activation_m": 0
-    }
-  ],
+  "overtake_dist": {
+    "detection_m": 6747.8,
+    "activation_m": 0
+  },
   "active_aero_zones": [
     {
       "mode": "full",
