@@ -396,30 +396,29 @@ def attach_boards(segments: Tuple[SegmentInfo, ...], boards: List[BrakeBoardInfo
                   track_length: float) -> Tuple[Tuple[SegmentInfo, ...], List[str]]:
     """`segments` with `brake_boards` set on the corner each board warns about, plus notes for odd boards.
 
-    A board belongs to the first corner or sub-corner that starts within 150 m behind it and ends after it.
+    A board counts down to the spot `at_m + distance_m`. It belongs to the corner or complex corner containing
+    that spot, or to the next one ahead (wrapping past the start line) when the spot is on a straight. Position
+    alone is not enough: boards often stand in the tail of the previous corner. A complex corner is one braking
+    event, so its boards go on its first sub-corner, whose own boundaries are only seeded.
     Complex corners must already hold their `corners`. Boards already on a corner are replaced.
     """
-    targets: List[Tuple[float, float, int, Optional[int]]] = []
-    for i, seg in enumerate(segments):
-        if isinstance(seg, CornerSegmentInfo):
-            targets.append((seg.start_m, seg.end_m, i, None))
-        elif isinstance(seg, ComplexCornerSegmentInfo):
-            targets += [(sub.start_m, sub.end_m, i, j) for j, sub in enumerate(seg.corners)]
-    targets.sort(key=lambda t: t[0])
-    assigned: Dict[Tuple[int, Optional[int]], List[BrakeBoardInfo]] = {}
+    targets = sorted(((seg.start_m, seg.end_m, i) for i, seg in enumerate(segments)
+                      if isinstance(seg, (CornerSegmentInfo, ComplexCornerSegmentInfo))), key=lambda t: t[0])
+    assigned: Dict[int, List[BrakeBoardInfo]] = {}
     notes = []
     for board in boards:
-        start, _, i, j = next((t for t in targets if t[0] >= board.at_m - 150 and t[1] > board.at_m), targets[0])
-        gap = (start - board.at_m) % track_length
+        target_m = (board.at_m + board.distance_m) % track_length
+        start, end, i = next((t for t in targets if t[1] > target_m), targets[0])
+        gap = 0.0 if start <= board.at_m < end else (start - board.at_m) % track_length
         if 450 < gap < track_length - 200:
             notes.append(f"{board.distance_m} m board at {board.at_m} m is {gap:.0f} m before its corner")
-        assigned.setdefault((i, j), []).append(board)
+        assigned.setdefault(i, []).append(board)
     out: List[SegmentInfo] = []
     for i, seg in enumerate(segments):
         if isinstance(seg, CornerSegmentInfo):
-            seg = _replace(seg, brake_boards=tuple(assigned.get((i, None), ())))
+            seg = _replace(seg, brake_boards=tuple(assigned.get(i, ())))
         elif isinstance(seg, ComplexCornerSegmentInfo):
-            seg = _replace(seg, corners=tuple(_replace(sub, brake_boards=tuple(assigned.get((i, j), ())))
+            seg = _replace(seg, corners=tuple(_replace(sub, brake_boards=tuple(assigned.get(i, ())) if j == 0 else ())
                                               for j, sub in enumerate(seg.corners)))
         out.append(seg)
     return tuple(out), notes

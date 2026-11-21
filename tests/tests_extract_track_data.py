@@ -606,3 +606,50 @@ def test_update_segment_file_refuses_invalid_result(tmp_path, game_files, monkey
     notes = update_segment_file(path, tmp_path, "test")
     assert path.read_bytes() == before
     assert any("NOT WRITTEN" in note for note in notes)
+
+
+def _label_board(at, dist):
+    return BrakeBoardInfo(distance_m=dist, at_m=at, side="both")
+
+
+@allure.story("Brake boards")
+@allure.title("A board counting down into {where} belongs to it")
+@pytest.mark.parametrize("where, at, dist, corner, sub", [
+    ("the corner it stands in", 120, 50, 0, None),
+    ("a complex corner's first sub-corner", 1000, 50, 1, 0),
+    ("a complex corner, on its first sub-corner even when the spot is in a later one", 1040, 100, 1, 0),
+])
+def test_attach_boards_by_the_spot_it_counts_down_to(where, at, dist, corner, sub):
+    """A board whose label points to a spot inside a corner or a complex corner.
+
+    Expected: the board is on that corner, or on the first sub-corner of that complex corner."""
+    segments, _ = attach_boards(_layout(), [_label_board(at, dist)], 2000)
+    holder = segments[corner] if sub is None else segments[corner].corners[sub]
+    assert [b.at_m for b in holder.brake_boards] == [at]
+
+
+@allure.story("Brake boards")
+@allure.title("A board standing in the previous corner still belongs to the one it counts down to")
+def test_attach_boards_in_the_tail_of_the_previous_corner():
+    """A 200 m board at 1898.8 m inside a long corner (1480 to 1965 m) and corner 10 starting at 1965 m, as at Monaco.
+
+    Expected: the board is on the second corner, since 1898.8 + 200 lands inside it, with no note."""
+    segments = (CornerSegmentInfo(name="A", start_m=1480, end_m=1965, corner_number=9),
+                CornerSegmentInfo(name="B", start_m=1965, end_m=2130, corner_number=10))
+    result, notes = attach_boards(segments, [_label_board(1898.8, 200)], 3300)
+    assert result[0].brake_boards == () and [b.at_m for b in result[1].brake_boards] == [1898.8]
+    assert notes == []
+
+
+@allure.story("Brake boards")
+@allure.title("A board on a straight goes to the next corner, a long corner keeps its own")
+def test_attach_boards_straight_and_long_corner():
+    """Baku turn 1 (115 to 415 m) and turn 2 (500 m). A 50 m board at 267.5 m points at 317.5 m, inside turn 1.
+    A 100 m board at 300 m points at 400 m, still inside turn 1. A 100 m board at 450 m points at 550 m.
+
+    Expected: the first two are on turn 1 and the third on turn 2."""
+    segments = (CornerSegmentInfo(name="T1", start_m=115, end_m=415, corner_number=1),
+                CornerSegmentInfo(name="T2", start_m=500, end_m=600, corner_number=2))
+    result, _ = attach_boards(segments, [_label_board(267.5, 50), _label_board(300, 100), _label_board(450, 100)], 2000)
+    assert [b.at_m for b in result[0].brake_boards] == [267.5, 300]
+    assert [b.at_m for b in result[1].brake_boards] == [450]
