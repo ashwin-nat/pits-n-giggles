@@ -14,18 +14,21 @@ table clears the folder first, so dropped layouts leave no stale file. A length 
 layout's midpoint lap length with track_length in assets/track-segments/*.json.
 """
 import argparse
-import copy
 import json
 import re
 import struct
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, TypeVar
 
 import numpy as np
 import zstandard
+from pydantic import BaseModel
 
 from lib.f1_types import TrackID
+from lib.track_segments_classifier import (BrakeBoardInfo, ComplexCornerSegmentInfo,
+                                           CornerSegmentInfo, SubCornerInfo)
 from lib.track_segments_classifier.classifier import TrackSegmentsClassifier
+from lib.track_segments_classifier.types import SegmentInfo
 
 TRACKS_SUBDIR = Path("2025_asset_groups") / "environment_package" / "tracks"
 SOURCE_YEAR = 25  # F1 game year the data comes from; matches the 2025_asset_groups folder above
@@ -39,6 +42,7 @@ LENGTH_TOLERANCE = 0.01
 FOLDER_ALIASES = {"bahrain": "sakhir_bahrain", "baku": "baku_azerbaijan", "spa_francorchamps": "spa"}
 
 _TOKEN = re.compile(rb"[\x20-\x7e]{1,200}\x00")
+ModelT = TypeVar("ModelT", bound=BaseModel)
 _ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"
 
 
@@ -371,7 +375,7 @@ def group_boards(objects: List[Dict[str, Any]], knots: np.ndarray, track_length:
             for g in sorted(groups, key=lambda g: g["at"][0])]
 
 
-def layout_boards(wep_dir: Path, folder: str, knots: np.ndarray, track_length: float) -> List[Dict[str, Any]]:
+def layout_boards(wep_dir: Path, folder: str, knots: np.ndarray, track_length: float) -> List[BrakeBoardInfo]:
     """Brake boards for one layout from its common and f1 archives.
 
     The other eras (classic, f1_26, f2, myteam, story) give the same boards on all 28 layouts.
@@ -380,30 +384,45 @@ def layout_boards(wep_dir: Path, folder: str, knots: np.ndarray, track_length: f
     for archive in ("common", "f1"):
         for _, layer in iter_erp_resources(wep_dir / f"{folder}_{archive}.erp", ".layer"):
             objects += board_objects(layer)
-    return group_boards(objects, knots, track_length)
+    return [BrakeBoardInfo(**board) for board in group_boards(objects, knots, track_length)]
 
 
-def attach_boards(segments: List[Dict[str, Any]], boards: List[Dict[str, Any]], track_length: float) -> List[str]:
-    """Set `brake_boards` on the corner each board warns about, replacing any there. Returns notes for odd boards.
+def _replace(model: ModelT, **changes: Any) -> ModelT:
+    """A copy of a frozen model with `changes` applied, validated again so the new value cannot be invalid."""
+    return type(model).model_validate({**dict(model), **changes})
+
+
+def attach_boards(segments: Tuple[SegmentInfo, ...], boards: List[BrakeBoardInfo],
+                  track_length: float) -> Tuple[Tuple[SegmentInfo, ...], List[str]]:
+    """`segments` with `brake_boards` set on the corner each board warns about, plus notes for odd boards.
 
     A board belongs to the first corner or sub-corner that starts within 150 m behind it and ends after it.
-    Complex corners must already hold their `corners`.
+    Complex corners must already hold their `corners`. Boards already on a corner are replaced.
     """
-    targets = [c for s in segments for c in (s.get("corners") or [s] if s["type"] != "straight" else [])]
-    for t in targets:
-        t.pop("brake_boards", None)
-    targets.sort(key=lambda t: t["start_m"])
+    targets: List[Tuple[float, float, int, Optional[int]]] = []
+    for i, seg in enumerate(segments):
+        if isinstance(seg, CornerSegmentInfo):
+            targets.append((seg.start_m, seg.end_m, i, None))
+        elif isinstance(seg, ComplexCornerSegmentInfo):
+            targets += [(sub.start_m, sub.end_m, i, j) for j, sub in enumerate(seg.corners)]
+    targets.sort(key=lambda t: t[0])
+    assigned: Dict[Tuple[int, Optional[int]], List[BrakeBoardInfo]] = {}
     notes = []
-    for b in boards:
-        target = next((t for t in targets if t["start_m"] >= b["at_m"] - 150 and t["end_m"] > b["at_m"]), None)
-        target = target or (targets[0] if targets else None)
-        if target is None:
-            continue
-        gap = (target["start_m"] - b["at_m"]) % track_length
+    for board in boards:
+        start, _, i, j = next((t for t in targets if t[0] >= board.at_m - 150 and t[1] > board.at_m), targets[0])
+        gap = (start - board.at_m) % track_length
         if 450 < gap < track_length - 200:
-            notes.append(f"{b['distance_m']} m board at {b['at_m']} m is {gap:.0f} m before its corner")
-        target.setdefault("brake_boards", []).append(b)
-    return notes
+            notes.append(f"{board.distance_m} m board at {board.at_m} m is {gap:.0f} m before its corner")
+        assigned.setdefault((i, j), []).append(board)
+    out: List[SegmentInfo] = []
+    for i, seg in enumerate(segments):
+        if isinstance(seg, CornerSegmentInfo):
+            seg = _replace(seg, brake_boards=tuple(assigned.get((i, None), ())))
+        elif isinstance(seg, ComplexCornerSegmentInfo):
+            seg = _replace(seg, corners=tuple(_replace(sub, brake_boards=tuple(assigned.get((i, j), ())))
+                                              for j, sub in enumerate(seg.corners)))
+        out.append(seg)
+    return tuple(out), notes
 
 
 def game_corners(taprogram: BxmlNode, track_length: float) -> Dict[int, List[float]]:
@@ -420,12 +439,12 @@ def game_corners(taprogram: BxmlNode, track_length: float) -> Dict[int, List[flo
     return out
 
 
-def seed_sub_corners(segment: Dict[str, Any], game: Dict[int, List[float]]) -> List[Dict[str, Any]]:
+def seed_sub_corners(segment: ComplexCornerSegmentInfo, game: Dict[int, List[float]]) -> Tuple[SubCornerInfo, ...]:
     """Sub-corner ranges tiling a complex corner, split midway between neighbouring corners' game points.
 
     Falls back to an even split where a corner has no points or the midpoints would not increase.
     """
-    start, end, numbers = segment["start_m"], segment["end_m"], segment["corner_numbers"]
+    start, end, numbers = segment.start_m, segment.end_m, segment.corner_numbers
     even = [round(start + (end - start) * k / len(numbers)) for k in range(1, len(numbers))]
     cuts = []
     for k in range(len(numbers) - 1):
@@ -434,82 +453,54 @@ def seed_sub_corners(segment: Dict[str, Any], game: Dict[int, List[float]]) -> L
     if not all(lo < hi for lo, hi in zip([start] + cuts, cuts + [end])):
         cuts = even
     edges = [start] + cuts + [end]
-    return [{"corner_number": n, "start_m": edges[k], "end_m": edges[k + 1]} for k, n in enumerate(numbers)]
+    return tuple(SubCornerInfo(corner_number=n, start_m=edges[k], end_m=edges[k + 1]) for k, n in enumerate(numbers))
 
 
-def corner_report(segments: List[Dict[str, Any]], game: Dict[int, List[float]]) -> List[str]:
+def corner_report(segments: Tuple[SegmentInfo, ...], game: Dict[int, List[float]]) -> List[str]:
     """Differences between the game's corners and a segment file's: missing numbers and misplaced points."""
-    ours: Dict[int, Dict[str, Any]] = {}
+    ours: Dict[int, SegmentInfo] = {}
     for seg in segments:
-        for number in seg.get("corner_numbers", [seg["corner_number"]] if "corner_number" in seg else []):
-            ours[number] = seg
+        if isinstance(seg, CornerSegmentInfo):
+            ours[seg.corner_number] = seg
+        elif isinstance(seg, ComplexCornerSegmentInfo):
+            ours |= {number: seg for number in seg.corner_numbers}
     notes = []
     if set(game) != set(ours):
         notes.append(f"corner numbers differ: game only {sorted(set(game) - set(ours))}, "
                      f"file only {sorted(set(ours) - set(game))}")
     for number, points in sorted(game.items()):
         seg = ours.get(number)
-        if seg and points and not any(seg["start_m"] <= p < seg["end_m"] for p in points):
+        if seg and points and not any(seg.start_m <= p < seg.end_m for p in points):
             notes.append(f"corner {number} points {points[0]:.0f}-{points[-1]:.0f} m outside "
-                         f"{seg['start_m']}-{seg['end_m']} m")
+                         f"{seg.start_m:g}-{seg.end_m:g} m")
     return notes
-
-
-ZONE_FIELDS = ("speed_trap_m", "drs_zones", "overtake_zones", "active_aero_zones")
-
-
-def _whole_numbers(value: Any) -> Any:
-    """Floats that are whole become ints, so the files do not churn on `3055.0` vs `3055`."""
-    if isinstance(value, float) and value.is_integer():
-        return int(value)
-    if isinstance(value, dict):
-        return {k: _whole_numbers(v) for k, v in value.items()}
-    if isinstance(value, list):
-        return [_whole_numbers(v) for v in value]
-    return value
-
-
-def merge_track_data(data: Dict[str, Any], zones: Dict[str, Any], game: Dict[int, List[float]],
-                     boards: List[Dict[str, Any]]) -> Tuple[Dict[str, Any], List[str]]:
-    """A schema v2 copy of a segment file with the extractor-owned fields rewritten, plus notes on odd boards.
-
-    Zones and brake boards are replaced. `corners` is only created where a complex corner has none.
-    """
-    segments = copy.deepcopy(data["segments"])
-    for seg in segments:
-        if seg["type"] == "complex_corner" and not seg.get("corners"):
-            seg["corners"] = seed_sub_corners(seg, game)
-    notes = attach_boards(segments, boards, data["track_length"])
-    out: Dict[str, Any] = {"schema_version": 2}
-    for key, value in data.items():
-        if key == "schema_version" or key in ZONE_FIELDS:
-            continue
-        if key == "segments":
-            out.update(zones)
-            value = segments
-        out[key] = value
-    return _whole_numbers(out), notes
 
 
 def update_segment_file(path: Path, wep_dir: Path, folder: str) -> List[str]:
     """Rewrite one segment file from the game data. Returns report lines; the file is untouched if it fails validation."""
     raw = path.read_bytes().decode("utf-8")
-    data = json.loads(raw)
-    length = float(data["track_length"])
+    old = TrackSegmentsClassifier.model_validate({**json.loads(raw), "use_cache": False})
     common = wep_dir / f"{folder}_common.erp"
     knots = parse_maintrack_knots(read_erp_resource(common, ".trackspacespline"))
-    zones = extract_zones(parse_bxml(read_erp_resource(common, ".trackmarkup")), knot_mapper(knots, length))
-    game = game_corners(parse_bxml(read_erp_resource(common, ".taprogram")), length)
-    merged, notes = merge_track_data(data, zones, game, layout_boards(wep_dir, folder, knots, length))
-    notes = corner_report(data["segments"], game) + notes
+    zones = extract_zones(parse_bxml(read_erp_resource(common, ".trackmarkup")), knot_mapper(knots, old.track_length))
+    game = game_corners(parse_bxml(read_erp_resource(common, ".taprogram")), old.track_length)
+    notes = corner_report(old.segments, game)
     try:
-        TrackSegmentsClassifier.model_validate({**merged, "use_cache": False})
+        seeded = tuple(_replace(seg, corners=seed_sub_corners(seg, game))
+                       if isinstance(seg, ComplexCornerSegmentInfo) and not seg.corners else seg
+                       for seg in old.segments)
+        segments, board_notes = attach_boards(seeded, layout_boards(wep_dir, folder, knots, old.track_length),
+                                              old.track_length)
+        new = TrackSegmentsClassifier.model_validate({
+            "circuit_name": old.circuit_name, "circuit_number": old.circuit_number,
+            "track_length": old.track_length, "sectors": old.sectors, "use_cache": False,
+            "segments": segments, "schema_version": 2, **zones})
     except ValueError as err:
         return notes + [f"NOT WRITTEN, fails validation: {str(err).splitlines()[0]}"]
-    text = json.dumps(merged, indent=2, ensure_ascii=False)
+    text = json.dumps(new.to_file_dict(), indent=2, ensure_ascii=False)
     newline = "\r\n" if "\r\n" in raw else "\n"
     path.write_bytes((text.replace("\n", newline) + (newline if raw.endswith("\n") else "")).encode("utf-8"))
-    return notes
+    return notes + board_notes
 
 
 def circuit_for_folder(folder: str) -> Optional[int]:

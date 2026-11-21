@@ -29,8 +29,8 @@
   "overtake_zones": [
     {
       "id": 1,
-      "activation_m": 5420.7,
-      "detection_m": 5329.9
+      "detection_m": 5329.9,
+      "activation_m": 5420.7
     }
   ],
   "active_aero_zones": [
