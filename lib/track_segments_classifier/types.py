@@ -27,6 +27,12 @@ from typing import Annotated, Any, ClassVar, Dict, Literal, Tuple, Union
 from pydantic import (BaseModel, ConfigDict, Field, field_validator,
                       model_validator)
 
+# -------------------------------------- HELPERS -----------------------------------------------------------------------
+
+def _num(value: float) -> float:
+    """A whole float as an int, so files read `3055` rather than `3055.0`."""
+    return int(value) if float(value).is_integer() else value
+
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 class SectorBoundaries(BaseModel):
@@ -52,6 +58,9 @@ class BrakeBoardInfo(BaseModel):
     at_m: float
     side: Literal["left", "right", "both"]
 
+    def to_file_dict(self) -> Dict[str, Any]:
+        return {"distance_m": self.distance_m, "at_m": _num(self.at_m), "side": self.side}
+
 
 class SubCornerInfo(BaseModel):
     """One corner's part of a complex corner."""
@@ -71,6 +80,15 @@ class SubCornerInfo(BaseModel):
             )
         return self
 
+    def to_file_dict(self) -> Dict[str, Any]:
+        out: Dict[str, Any] = {"corner_number": self.corner_number}
+        if self.name:
+            out["name"] = self.name
+        out |= {"start_m": _num(self.start_m), "end_m": _num(self.end_m)}
+        if self.brake_boards:
+            out["brake_boards"] = [b.to_file_dict() for b in self.brake_boards]
+        return out
+
 
 class LapRangeInfo(BaseModel):
     """A lap range that may cross the start line, shown by end_m < start_m."""
@@ -85,6 +103,9 @@ class LapRangeInfo(BaseModel):
             raise ValueError(f"zone is empty: start_m equals end_m ({self.start_m})")
         return self
 
+    def to_file_dict(self) -> Dict[str, Any]:
+        return {"start_m": _num(self.start_m), "end_m": _num(self.end_m)}
+
 
 class DrsActivationInfo(LapRangeInfo):
     """One DRS activation range."""
@@ -98,6 +119,10 @@ class DrsZoneInfo(BaseModel):
     detection_m: float
     activation: Tuple[DrsActivationInfo, ...] = Field(min_length=1)
 
+    def to_file_dict(self) -> Dict[str, Any]:
+        return {"id": self.id, "detection_m": _num(self.detection_m),
+                "activation": [a.to_file_dict() for a in self.activation]}
+
 
 class OvertakeZoneInfo(BaseModel):
     """An overtake mode detection point and its activation point."""
@@ -107,10 +132,16 @@ class OvertakeZoneInfo(BaseModel):
     detection_m: float
     activation_m: float
 
+    def to_file_dict(self) -> Dict[str, Any]:
+        return {"id": self.id, "detection_m": _num(self.detection_m), "activation_m": _num(self.activation_m)}
+
 
 class ActiveAeroZoneInfo(LapRangeInfo):
     """An active aero zone. Named to avoid lib.f1_types.ActiveAeroZone."""
     mode: Literal["full", "partial"]
+
+    def to_file_dict(self) -> Dict[str, Any]:
+        return {"mode": self.mode, **super().to_file_dict()}
 
 
 class BaseSegmentInfo(BaseModel):
@@ -130,6 +161,10 @@ class BaseSegmentInfo(BaseModel):
         return self
 
     def to_dict(self) -> Dict[str, Any]:
+        raise NotImplementedError
+
+    def to_file_dict(self) -> Dict[str, Any]:
+        """The segment as it is written to a track file, schema v2 fields included. `to_dict()` is the payload form."""
         raise NotImplementedError
 
     def contains(self, lap_distance: float) -> bool:
@@ -152,6 +187,9 @@ class StraightSegmentInfo(BaseSegmentInfo):
             "name": self.name,
         }
 
+    def to_file_dict(self) -> Dict[str, Any]:
+        return {"type": "straight", "start_m": _num(self.start_m), "end_m": _num(self.end_m), "name": self.name}
+
 
 class CornerSegmentInfo(BaseSegmentInfo):
     TYPE: ClassVar[str] = "corner"
@@ -166,6 +204,15 @@ class CornerSegmentInfo(BaseSegmentInfo):
             "name": self.name,
             "corner_number": self.corner_number,
         }
+
+    def to_file_dict(self) -> Dict[str, Any]:
+        out: Dict[str, Any] = {"type": "corner", "start_m": _num(self.start_m), "end_m": _num(self.end_m)}
+        if self.name:
+            out["name"] = self.name
+        out["corner_number"] = self.corner_number
+        if self.brake_boards:
+            out["brake_boards"] = [b.to_file_dict() for b in self.brake_boards]
+        return out
 
 
 class ComplexCornerSegmentInfo(BaseSegmentInfo):
@@ -226,6 +273,15 @@ class ComplexCornerSegmentInfo(BaseSegmentInfo):
             "name": self.name,
             "corner_numbers": list(self.corner_numbers),
         }
+
+    def to_file_dict(self) -> Dict[str, Any]:
+        out: Dict[str, Any] = {"type": "complex_corner", "start_m": _num(self.start_m), "end_m": _num(self.end_m)}
+        if self.name:
+            out["name"] = self.name
+        out["corner_numbers"] = list(self.corner_numbers)
+        if self.corners:
+            out["corners"] = [c.to_file_dict() for c in self.corners]
+        return out
 
 
 SegmentInfo = Annotated[

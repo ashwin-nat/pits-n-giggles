@@ -1,7 +1,60 @@
 {
+  "schema_version": 2,
   "circuit_name": "Catalunya",
   "circuit_number": 4,
   "track_length": 4664,
+  "speed_trap_m": 599.5,
+  "drs_zones": [
+    {
+      "id": 1,
+      "detection_m": 2749,
+      "activation": [
+        {
+          "start_m": 3019.2,
+          "end_m": 3456.1
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "detection_m": 4288.8,
+      "activation": [
+        {
+          "start_m": 4590.8,
+          "end_m": 765.8
+        }
+      ]
+    }
+  ],
+  "overtake_zones": [
+    {
+      "id": 1,
+      "detection_m": 4053,
+      "activation_m": 4277.2
+    }
+  ],
+  "active_aero_zones": [
+    {
+      "mode": "full",
+      "start_m": 3019.2,
+      "end_m": 3411.1
+    },
+    {
+      "mode": "full",
+      "start_m": 4480.7,
+      "end_m": 765.8
+    },
+    {
+      "mode": "partial",
+      "start_m": 3067.9,
+      "end_m": 3411.1
+    },
+    {
+      "mode": "partial",
+      "start_m": 4520.7,
+      "end_m": 765.8
+    }
+  ],
   "segments": [
     {
       "type": "straight",
@@ -17,6 +70,40 @@
       "corner_numbers": [
         1,
         2
+      ],
+      "corners": [
+        {
+          "corner_number": 1,
+          "start_m": 655,
+          "end_m": 885,
+          "brake_boards": [
+            {
+              "distance_m": 200,
+              "at_m": 621.8,
+              "side": "both"
+            },
+            {
+              "distance_m": 150,
+              "at_m": 669,
+              "side": "both"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 719.8,
+              "side": "both"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 766.1,
+              "side": "both"
+            }
+          ]
+        },
+        {
+          "corner_number": 2,
+          "start_m": 885,
+          "end_m": 1000
+        }
       ]
     },
     {
@@ -31,20 +118,58 @@
       "start_m": 1570,
       "end_m": 1955,
       "name": "Repsol",
-      "corner_number": 4
+      "corner_number": 4,
+      "brake_boards": [
+        {
+          "distance_m": 200,
+          "at_m": 1481.4,
+          "side": "left"
+        },
+        {
+          "distance_m": 150,
+          "at_m": 1530.3,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 1583.3,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 1633.7,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 2000,
       "end_m": 2230,
       "name": "Seat",
-      "corner_number": 5
+      "corner_number": 5,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 1950.8,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 2002.6,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 2051.7,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 2300,
       "end_m": 2430,
-      "name": "",
       "corner_number": 6
     },
     {
@@ -54,6 +179,18 @@
       "corner_numbers": [
         7,
         8
+      ],
+      "corners": [
+        {
+          "corner_number": 7,
+          "start_m": 2450,
+          "end_m": 2591
+        },
+        {
+          "corner_number": 8,
+          "start_m": 2591,
+          "end_m": 2725
+        }
       ]
     },
     {
@@ -74,13 +211,34 @@
       "start_m": 3350,
       "end_m": 3570,
       "name": "La Caixa",
-      "corner_number": 10
+      "corner_number": 10,
+      "brake_boards": [
+        {
+          "distance_m": 200,
+          "at_m": 3277.5,
+          "side": "right"
+        },
+        {
+          "distance_m": 150,
+          "at_m": 3336.7,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 3385.6,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 3445.5,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 3570,
       "end_m": 3680,
-      "name": "",
       "corner_number": 11
     },
     {
@@ -94,7 +252,6 @@
       "type": "corner",
       "start_m": 3980,
       "end_m": 4175,
-      "name": "",
       "corner_number": 13
     },
     {

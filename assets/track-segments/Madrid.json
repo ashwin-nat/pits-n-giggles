@@ -1,7 +1,54 @@
 {
+  "schema_version": 2,
   "circuit_name": "Madrid",
   "circuit_number": 42,
   "track_length": 5411,
+  "speed_trap_m": 1232.8,
+  "drs_zones": [
+    {
+      "id": 1,
+      "detection_m": 5154.6,
+      "activation": [
+        {
+          "start_m": 709.7,
+          "end_m": 1490.1
+        },
+        {
+          "start_m": 5344.1,
+          "end_m": 412.4
+        }
+      ]
+    }
+  ],
+  "overtake_zones": [
+    {
+      "id": 1,
+      "detection_m": 5122.1,
+      "activation_m": 5311.1
+    }
+  ],
+  "active_aero_zones": [
+    {
+      "mode": "full",
+      "start_m": 709.4,
+      "end_m": 1280.4
+    },
+    {
+      "mode": "full",
+      "start_m": 5344.1,
+      "end_m": 349.1
+    },
+    {
+      "mode": "partial",
+      "start_m": 759.6,
+      "end_m": 1280.4
+    },
+    {
+      "mode": "partial",
+      "start_m": 5379.1,
+      "end_m": 349.1
+    }
+  ],
   "segments": [
     {
       "type": "straight",
@@ -16,6 +63,35 @@
       "corner_numbers": [
         1,
         2
+      ],
+      "corners": [
+        {
+          "corner_number": 1,
+          "start_m": 344,
+          "end_m": 474,
+          "brake_boards": [
+            {
+              "distance_m": 150,
+              "at_m": 292.9,
+              "side": "both"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 346,
+              "side": "both"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 389.8,
+              "side": "both"
+            }
+          ]
+        },
+        {
+          "corner_number": 2,
+          "start_m": 474,
+          "end_m": 530
+        }
       ]
     },
     {
@@ -29,7 +105,6 @@
       "type": "corner",
       "start_m": 1095,
       "end_m": 1380,
-      "name": "",
       "corner_number": 4
     },
     {
@@ -39,6 +114,35 @@
       "corner_numbers": [
         5,
         6
+      ],
+      "corners": [
+        {
+          "corner_number": 5,
+          "start_m": 1400,
+          "end_m": 1552,
+          "brake_boards": [
+            {
+              "distance_m": 150,
+              "at_m": 1384,
+              "side": "both"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 1438.9,
+              "side": "both"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 1482,
+              "side": "both"
+            }
+          ]
+        },
+        {
+          "corner_number": 6,
+          "start_m": 1552,
+          "end_m": 1600
+        }
       ]
     },
     {
@@ -55,13 +159,41 @@
       "corner_numbers": [
         7,
         8
+      ],
+      "corners": [
+        {
+          "corner_number": 7,
+          "start_m": 1790,
+          "end_m": 1804,
+          "brake_boards": [
+            {
+              "distance_m": 150,
+              "at_m": 1757.4,
+              "side": "both"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 1812.5,
+              "side": "both"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 1859.9,
+              "side": "both"
+            }
+          ]
+        },
+        {
+          "corner_number": 8,
+          "start_m": 1804,
+          "end_m": 2030
+        }
       ]
     },
     {
       "type": "corner",
       "start_m": 2050,
       "end_m": 2130,
-      "name": "",
       "corner_number": 9
     },
     {
@@ -72,6 +204,35 @@
       "corner_numbers": [
         10,
         11
+      ],
+      "corners": [
+        {
+          "corner_number": 10,
+          "start_m": 2150,
+          "end_m": 2326,
+          "brake_boards": [
+            {
+              "distance_m": 150,
+              "at_m": 2097.5,
+              "side": "both"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 2151.8,
+              "side": "both"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 2193.6,
+              "side": "both"
+            }
+          ]
+        },
+        {
+          "corner_number": 11,
+          "start_m": 2326,
+          "end_m": 2470
+        }
       ]
     },
     {
@@ -85,8 +246,24 @@
       "type": "corner",
       "start_m": 3150,
       "end_m": 3370,
-      "name": "",
-      "corner_number": 13
+      "corner_number": 13,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 3146.7,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 3198.1,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 3241.4,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "complex_corner",
@@ -97,14 +274,47 @@
         14,
         15,
         16
+      ],
+      "corners": [
+        {
+          "corner_number": 14,
+          "start_m": 3420,
+          "end_m": 3533
+        },
+        {
+          "corner_number": 15,
+          "start_m": 3533,
+          "end_m": 3774
+        },
+        {
+          "corner_number": 16,
+          "start_m": 3774,
+          "end_m": 3900
+        }
       ]
     },
     {
       "type": "corner",
       "start_m": 3900,
       "end_m": 4050,
-      "name": "",
-      "corner_number": 17
+      "corner_number": 17,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 3856.2,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 3899.2,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 3944.2,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "corner",
@@ -117,29 +327,77 @@
       "type": "corner",
       "start_m": 4360,
       "end_m": 4500,
-      "name": "",
       "corner_number": 19
     },
     {
       "type": "corner",
       "start_m": 4680,
       "end_m": 4850,
-      "name": "",
-      "corner_number": 20
+      "corner_number": 20,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 4629.7,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 4683.7,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 4728,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 4850,
       "end_m": 5000,
-      "name": "",
-      "corner_number": 21
+      "corner_number": 21,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 4797.1,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 4847.4,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 4891.4,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 5120,
       "end_m": 5280,
       "name": "El Parque",
-      "corner_number": 22
+      "corner_number": 22,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 5082,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 5130.5,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 5173.7,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "straight",

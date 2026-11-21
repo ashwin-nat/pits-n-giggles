@@ -1,7 +1,85 @@
 {
+  "schema_version": 2,
   "circuit_name": "Silverstone_Reverse",
   "circuit_number": 39,
   "track_length": 5890,
+  "speed_trap_m": 1819.2,
+  "drs_zones": [
+    {
+      "id": 1,
+      "detection_m": 844,
+      "activation": [
+        {
+          "start_m": 1311.6,
+          "end_m": 1854.7
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "detection_m": 2567.4,
+      "activation": [
+        {
+          "start_m": 3234.1,
+          "end_m": 3832.6
+        }
+      ]
+    }
+  ],
+  "overtake_zones": [
+    {
+      "id": 1,
+      "detection_m": 4830.1,
+      "activation_m": 4977.4
+    }
+  ],
+  "active_aero_zones": [
+    {
+      "mode": "full",
+      "start_m": 1263.1,
+      "end_m": 1825.1
+    },
+    {
+      "mode": "full",
+      "start_m": 2450.9,
+      "end_m": 2918.2
+    },
+    {
+      "mode": "full",
+      "start_m": 3172.6,
+      "end_m": 3787.7
+    },
+    {
+      "mode": "full",
+      "start_m": 4256.1,
+      "end_m": 4788.4
+    },
+    {
+      "mode": "full",
+      "start_m": 5805.7,
+      "end_m": 290.3
+    },
+    {
+      "mode": "partial",
+      "start_m": 1293.2,
+      "end_m": 1825.1
+    },
+    {
+      "mode": "partial",
+      "start_m": 2551.3,
+      "end_m": 2918.2
+    },
+    {
+      "mode": "partial",
+      "start_m": 4316.4,
+      "end_m": 4788.4
+    },
+    {
+      "mode": "partial",
+      "start_m": 5845.8,
+      "end_m": 290.3
+    }
+  ],
   "segments": [
     {
       "type": "straight",
@@ -17,6 +95,35 @@
       "corner_numbers": [
         1,
         2
+      ],
+      "corners": [
+        {
+          "corner_number": 1,
+          "start_m": 275,
+          "end_m": 461,
+          "brake_boards": [
+            {
+              "distance_m": 150,
+              "at_m": 367.3,
+              "side": "right"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 411.4,
+              "side": "right"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 460.1,
+              "side": "right"
+            }
+          ]
+        },
+        {
+          "corner_number": 2,
+          "start_m": 461,
+          "end_m": 555
+        }
       ]
     },
     {
@@ -31,7 +138,24 @@
       "start_m": 855,
       "end_m": 1235,
       "name": "Stowe",
-      "corner_number": 4
+      "corner_number": 4,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 851.8,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 888,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 933.2,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "straight",
@@ -56,6 +180,45 @@
         7,
         8,
         9
+      ],
+      "corners": [
+        {
+          "corner_number": 6,
+          "start_m": 2015,
+          "end_m": 2178,
+          "brake_boards": [
+            {
+              "distance_m": 150,
+              "at_m": 1912.5,
+              "side": "right"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 1950.9,
+              "side": "right"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 1994.6,
+              "side": "right"
+            }
+          ]
+        },
+        {
+          "corner_number": 7,
+          "start_m": 2178,
+          "end_m": 2325
+        },
+        {
+          "corner_number": 8,
+          "start_m": 2325,
+          "end_m": 2458
+        },
+        {
+          "corner_number": 9,
+          "start_m": 2458,
+          "end_m": 2595
+        }
       ]
     },
     {
@@ -63,7 +226,24 @@
       "start_m": 2855,
       "end_m": 3165,
       "name": "Copse",
-      "corner_number": 10
+      "corner_number": 10,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 2854.7,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 2895.4,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 2945.1,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "straight",
@@ -83,7 +263,29 @@
       "start_m": 3730,
       "end_m": 4045,
       "name": "Luffield",
-      "corner_number": 12
+      "corner_number": 12,
+      "brake_boards": [
+        {
+          "distance_m": 200,
+          "at_m": 3694.8,
+          "side": "right"
+        },
+        {
+          "distance_m": 150,
+          "at_m": 3729.5,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 3764.9,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 3809.3,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "corner",
@@ -110,7 +312,29 @@
       "start_m": 4990,
       "end_m": 5155,
       "name": "The Loop",
-      "corner_number": 15
+      "corner_number": 15,
+      "brake_boards": [
+        {
+          "distance_m": 200,
+          "at_m": 4889.2,
+          "side": "left"
+        },
+        {
+          "distance_m": 150,
+          "at_m": 4927.9,
+          "side": "left"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 4964.8,
+          "side": "left"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 5008.7,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "corner",
