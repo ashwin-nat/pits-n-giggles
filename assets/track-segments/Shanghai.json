@@ -261,20 +261,18 @@
               "distance_m": 100,
               "at_m": 4681.8,
               "side": "both"
-            }
-          ]
-        },
-        {
-          "corner_number": 15,
-          "start_m": 4869,
-          "end_m": 4890,
-          "brake_boards": [
+            },
             {
               "distance_m": 50,
               "at_m": 4730.4,
               "side": "both"
             }
           ]
+        },
+        {
+          "corner_number": 15,
+          "start_m": 4869,
+          "end_m": 4890
         }
       ]
     },

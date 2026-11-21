@@ -59,7 +59,7 @@
     {
       "type": "straight",
       "start_m": 0,
-      "end_m": 180,
+      "end_m": 115,
       "name": "Neftchilar Avenue"
     },
     {
@@ -350,7 +350,13 @@
       "type": "corner",
       "start_m": 3465,
       "end_m": 3650,
-      "corner_number": 14,
+      "corner_number": 14
+    },
+    {
+      "type": "corner",
+      "start_m": 3650,
+      "end_m": 3800,
+      "corner_number": 15,
       "brake_boards": [
         {
           "distance_m": 200,
@@ -361,15 +367,7 @@
           "distance_m": 150,
           "at_m": 3608.1,
           "side": "both"
-        }
-      ]
-    },
-    {
-      "type": "corner",
-      "start_m": 3650,
-      "end_m": 3800,
-      "corner_number": 15,
-      "brake_boards": [
+        },
         {
           "distance_m": 100,
           "at_m": 3648.2,

@@ -111,20 +111,18 @@
               "distance_m": 100,
               "at_m": 411.4,
               "side": "right"
-            }
-          ]
-        },
-        {
-          "corner_number": 2,
-          "start_m": 461,
-          "end_m": 555,
-          "brake_boards": [
+            },
             {
               "distance_m": 50,
               "at_m": 460.1,
               "side": "right"
             }
           ]
+        },
+        {
+          "corner_number": 2,
+          "start_m": 461,
+          "end_m": 555
         }
       ]
     },
@@ -170,19 +168,7 @@
       "start_m": 1825,
       "end_m": 2015,
       "name": "Chapel",
-      "corner_number": 5,
-      "brake_boards": [
-        {
-          "distance_m": 150,
-          "at_m": 1912.5,
-          "side": "right"
-        },
-        {
-          "distance_m": 100,
-          "at_m": 1950.9,
-          "side": "right"
-        }
-      ]
+      "corner_number": 5
     },
     {
       "type": "complex_corner",
@@ -201,6 +187,16 @@
           "start_m": 2015,
           "end_m": 2178,
           "brake_boards": [
+            {
+              "distance_m": 150,
+              "at_m": 1912.5,
+              "side": "right"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 1950.9,
+              "side": "right"
+            },
             {
               "distance_m": 50,
               "at_m": 1994.6,
@@ -309,14 +305,7 @@
       "start_m": 4765,
       "end_m": 4975,
       "name": "Aintree",
-      "corner_number": 14,
-      "brake_boards": [
-        {
-          "distance_m": 200,
-          "at_m": 4889.2,
-          "side": "left"
-        }
-      ]
+      "corner_number": 14
     },
     {
       "type": "corner",
@@ -325,6 +314,11 @@
       "name": "The Loop",
       "corner_number": 15,
       "brake_boards": [
+        {
+          "distance_m": 200,
+          "at_m": 4889.2,
+          "side": "left"
+        },
         {
           "distance_m": 150,
           "at_m": 4927.9,

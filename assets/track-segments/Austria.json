@@ -174,14 +174,7 @@
       "type": "corner",
       "start_m": 2370,
       "end_m": 2540,
-      "corner_number": 5,
-      "brake_boards": [
-        {
-          "distance_m": 150,
-          "at_m": 2517.5,
-          "side": "right"
-        }
-      ]
+      "corner_number": 5
     },
     {
       "type": "corner",
@@ -190,6 +183,11 @@
       "name": "Rauch",
       "corner_number": 6,
       "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 2517.5,
+          "side": "right"
+        },
         {
           "distance_m": 100,
           "at_m": 2567.1,

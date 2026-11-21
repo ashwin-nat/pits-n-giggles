@@ -180,14 +180,7 @@
         {
           "corner_number": 7,
           "start_m": 2396,
-          "end_m": 2470,
-          "brake_boards": [
-            {
-              "distance_m": 100,
-              "at_m": 2464.4,
-              "side": "right"
-            }
-          ]
+          "end_m": 2470
         }
       ]
     },
@@ -206,6 +199,11 @@
           "start_m": 2500,
           "end_m": 2624,
           "brake_boards": [
+            {
+              "distance_m": 100,
+              "at_m": 2464.4,
+              "side": "right"
+            },
             {
               "distance_m": 50,
               "at_m": 2515.7,

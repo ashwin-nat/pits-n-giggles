@@ -235,14 +235,7 @@
       "start_m": 3118,
       "end_m": 3231,
       "name": "Hunserug",
-      "corner_number": 11,
-      "brake_boards": [
-        {
-          "distance_m": 150,
-          "at_m": 3229.7,
-          "side": "left"
-        }
-      ]
+      "corner_number": 11
     },
     {
       "type": "corner",
@@ -251,6 +244,11 @@
       "name": "Hugenholtzbocht",
       "corner_number": 12,
       "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 3229.7,
+          "side": "left"
+        },
         {
           "distance_m": 100,
           "at_m": 3282.1,

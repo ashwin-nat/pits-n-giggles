@@ -170,14 +170,7 @@
               "distance_m": 150,
               "at_m": 1757.4,
               "side": "both"
-            }
-          ]
-        },
-        {
-          "corner_number": 8,
-          "start_m": 1804,
-          "end_m": 2030,
-          "brake_boards": [
+            },
             {
               "distance_m": 100,
               "at_m": 1812.5,
@@ -189,6 +182,11 @@
               "side": "both"
             }
           ]
+        },
+        {
+          "corner_number": 8,
+          "start_m": 1804,
+          "end_m": 2030
         }
       ]
     },
@@ -196,14 +194,7 @@
       "type": "corner",
       "start_m": 2050,
       "end_m": 2130,
-      "corner_number": 9,
-      "brake_boards": [
-        {
-          "distance_m": 150,
-          "at_m": 2097.5,
-          "side": "both"
-        }
-      ]
+      "corner_number": 9
     },
     {
       "type": "complex_corner",
@@ -220,6 +211,11 @@
           "start_m": 2150,
           "end_m": 2326,
           "brake_boards": [
+            {
+              "distance_m": 150,
+              "at_m": 2097.5,
+              "side": "both"
+            },
             {
               "distance_m": 100,
               "at_m": 2151.8,
@@ -293,19 +289,7 @@
         {
           "corner_number": 16,
           "start_m": 3774,
-          "end_m": 3900,
-          "brake_boards": [
-            {
-              "distance_m": 150,
-              "at_m": 3856.2,
-              "side": "both"
-            },
-            {
-              "distance_m": 100,
-              "at_m": 3899.2,
-              "side": "both"
-            }
-          ]
+          "end_m": 3900
         }
       ]
     },
@@ -315,6 +299,16 @@
       "end_m": 4050,
       "corner_number": 17,
       "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 3856.2,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 3899.2,
+          "side": "both"
+        },
         {
           "distance_m": 50,
           "at_m": 3944.2,
@@ -355,11 +349,6 @@
           "distance_m": 50,
           "at_m": 4728,
           "side": "both"
-        },
-        {
-          "distance_m": 150,
-          "at_m": 4797.1,
-          "side": "both"
         }
       ]
     },
@@ -369,6 +358,11 @@
       "end_m": 5000,
       "corner_number": 21,
       "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 4797.1,
+          "side": "both"
+        },
         {
           "distance_m": 100,
           "at_m": 4847.4,

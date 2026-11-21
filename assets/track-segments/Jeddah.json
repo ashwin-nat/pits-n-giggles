@@ -251,19 +251,7 @@
       "type": "corner",
       "start_m": 2960,
       "end_m": 3050,
-      "corner_number": 15,
-      "brake_boards": [
-        {
-          "distance_m": 150,
-          "at_m": 2946.1,
-          "side": "both"
-        },
-        {
-          "distance_m": 100,
-          "at_m": 2994.2,
-          "side": "both"
-        }
-      ]
+      "corner_number": 15
     },
     {
       "type": "complex_corner",
@@ -279,6 +267,16 @@
           "start_m": 3050,
           "end_m": 3178,
           "brake_boards": [
+            {
+              "distance_m": 150,
+              "at_m": 2946.1,
+              "side": "both"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 2994.2,
+              "side": "both"
+            },
             {
               "distance_m": 50,
               "at_m": 3056.1,

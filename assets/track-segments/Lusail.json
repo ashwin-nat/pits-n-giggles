@@ -163,14 +163,7 @@
         {
           "corner_number": 5,
           "start_m": 1876,
-          "end_m": 2022,
-          "brake_boards": [
-            {
-              "distance_m": 200,
-              "at_m": 1983.1,
-              "side": "right"
-            }
-          ]
+          "end_m": 2022
         }
       ]
     },
@@ -181,6 +174,11 @@
       "name": "Hairpin",
       "corner_number": 6,
       "brake_boards": [
+        {
+          "distance_m": 200,
+          "at_m": 1983.1,
+          "side": "right"
+        },
         {
           "distance_m": 150,
           "at_m": 2023,
@@ -299,14 +297,7 @@
         {
           "corner_number": 14,
           "start_m": 4154,
-          "end_m": 4325,
-          "brake_boards": [
-            {
-              "distance_m": 200,
-              "at_m": 4291.3,
-              "side": "right"
-            }
-          ]
+          "end_m": 4325
         }
       ]
     },
@@ -316,6 +307,11 @@
       "end_m": 4635,
       "corner_number": 15,
       "brake_boards": [
+        {
+          "distance_m": 200,
+          "at_m": 4291.3,
+          "side": "right"
+        },
         {
           "distance_m": 150,
           "at_m": 4341.5,

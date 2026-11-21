@@ -186,14 +186,7 @@
       "type": "corner",
       "start_m": 2280,
       "end_m": 2420,
-      "corner_number": 8,
-      "brake_boards": [
-        {
-          "distance_m": 150,
-          "at_m": 2378.9,
-          "side": "both"
-        }
-      ]
+      "corner_number": 8
     },
     {
       "type": "corner",
@@ -202,6 +195,11 @@
       "name": "Piratella",
       "corner_number": 9,
       "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 2378.9,
+          "side": "both"
+        },
         {
           "distance_m": 100,
           "at_m": 2432.5,
@@ -303,14 +301,7 @@
       "type": "corner",
       "start_m": 4080,
       "end_m": 4250,
-      "corner_number": 16,
-      "brake_boards": [
-        {
-          "distance_m": 150,
-          "at_m": 4182.9,
-          "side": "right"
-        }
-      ]
+      "corner_number": 16
     },
     {
       "type": "complex_corner",
@@ -327,6 +318,11 @@
           "start_m": 4250,
           "end_m": 4424,
           "brake_boards": [
+            {
+              "distance_m": 150,
+              "at_m": 4182.9,
+              "side": "right"
+            },
             {
               "distance_m": 100,
               "at_m": 4239.4,
