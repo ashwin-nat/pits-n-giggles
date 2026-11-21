@@ -318,8 +318,8 @@ class VoiceController:
         self._recognizer = sr.Recognizer()
         self._recognizer.pause_threshold = 0.6  # snappier end-of-phrase
         self._recognizer.dynamic_energy_threshold = True
-        idx = _pick_device_index(device_index, self.cfg.get("mic_name_contains", ""))
-        self._mic = sr.Microphone(device_index=idx)
+        self._device_index = device_index
+        self._mic = self._open_microphone()
 
         self.local = self.cfg.get("backend", "local") != "cloud"
         self.stt = None
@@ -525,7 +525,52 @@ class VoiceController:
                 return m.group(1).strip()  # may be "" => bare wake word
         return None
 
+    # Bluetooth headsets drop the capture stream while Windows switches them between
+    # stereo playback and hands-free (call) mode, e.g. right after the first reply.
+    MIC_RETRY_LIMIT = 5
+    MIC_STABLE_SEC = 60.0
+
+    def _open_microphone(self):
+        idx = _pick_device_index(
+            self._device_index, self.cfg.get("mic_name_contains", "")
+        )
+        return sr.Microphone(device_index=idx)
+
     def _listen_loop(self) -> None:
+        failures = 0
+        while self._running.is_set():
+            started = time.monotonic()
+            try:
+                opened = self._listen_session()
+                if opened:
+                    return  # stopped normally
+                reason = "did not open"
+            except OSError as exc:
+                reason = f"dropped ({exc})"
+            if not self._running.is_set():
+                return
+            if time.monotonic() - started > self.MIC_STABLE_SEC:
+                failures = 0
+            failures += 1
+            if failures > self.MIC_RETRY_LIMIT:
+                message = (
+                    f"Microphone {reason} {failures - 1} times in a row; voice input stopped. "
+                    "Reconnect the headset and restart voice."
+                )
+                LOGGER.error(message)
+                print(f"[Voice] {message}")
+                return
+            delay = min(2.0 * failures, 10.0)
+            LOGGER.warning("Microphone %s; reopening in %.0fs", reason, delay)
+            print(f"[Voice] Microphone {reason}; reopening in {delay:.0f}s")
+            time.sleep(delay)
+            try:
+                self._mic = self._open_microphone()
+            except RuntimeError as exc:
+                LOGGER.warning("Microphone reselect failed: %s", exc)
+
+    def _listen_session(self) -> bool:
+        """Listen until stopped. Return False if the microphone did not open."""
         # speech_recognition swallows the PyAudio open error and leaves stream None,
         # which then fails confusingly inside the with-block. Check it explicitly.
         source = self._mic.__enter__()
@@ -536,7 +581,7 @@ class VoiceController:
             )
             LOGGER.error(message)
             print(f"[Voice] {message}")
-            return
+            return False
         try:
             self._recognizer.adjust_for_ambient_noise(source, duration=1.0)
             while self._running.is_set():
@@ -597,7 +642,11 @@ class VoiceController:
                 else:
                     self.submit_question(question, captured_mono=captured)
         finally:
-            self._mic.__exit__(None, None, None)
+            try:
+                self._mic.__exit__(None, None, None)
+            except (OSError, AttributeError):
+                pass  # the stream already died; __exit__ still resets it
+        return True
 
     def _current(self, work, cancelled):
         return (

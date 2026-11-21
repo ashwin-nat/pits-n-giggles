@@ -189,7 +189,7 @@ def test_windows_no_openable_input_raises_clear_error(monkeypatch):
     audio.terminate.assert_called_once()
 
 
-def test_listen_loop_reports_unopened_microphone(monkeypatch, capsys):
+def test_listen_session_reports_unopened_microphone(monkeypatch, capsys):
     from apps.voice import voice_controller as vc
 
     controller = vc.VoiceController.__new__(vc.VoiceController)
@@ -197,6 +197,60 @@ def test_listen_loop_reports_unopened_microphone(monkeypatch, capsys):
     mic.__enter__ = Mock(return_value=SimpleNamespace(stream=None))
     mic.__exit__ = Mock()
     controller._mic = mic
-    controller._listen_loop()
+    assert controller._listen_session() is False
     assert "Microphone could not be opened" in capsys.readouterr().out
     mic.__exit__.assert_not_called()
+
+
+def _retry_controller(monkeypatch, outcomes):
+    """Controller whose _listen_session yields ``outcomes`` in turn (exceptions raised)."""
+    import threading
+
+    from apps.voice import voice_controller as vc
+
+    controller = vc.VoiceController.__new__(vc.VoiceController)
+    controller._running = threading.Event()
+    controller._running.set()
+    sessions = iter(outcomes)
+
+    def session():
+        result = next(sessions)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    controller._listen_session = session
+    controller._open_microphone = Mock()
+    sleeps = []
+    monkeypatch.setattr(vc.time, "sleep", sleeps.append)
+    return controller, sleeps
+
+
+def test_dropped_bluetooth_stream_is_reopened(monkeypatch, capsys):
+    controller, sleeps = _retry_controller(
+        monkeypatch, [OSError(-9999, "Unanticipated host error"), True]
+    )
+    controller._listen_loop()
+    assert controller._open_microphone.call_count == 1
+    assert sleeps == [2.0]
+    assert "reopening in 2s" in capsys.readouterr().out
+
+
+def test_microphone_retries_give_up_with_message(monkeypatch, capsys):
+    from apps.voice import voice_controller as vc
+
+    limit = vc.VoiceController.MIC_RETRY_LIMIT
+    controller, sleeps = _retry_controller(
+        monkeypatch, [OSError(-9999, "host error")] * (limit + 1)
+    )
+    controller._listen_loop()
+    assert len(sleeps) == limit
+    assert max(sleeps) <= 10.0
+    assert "voice input stopped" in capsys.readouterr().out
+
+
+def test_stop_during_retry_exits_quietly(monkeypatch):
+    controller, sleeps = _retry_controller(monkeypatch, [False])
+    controller._running.clear()
+    controller._listen_loop()
+    assert sleeps == []
