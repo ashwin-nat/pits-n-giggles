@@ -14,7 +14,7 @@ import json
 import re
 import struct
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
 import numpy as np
 import zstandard
@@ -36,8 +36,8 @@ _TOKEN = re.compile(rb"[\x20-\x7e]{1,200}\x00")
 _ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"
 
 
-def read_erp_resource(erp_path: Path, suffix: str) -> bytes:
-    """Return the decompressed first resource whose name ends with `suffix` from an ERP v3 archive."""
+def iter_erp_resources(erp_path: Path, suffix: str) -> Iterator[Tuple[str, bytes]]:
+    """Yield (name, decompressed bytes) for each resource ending with `suffix` in an ERP v3 archive."""
     with open(erp_path, "rb") as f:
         hdr = f.read(0x38)
         assert hdr[:4] == b"ERPK", f"{erp_path} is not an ERP archive"
@@ -62,12 +62,20 @@ def read_erp_resource(erp_path: Path, suffix: str) -> bytes:
                 frags.append((off, size, packed))
             f.read(16)
             if name.endswith(suffix):
+                table_pos = f.tell()
                 off, size, packed = frags[0]
                 f.seek(data_off + off)
                 raw = f.read(packed)
                 if raw[:4] == _ZSTD_MAGIC:
                     raw = zstandard.ZstdDecompressor().decompress(raw, max_output_size=size)
-                return raw
+                f.seek(table_pos)
+                yield name, raw
+
+
+def read_erp_resource(erp_path: Path, suffix: str) -> bytes:
+    """Return the first resource ending with `suffix` from an ERP v3 archive."""
+    for _, raw in iter_erp_resources(erp_path, suffix):
+        return raw
     raise ValueError(f"no {suffix} resource in {erp_path}")
 
 
@@ -226,6 +234,171 @@ def extract_zones(markup: BxmlNode, to_m: Callable[[float], float]) -> Dict[str,
     if trap is not None:
         out["speed_trap_m"] = trap
     return out
+
+
+class PkgReader:
+    """Minimal `!pkg` layer reader: dictionaries, lists, strings, floats and 4x4 matrices."""
+
+    def __init__(self, data: bytes):
+        self.data = data
+        self.chunks: List[Tuple[Any, ...]] = []
+        vca = data.find(b"!vca")
+        count = struct.unpack_from("<I", data, vca + 4)[0]
+        for i in range(count):
+            off = struct.unpack_from("<I", data, vca + 8 + 4 * i)[0] & 0xFFFFFF
+            if data[off:off + 4] == b"!sbi":
+                self.chunks.append(("str", off + 8))
+            else:
+                _, elem_size = struct.unpack_from("<II", data, off + 8)
+                self.chunks.append((data[off + 4:off + 8].decode("latin1"), off + 16, elem_size))
+        self.root = struct.unpack_from("<I", data, 8)[0] & 0xFFFFFF
+
+    def _string(self, off: int) -> str:
+        base = next(c for c in self.chunks if c[0] == "str")[1]
+        n = self.data[base + off]
+        return self.data[base + off + 1:base + off + 1 + n].decode("latin1")
+
+    def _value(self, v: int, depth: int) -> Any:
+        hi, lo = v >> 24, v & 0xFFFFFF
+        if hi == 0x80:
+            return self.obj(lo, depth + 1)
+        if hi >= len(self.chunks):
+            return None
+        kind, base, *rest = self.chunks[hi]
+        if kind == "str":
+            return self._string(lo)
+        pos = base + lo * rest[0]
+        if kind == "mat4":
+            return ("mat4", struct.unpack_from("<16f", self.data, pos))
+        if kind == "fp32":
+            return struct.unpack_from("<f", self.data, pos)[0]
+        return None
+
+    def obj(self, off: int, depth: int = 0) -> Any:
+        """The dict (`!idi`) or list (`!ili`) at `off`, or None for any other tag."""
+        tag = self.data[off:off + 4]
+        if depth > 12:
+            return None
+        count = struct.unpack_from("<I", self.data, off + 4)[0] & 0xFFFFFF
+        if tag == b"!idi":
+            return {self._string(k): self._value(v, depth)
+                    for k, v, _ in (struct.unpack_from("<III", self.data, off + 8 + 12 * i) for i in range(count))}
+        if tag == b"!ili":
+            return [self._value(struct.unpack_from("<I", self.data, off + 8 + 4 * i)[0], depth) for i in range(count)]
+        return None
+
+
+def _walk(node: Any) -> Iterator[Any]:
+    """Every value nested in dicts and lists, depth first."""
+    yield node
+    if isinstance(node, dict):
+        node = list(node.values())
+    if isinstance(node, list):
+        for child in node:
+            yield from _walk(child)
+
+
+_CONTEXT = re.compile(r"context=([^&]+)")
+_SPONSOR_DIST = re.compile(r"sp_(\d{2,3})_")
+_NAME_DIST = re.compile(r"(?:pole|_)(\d{2,3})(?:[lr]?_|$)")
+BOARD_DISTANCES = (50, 100, 150, 200, 250, 300)
+
+
+def board_objects(layer: bytes) -> List[Dict[str, Any]]:
+    """Brake board objects in a .layer blob: name, labelled distance (None if unresolved), world x and z."""
+    if b"brake" not in layer.lower():
+        return []
+    pkg = PkgReader(layer)
+    out = []
+    for inst in (pkg.obj(pkg.root) or {}).get("instances") or []:
+        name = inst.get("name") if isinstance(inst, dict) else None
+        if not isinstance(name, str) or "brake" not in name.lower():
+            continue
+        mat = next((v["transform"][1] for v in _walk(inst)
+                    if isinstance(v, dict) and isinstance(v.get("transform"), tuple)), None)
+        if mat is None:
+            continue
+        short = name.split("$")[-1]
+        refs = [s for s in _walk(inst) if isinstance(s, str) and ".emb" in s]
+        dist = next((int(m.group(1)) for r in refs for c in _CONTEXT.findall(r)
+                     if (m := _SPONSOR_DIST.match(c))), None)
+        if dist is None and "sponsor" not in short and (m := _NAME_DIST.search(short)):
+            dist = int(m.group(1))
+        out.append({"name": short, "dist": dist, "x": mat[12], "z": mat[14]})
+    return out
+
+
+def project_to_track(x: float, z: float, knots: np.ndarray, track_length: float) -> Tuple[float, float]:
+    """(lap distance, signed lateral offset in metres) of a world point against the maintrack knots."""
+    closed = np.vstack([knots, knots[:1]])
+    arc = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(closed, axis=0), axis=1))])
+    start, vec = closed[:-1], np.diff(closed, axis=0)
+    p = np.array([x, z])
+    t = np.clip(((p - start) * vec).sum(1) / (vec * vec).sum(1), 0, 1)
+    dist = ((start + t[:, None] * vec - p) ** 2).sum(1)
+    i = int(np.argmin(dist))
+    side = np.sign(vec[i, 0] * (z - start[i, 1]) - vec[i, 1] * (x - start[i, 0]))
+    return float((arc[i] + t[i] * np.linalg.norm(vec[i])) / arc[-1] * track_length), float(np.sqrt(dist[i]) * side)
+
+
+def group_boards(objects: List[Dict[str, Any]], knots: np.ndarray, track_length: float) -> List[Dict[str, Any]]:
+    """Brake boards as schema entries, sorted by lap distance. Left and right boards at one spot merge to `both`."""
+    seen, points = set(), []
+    for obj in objects:
+        key = (round(obj["x"]), round(obj["z"]))
+        if obj["dist"] not in BOARD_DISTANCES or key in seen:
+            continue
+        seen.add(key)
+        at, lateral = project_to_track(obj["x"], obj["z"], knots, track_length)
+        if abs(lateral) < 40:
+            points.append((obj["dist"], at, "left" if lateral < 0 else "right"))
+    groups: List[Dict[str, Any]] = []
+    for dist, at, side in sorted(points):
+        for g in groups:
+            if g["distance_m"] == dist and abs(g["at"][0] - at) < 12:
+                g["at"].append(at)
+                g["sides"].add(side)
+                break
+        else:
+            groups.append({"distance_m": dist, "at": [at], "sides": {side}})
+    return [{"distance_m": g["distance_m"], "at_m": round(float(np.mean(g["at"])), 1),
+             "side": "both" if len(g["sides"]) == 2 else next(iter(g["sides"]))}
+            for g in sorted(groups, key=lambda g: g["at"][0])]
+
+
+def layout_boards(wep_dir: Path, folder: str, knots: np.ndarray, track_length: float) -> List[Dict[str, Any]]:
+    """Brake boards for one layout from its common and f1 archives.
+
+    The other eras (classic, f1_26, f2, myteam, story) give the same boards on all 28 layouts.
+    """
+    objects: List[Dict[str, Any]] = []
+    for archive in ("common", "f1"):
+        for _, layer in iter_erp_resources(wep_dir / f"{folder}_{archive}.erp", ".layer"):
+            objects += board_objects(layer)
+    return group_boards(objects, knots, track_length)
+
+
+def attach_boards(segments: List[Dict[str, Any]], boards: List[Dict[str, Any]], track_length: float) -> List[str]:
+    """Set `brake_boards` on the corner each board warns about, replacing any there. Returns notes for odd boards.
+
+    A board belongs to the first corner or sub-corner that starts within 150 m behind it and ends after it.
+    Complex corners must already hold their `corners`.
+    """
+    targets = [c for s in segments for c in (s.get("corners") or [s] if s["type"] != "straight" else [])]
+    for t in targets:
+        t.pop("brake_boards", None)
+    targets.sort(key=lambda t: t["start_m"])
+    notes = []
+    for b in boards:
+        target = next((t for t in targets if t["start_m"] >= b["at_m"] - 150 and t["end_m"] > b["at_m"]), None)
+        target = target or (targets[0] if targets else None)
+        if target is None:
+            continue
+        gap = (target["start_m"] - b["at_m"]) % track_length
+        if 450 < gap < track_length - 200:
+            notes.append(f"{b['distance_m']} m board at {b['at_m']} m is {gap:.0f} m before its corner")
+        target.setdefault("brake_boards", []).append(b)
+    return notes
 
 
 def game_corners(taprogram: BxmlNode, track_length: float) -> Dict[int, List[float]]:
