@@ -13,7 +13,7 @@ interface TrackProgressBarProps {
 }
 
 // Every named section is the same navy pill; unnamed gaps stay empty.
-const PILL = "bg-[#16233f] hover:bg-[#1f3159]";
+const PILL = "bg-tone-800 hover:bg-tone-700";
 
 type BarSegment =
   | { kind: "section"; section: TrackSection }
@@ -153,12 +153,12 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
   return (
     <div className="flex items-center border-b border-tone-800/70 bg-chart-surface py-1.5">
       {/* Same width as the lane headers, so the strip lines up with the plots. */}
-      <div className="flex w-[168px] shrink-0 items-center gap-1 px-2 text-xs text-slate-300">
+      <div className="flex w-[168px] shrink-0 items-center gap-1 px-2 text-xs text-tone-300">
         <button
           type="button"
           onClick={() => step(-1)}
           title="Previous section"
-          className="rounded px-1.5 py-0.5 hover:bg-slate-700"
+          className="rounded px-1.5 py-0.5 hover:bg-tone-700"
         >
           ‹
         </button>
@@ -166,7 +166,7 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
           type="button"
           onClick={clear}
           title="Show the whole lap"
-          className={`rounded px-2 py-0.5 hover:bg-slate-700 ${activeSection === null ? "bg-slate-700 text-slate-100" : ""}`}
+          className={`rounded px-2 py-0.5 hover:bg-tone-700 ${activeSection === null ? "bg-tone-700 text-tone-100" : ""}`}
         >
           Full lap
         </button>
@@ -174,7 +174,7 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
           type="button"
           onClick={() => step(1)}
           title="Next section"
-          className="rounded px-1.5 py-0.5 hover:bg-slate-700"
+          className="rounded px-1.5 py-0.5 hover:bg-tone-700"
         >
           ›
         </button>

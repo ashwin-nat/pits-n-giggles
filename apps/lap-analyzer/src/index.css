@@ -39,6 +39,7 @@
   --color-slot-d: #f472b6;
 
   /* Chart and map surfaces, as mocked. */
-  --color-chart-surface: #0a0d12;
-  --color-chart-panel: #0d1117;
+  --color-card-surface: color-mix(in oklab, var(--color-canvas) 30%, var(--color-tone-900) 70%);
+  --color-chart-surface: var(--color-card-surface);
+  --color-chart-panel: color-mix(in oklab, var(--color-canvas) 15%, var(--color-tone-900) 85%);
 }

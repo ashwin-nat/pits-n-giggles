@@ -113,7 +113,7 @@ export function ChartLaneList({ crosshairPosition, onCrosshairMove }: ChartLaneL
           just changed and the previous chart is still showing. */}
       {isFetching && (
         <div className="sticky top-0 z-10 flex justify-center bg-gradient-to-b from-canvas to-transparent py-2">
-          <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300 shadow">Loading…</span>
+          <span className="rounded-full bg-tone-800 px-3 py-1 text-xs text-tone-300 shadow">Loading…</span>
         </div>
       )}
       {failedSlots.length > 0 && (

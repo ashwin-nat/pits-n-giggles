@@ -182,9 +182,9 @@ export function MapPanel({ crosshairPosition }: { crosshairPosition: number | nu
         </button>
       </div>
       {geometry === undefined ? (
-        <p className="p-6 text-center text-xs text-slate-500">Loading map…</p>
+        <p className="p-6 text-center text-xs text-tone-500">Loading map…</p>
       ) : geometry === null ? (
-        <p className="p-6 text-center text-xs text-slate-500">Track map not available for this track</p>
+        <p className="p-6 text-center text-xs text-tone-500">Track map not available for this track</p>
       ) : (
         <MapSvg
           geometry={geometry}
