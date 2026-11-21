@@ -15,10 +15,12 @@
     "dev:manual-test": "tsx src/dev/manual-test.ts",
     "sync-segments": "tsx scripts/sync-segments.ts",
     "test:sync-segments": "tsx --test scripts/sync-segments.test.ts",
-    "test:chart-math": "tsx --test src/lib/interpolation.test.ts src/lib/rateOfChange.test.ts",
+    "test:chart-math": "tsx --test src/lib/interpolation.test.ts src/lib/rateOfChange.test.ts src/lib/lapSeries.test.ts src/lib/sectionStrip.test.ts src/lib/mapGeometry.test.ts src/lib/sectionTable.test.ts src/lib/lapFormat.test.ts src/lib/sessionFilters.test.ts src/lib/sensorTree.test.ts src/store/telemetryStore.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@fontsource-variable/geist": "5.2.8",
+    "@fontsource/ia-writer-quattro": "^5.3.0",
     "@tanstack/react-query": "5.102.8",
     "fflate": "0.8.3",
     "npyjs": "1.2.0",
