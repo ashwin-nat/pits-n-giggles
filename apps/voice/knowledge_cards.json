@@ -1,0 +1,79 @@
+[
+  {
+    "id": "compound-tradeoff",
+    "topics": ["tyres"],
+    "text": "General principle, not live: harder compounds trade peak performance for durability. This does not predict your remaining tyre life or a puncture threshold.",
+    "source": "https://www.pirelli.com/tyres/en-ww/motorsport/f1/tyres",
+    "scope": "general",
+    "applicability": "Pirelli 2026 F1 compound principles",
+    "game_seasons": [],
+    "reviewed_on": "2026-10-16",
+    "limitations": "Not a calibrated game model; no wear-to-failure rule."
+  },
+  {
+    "id": "wet-crossover",
+    "topics": ["weather", "tyres", "pit"],
+    "text": "General principle, not live: intermediates suit wet tracks without standing water and drying surfaces; full wets suit heavy rain. I cannot give an exact crossover lap.",
+    "source": "https://www.pirelli.com/tyres/en-ww/motorsport/f1/tyres",
+    "scope": "general",
+    "applicability": "Pirelli 2026 F1 wet tyre guidance",
+    "game_seasons": [],
+    "reviewed_on": "2026-10-16",
+    "limitations": "Not a calibrated game model or current wetness report."
+  },
+  {
+    "id": "forecast-not-wetness",
+    "topics": ["weather"],
+    "text": "General principle, not live: wet tyre guidance concerns track conditions, not a rain probability. A forecast alone is not enough for me to call the crossover.",
+    "source": "https://www.pirelli.com/tyres/en-ww/motorsport/f1/tyres",
+    "scope": "general",
+    "applicability": "Pirelli 2026 wet guidance; conservative inference",
+    "game_seasons": [],
+    "reviewed_on": "2026-10-16",
+    "limitations": "No game wetness model; no exact lap prediction."
+  },
+  {
+    "id": "wear-not-damage",
+    "topics": ["tyres"],
+    "text": "Game field guidance, not live: tyre wear and tyre damage are separate percentages. Wear alone does not establish a guaranteed puncture point.",
+    "source": "https://forums.ea.com/t5/s/tghpe58374/attachments/tghpe58374/f1-games-game-info-hub-en/61/5/F1%2025%20Telemetry%20Output%20Structures.txt",
+    "scope": "game",
+    "applicability": "F1 25 CarDamageData",
+    "game_seasons": [2025],
+    "reviewed_on": "2026-10-16",
+    "limitations": "Field semantics only; no failure model."
+  },
+  {
+    "id": "fuel-estimate",
+    "topics": ["fuel"],
+    "text": "Game field guidance, not live: fuel remaining laps is the MFD value. I cannot promise a finish or quantify fuel savings from that value alone.",
+    "source": "https://forums.ea.com/t5/s/tghpe58374/attachments/tghpe58374/f1-games-game-info-hub-en/61/5/F1%2025%20Telemetry%20Output%20Structures.txt",
+    "scope": "game",
+    "applicability": "F1 25 CarStatusData",
+    "game_seasons": [2025],
+    "reviewed_on": "2026-10-16",
+    "limitations": "No burn-rate or lift-and-coast calibration."
+  },
+  {
+    "id": "gap-reference",
+    "topics": ["gaps"],
+    "text": "Game field guidance, not live: delta to the car in front and delta to the leader have different references. Confirm the reference before judging a gap.",
+    "source": "https://forums.ea.com/t5/s/tghpe58374/attachments/tghpe58374/f1-games-game-info-hub-en/61/5/F1%2025%20Telemetry%20Output%20Structures.txt",
+    "scope": "game",
+    "applicability": "F1 25 LapData",
+    "game_seasons": [2025],
+    "reviewed_on": "2026-10-16",
+    "limitations": "No closing-rate prediction from one sample."
+  },
+  {
+    "id": "pit-rejoin",
+    "topics": ["pit"],
+    "text": "Game field guidance, not live: pit-stop rejoin position is a player prediction. It is not a guarantee of clear traffic or a successful undercut or overcut.",
+    "source": "https://forums.ea.com/t5/s/tghpe58374/attachments/tghpe58374/f1-games-game-info-hub-en/61/5/F1%2025%20Telemetry%20Output%20Structures.txt",
+    "scope": "game",
+    "applicability": "F1 25 PacketSessionData",
+    "game_seasons": [2025],
+    "reviewed_on": "2026-10-16",
+    "limitations": "No pit-loss or rival-pace model."
+  }
+]

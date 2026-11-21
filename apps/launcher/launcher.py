@@ -35,6 +35,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from apps.launcher.gui import PngLauncherWindow
+from apps.voice.voice_controller import VoiceController
 from lib.file_path import resolve_fixed_file, resolve_user_file
 from lib.ipc import IpcServerSync
 from lib.version import get_version
@@ -85,6 +86,13 @@ def parse_args() -> argparse.Namespace:
         "--replay-server",
         action="store_true",
         help="Enable replay mode"
+    )
+
+    # Voice control flag for continuous speech input
+    parser.add_argument(
+        "--voice",
+        action="store_true",
+        help="Enable voice control (continuous speech recognition)"
     )
 
     # If integration test IPC port is specified, start an IPC server
@@ -256,6 +264,12 @@ def entry_point() -> None:
         no_heartbeat_stop=args.no_heartbeat_stop
     )
 
+    # Initialize voice controller if requested
+    voice_controller = None
+    if getattr(args, "voice", False):
+        voice_controller = VoiceController()
+        voice_controller.start()
+
     ipc = None
     if args.ipc_port is not None:
         ipc = IpcServerSync(
@@ -288,5 +302,7 @@ def entry_point() -> None:
     try:
         app.run()
     finally:
+        if voice_controller:
+            voice_controller.stop()
         if ipc:
             ipc.close()
