@@ -404,6 +404,8 @@ def attach_boards(segments: Tuple[SegmentInfo, ...], boards: List[BrakeBoardInfo
     """
     targets = sorted(((seg.start_m, seg.end_m, i) for i, seg in enumerate(segments)
                       if isinstance(seg, (CornerSegmentInfo, ComplexCornerSegmentInfo))), key=lambda t: t[0])
+    if not targets:
+        return segments, ([f"{len(boards)} boards not attached: the file has no corners"] if boards else [])
     assigned: Dict[int, List[BrakeBoardInfo]] = {}
     notes = []
     for board in boards:
@@ -537,6 +539,10 @@ def main() -> None:
     args = ap.parse_args()
 
     specs = args.layout or game_layouts(args.game_dir)
+    circuits = [spec.partition("=")[2] for spec in specs]
+    repeated = sorted({c for c in circuits if circuits.count(c) > 1})
+    if repeated:
+        ap.error(f"circuit {', '.join(repeated)} is given for more than one folder, so one would overwrite the other")
     if args.update:
         files = segment_files()
         for spec in specs:

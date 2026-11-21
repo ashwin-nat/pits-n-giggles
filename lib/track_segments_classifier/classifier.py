@@ -226,15 +226,18 @@ class TrackSegmentsClassifier(BaseModel):
     def to_file_dict(self) -> Dict[str, Any]:
         """The track as it is written to a JSON file, in the files' key order.
 
-        Loading a shipped file and dumping it gives the same data. A v1 track gets no v2 keys; a v2 track
-        always gets its three zone lists, even when empty (Monaco has no active aero).
+        Loading a shipped file and dumping it gives the same data. A track with no v2 data gets no v2 keys. A
+        track carrying any v2 data, or marked v2, is written as v2 with all three zone lists, even when empty
+        (Monaco has no active aero), so v2 data supplied without a `schema_version` is not dropped.
         """
+        v2 = (self.schema_version == 2 or self.speed_trap_m is not None
+              or bool(self.drs_zones or self.overtake_zones or self.active_aero_zones))
         out: Dict[str, Any] = {}
-        if self.schema_version == 2:
+        if v2:
             out["schema_version"] = 2
         out |= {"circuit_name": self.circuit_name, "circuit_number": self.circuit_number,
                 "track_length": _num(self.track_length)}
-        if self.schema_version == 2:
+        if v2:
             if self.speed_trap_m is not None:
                 out["speed_trap_m"] = _num(self.speed_trap_m)
             out["drs_zones"] = [z.to_file_dict() for z in self.drs_zones]

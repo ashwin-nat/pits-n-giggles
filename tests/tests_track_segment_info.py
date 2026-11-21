@@ -1557,3 +1557,21 @@ def test_v2_file_dict_keeps_empty_zone_lists():
     track.update(drs_zones=[], overtake_zones=[], active_aero_zones=[])
     dumped = load(track, use_cache=False).to_file_dict()
     assert dumped["drs_zones"] == dumped["overtake_zones"] == dumped["active_aero_zones"] == []
+
+
+@allure.story("Schema v2: file form")
+@allure.title("{field} supplied without schema_version is not dropped")
+@pytest.mark.parametrize("field", ["speed_trap_m", "drs_zones", "overtake_zones", "active_aero_zones"])
+def test_v2_field_without_schema_version_is_written(field):
+    """The v2 Monza track with schema_version removed, and every v2 field but one removed.
+
+    Expected: the dump marks the track as v2 and keeps the field, with all three zone lists."""
+    track = _v2()
+    track.pop("schema_version")
+    for other in _V2_KEYS[1:]:
+        if other != field:
+            track.pop(other)
+    dumped = load(track, use_cache=False).to_file_dict()
+    assert dumped["schema_version"] == 2
+    assert dumped[field] == _v2()[field]
+    assert {"drs_zones", "overtake_zones", "active_aero_zones"} <= set(dumped)

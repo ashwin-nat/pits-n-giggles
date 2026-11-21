@@ -653,3 +653,29 @@ def test_attach_boards_straight_and_long_corner():
     result, _ = attach_boards(segments, [_label_board(267.5, 50), _label_board(300, 100), _label_board(450, 100)], 2000)
     assert [b.at_m for b in result[0].brake_boards] == [267.5, 300]
     assert [b.at_m for b in result[1].brake_boards] == [450]
+
+
+@allure.story("Updating segment files")
+@allure.title("Two folders for one circuit are refused before anything is written")
+@pytest.mark.parametrize("flag", [["--update"], []])
+def test_main_rejects_repeated_circuit(tmp_path, monkeypatch, flag):
+    """--layout with two folders mapped to circuit 11, for --update and for geometry.
+
+    Expected: the command exits with an error and no file is created or changed."""
+    monkeypatch.setattr(extract_track_data, "OUT_DIR", tmp_path)
+    monkeypatch.setattr("sys.argv", ["x", "--game-dir", str(tmp_path), "--layout", "monza=11", "spa=11", *flag])
+    with pytest.raises(SystemExit) as exc:
+        extract_track_data.main()
+    assert exc.value.code == 2
+    assert list(tmp_path.iterdir()) == []
+
+
+@allure.story("Brake boards")
+@allure.title("A file with no corners reports its boards instead of failing")
+def test_attach_boards_without_corners():
+    """A track of straights only, and one board.
+
+    Expected: segments unchanged, and a note saying one board was not attached; no boards gives no note."""
+    segments = (StraightSegmentInfo(name="Only", start_m=0, end_m=2000),)
+    assert attach_boards(segments, [_board(500)], 2000) == (segments, ["1 boards not attached: the file has no corners"])
+    assert attach_boards(segments, [], 2000) == (segments, [])
