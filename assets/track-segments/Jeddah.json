@@ -1,7 +1,80 @@
 {
+  "schema_version": 2,
   "circuit_name": "Jeddah",
   "circuit_number": 29,
   "track_length": 6175,
+  "speed_trap_m": 5345.6,
+  "drs_zones": [
+    {
+      "id": 1,
+      "detection_m": 3257.1,
+      "activation": [
+        {
+          "start_m": 3689.1,
+          "end_m": 4286.7
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "detection_m": 4299.1,
+      "activation": [
+        {
+          "start_m": 4721,
+          "end_m": 5532.7
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "detection_m": 5674.8,
+      "activation": [
+        {
+          "start_m": 5881.7,
+          "end_m": 494.1
+        }
+      ]
+    }
+  ],
+  "overtake_zones": [
+    {
+      "id": 1,
+      "detection_m": 5606.8,
+      "activation_m": 5684.6
+    }
+  ],
+  "active_aero_zones": [
+    {
+      "mode": "full",
+      "start_m": 1852,
+      "end_m": 2364.6
+    },
+    {
+      "mode": "full",
+      "start_m": 3350.2,
+      "end_m": 4256.8
+    },
+    {
+      "mode": "full",
+      "start_m": 4721.2,
+      "end_m": 5507.4
+    },
+    {
+      "mode": "full",
+      "start_m": 5711.8,
+      "end_m": 472.5
+    },
+    {
+      "mode": "partial",
+      "start_m": 1902,
+      "end_m": 2364.6
+    },
+    {
+      "mode": "partial",
+      "start_m": 5791.8,
+      "end_m": 472.5
+    }
+  ],
   "segments": [
     {
       "type": "straight",
@@ -17,6 +90,45 @@
         1,
         2,
         3
+      ],
+      "corners": [
+        {
+          "corner_number": 1,
+          "start_m": 365,
+          "end_m": 541,
+          "brake_boards": [
+            {
+              "distance_m": 200,
+              "at_m": 295.4,
+              "side": "both"
+            },
+            {
+              "distance_m": 150,
+              "at_m": 347.4,
+              "side": "both"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 399.4,
+              "side": "both"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 447.4,
+              "side": "both"
+            }
+          ]
+        },
+        {
+          "corner_number": 2,
+          "start_m": 541,
+          "end_m": 663
+        },
+        {
+          "corner_number": 3,
+          "start_m": 663,
+          "end_m": 760
+        }
       ]
     },
     {
@@ -24,7 +136,24 @@
       "start_m": 900,
       "end_m": 1072,
       "name": "",
-      "corner_number": 4
+      "corner_number": 4,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 866,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 918,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 970,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "complex_corner",
@@ -38,6 +167,38 @@
         8,
         9,
         10
+      ],
+      "corners": [
+        {
+          "corner_number": 5,
+          "start_m": 1072,
+          "end_m": 1274
+        },
+        {
+          "corner_number": 6,
+          "start_m": 1274,
+          "end_m": 1389
+        },
+        {
+          "corner_number": 7,
+          "start_m": 1389,
+          "end_m": 1453
+        },
+        {
+          "corner_number": 8,
+          "start_m": 1453,
+          "end_m": 1608
+        },
+        {
+          "corner_number": 9,
+          "start_m": 1608,
+          "end_m": 1715
+        },
+        {
+          "corner_number": 10,
+          "start_m": 1715,
+          "end_m": 1840
+        }
       ]
     },
     {
@@ -59,7 +220,29 @@
       "start_m": 2300,
       "end_m": 2630,
       "name": "Hairpin",
-      "corner_number": 13
+      "corner_number": 13,
+      "brake_boards": [
+        {
+          "distance_m": 200,
+          "at_m": 2168.2,
+          "side": "both"
+        },
+        {
+          "distance_m": 150,
+          "at_m": 2220.2,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 2272.2,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 2320.3,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "corner",
@@ -73,7 +256,19 @@
       "start_m": 2960,
       "end_m": 3050,
       "name": "",
-      "corner_number": 15
+      "corner_number": 15,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 2946.1,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 2994.2,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "complex_corner",
@@ -82,6 +277,25 @@
       "corner_numbers": [
         16,
         17
+      ],
+      "corners": [
+        {
+          "corner_number": 16,
+          "start_m": 3050,
+          "end_m": 3178,
+          "brake_boards": [
+            {
+              "distance_m": 50,
+              "at_m": 3056.1,
+              "side": "both"
+            }
+          ]
+        },
+        {
+          "corner_number": 17,
+          "start_m": 3178,
+          "end_m": 3280
+        }
       ]
     },
     {
@@ -120,6 +334,40 @@
       "corner_numbers": [
         22,
         23
+      ],
+      "corners": [
+        {
+          "corner_number": 22,
+          "start_m": 4190,
+          "end_m": 4364,
+          "brake_boards": [
+            {
+              "distance_m": 200,
+              "at_m": 4100.5,
+              "side": "both"
+            },
+            {
+              "distance_m": 150,
+              "at_m": 4156.5,
+              "side": "both"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 4210.5,
+              "side": "both"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 4254.5,
+              "side": "both"
+            }
+          ]
+        },
+        {
+          "corner_number": 23,
+          "start_m": 4364,
+          "end_m": 4480
+        }
       ]
     },
     {
@@ -148,7 +396,29 @@
       "start_m": 5450,
       "end_m": 5675,
       "name": "",
-      "corner_number": 27
+      "corner_number": 27,
+      "brake_boards": [
+        {
+          "distance_m": 200,
+          "at_m": 5352.9,
+          "side": "both"
+        },
+        {
+          "distance_m": 150,
+          "at_m": 5401,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 5452.4,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 5500.4,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "straight",

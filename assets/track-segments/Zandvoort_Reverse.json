@@ -1,7 +1,60 @@
 {
+  "schema_version": 2,
   "circuit_name": "Zandvoort_Reverse",
   "circuit_number": 41,
   "track_length": 4258,
+  "speed_trap_m": 265.9,
+  "drs_zones": [
+    {
+      "id": 1,
+      "detection_m": 1006.3,
+      "activation": [
+        {
+          "start_m": 1251,
+          "end_m": 1631.6
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "detection_m": 3656.4,
+      "activation": [
+        {
+          "start_m": 4073,
+          "end_m": 347.3
+        }
+      ]
+    }
+  ],
+  "overtake_zones": [
+    {
+      "id": 1,
+      "detection_m": 3768.2,
+      "activation_m": 3959.8
+    }
+  ],
+  "active_aero_zones": [
+    {
+      "mode": "full",
+      "start_m": 1200.5,
+      "end_m": 1599.5
+    },
+    {
+      "mode": "full",
+      "start_m": 4000.2,
+      "end_m": 265.1
+    },
+    {
+      "mode": "partial",
+      "start_m": 1258.8,
+      "end_m": 1599.5
+    },
+    {
+      "mode": "partial",
+      "start_m": 4052,
+      "end_m": 265.1
+    }
+  ],
   "segments": [
     {
       "type": "straight",
@@ -21,7 +74,24 @@
       "start_m": 658,
       "end_m": 878,
       "name": "Kumhobocht",
-      "corner_number": 2
+      "corner_number": 2,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 584,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 623.6,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 661.7,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "complex_corner",
@@ -31,6 +101,35 @@
       "corner_numbers": [
         3,
         4
+      ],
+      "corners": [
+        {
+          "corner_number": 3,
+          "start_m": 988,
+          "end_m": 1134,
+          "brake_boards": [
+            {
+              "distance_m": 150,
+              "at_m": 895.6,
+              "side": "left"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 942.7,
+              "side": "left"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 994.7,
+              "side": "left"
+            }
+          ]
+        },
+        {
+          "corner_number": 4,
+          "start_m": 1134,
+          "end_m": 1268
+        }
       ]
     },
     {
@@ -44,21 +143,72 @@
       "start_m": 1608,
       "end_m": 1858,
       "name": "Bocht 10",
-      "corner_number": 5
+      "corner_number": 5,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 1544,
+          "side": "left"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 1590.7,
+          "side": "left"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 1641.9,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 1908,
       "end_m": 2108,
       "name": "Bocht 9",
-      "corner_number": 6
+      "corner_number": 6,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 1840.3,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 1891.2,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 1936.4,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 2108,
       "end_m": 2338,
       "name": "Mastersbocht",
-      "corner_number": 7
+      "corner_number": 7,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 2080.3,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 2124.5,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 2174.8,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "corner",
@@ -86,14 +236,33 @@
       "start_m": 3118,
       "end_m": 3231,
       "name": "Hunserug",
-      "corner_number": 11
+      "corner_number": 11,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 3229.7,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 3298,
       "end_m": 3498,
       "name": "Hugenholtzbocht",
-      "corner_number": 12
+      "corner_number": 12,
+      "brake_boards": [
+        {
+          "distance_m": 100,
+          "at_m": 3282.1,
+          "side": "left"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 3329.4,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "corner",
@@ -107,7 +276,24 @@
       "start_m": 3778,
       "end_m": 4058,
       "name": "Tarzanbocht",
-      "corner_number": 14
+      "corner_number": 14,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 3668.3,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 3715.7,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 3767.9,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "straight",

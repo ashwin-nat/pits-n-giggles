@@ -1,7 +1,80 @@
 {
+  "schema_version": 2,
   "circuit_name": "Spa",
   "circuit_number": 10,
   "track_length": 7007,
+  "speed_trap_m": 1350.3,
+  "drs_zones": [
+    {
+      "id": 1,
+      "detection_m": 815.2,
+      "activation": [
+        {
+          "start_m": 1625.9,
+          "end_m": 2360.8
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "detection_m": 6583.9,
+      "activation": [
+        {
+          "start_m": 6876.5,
+          "end_m": 332.2
+        }
+      ]
+    }
+  ],
+  "overtake_zones": [
+    {
+      "id": 1,
+      "detection_m": 6747.8,
+      "activation_m": 0
+    }
+  ],
+  "active_aero_zones": [
+    {
+      "mode": "full",
+      "start_m": 13.7,
+      "end_m": 308.6
+    },
+    {
+      "mode": "full",
+      "start_m": 1357.4,
+      "end_m": 2375.8
+    },
+    {
+      "mode": "full",
+      "start_m": 3400.3,
+      "end_m": 3779.9
+    },
+    {
+      "mode": "full",
+      "start_m": 6316.8,
+      "end_m": 6696.4
+    },
+    {
+      "mode": "partial",
+      "start_m": 62,
+      "end_m": 308.6
+    },
+    {
+      "mode": "partial",
+      "start_m": 1654.3,
+      "end_m": 2375.8
+    },
+    {
+      "mode": "partial",
+      "start_m": 3448.5,
+      "end_m": 3779.9
+    },
+    {
+      "mode": "partial",
+      "start_m": 6346.3,
+      "end_m": 6696.4
+    }
+  ],
   "segments": [
     {
       "type": "straight",
@@ -14,7 +87,19 @@
       "start_m": 230,
       "end_m": 460,
       "name": "La Source",
-      "corner_number": 1
+      "corner_number": 1,
+      "brake_boards": [
+        {
+          "distance_m": 100,
+          "at_m": 281,
+          "side": "left"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 328.9,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "complex_corner",
@@ -25,6 +110,23 @@
         2,
         3,
         4
+      ],
+      "corners": [
+        {
+          "corner_number": 2,
+          "start_m": 980,
+          "end_m": 1107
+        },
+        {
+          "corner_number": 3,
+          "start_m": 1107,
+          "end_m": 1223
+        },
+        {
+          "corner_number": 4,
+          "start_m": 1223,
+          "end_m": 1360
+        }
       ]
     },
     {
@@ -41,6 +143,40 @@
       "corner_numbers": [
         5,
         6
+      ],
+      "corners": [
+        {
+          "corner_number": 5,
+          "start_m": 2290,
+          "end_m": 2473,
+          "brake_boards": [
+            {
+              "distance_m": 200,
+              "at_m": 2177.5,
+              "side": "left"
+            },
+            {
+              "distance_m": 150,
+              "at_m": 2238.1,
+              "side": "both"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 2295.9,
+              "side": "both"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 2352.7,
+              "side": "both"
+            }
+          ]
+        },
+        {
+          "corner_number": 6,
+          "start_m": 2473,
+          "end_m": 2575
+        }
       ]
     },
     {
@@ -55,7 +191,19 @@
       "start_m": 2900,
       "end_m": 3160,
       "name": "Bruxelles/Rivage",
-      "corner_number": 8
+      "corner_number": 8,
+      "brake_boards": [
+        {
+          "distance_m": 200,
+          "at_m": 2810.1,
+          "side": "left"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 2908.4,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "corner",
@@ -72,6 +220,40 @@
       "corner_numbers": [
         10,
         11
+      ],
+      "corners": [
+        {
+          "corner_number": 10,
+          "start_m": 3700,
+          "end_m": 4005,
+          "brake_boards": [
+            {
+              "distance_m": 200,
+              "at_m": 3597,
+              "side": "right"
+            },
+            {
+              "distance_m": 150,
+              "at_m": 3641.3,
+              "side": "both"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 3685.3,
+              "side": "both"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 3725.2,
+              "side": "both"
+            }
+          ]
+        },
+        {
+          "corner_number": 11,
+          "start_m": 4005,
+          "end_m": 4200
+        }
       ]
     },
     {
@@ -82,6 +264,35 @@
       "corner_numbers": [
         12,
         13
+      ],
+      "corners": [
+        {
+          "corner_number": 12,
+          "start_m": 4350,
+          "end_m": 4601,
+          "brake_boards": [
+            {
+              "distance_m": 150,
+              "at_m": 4288.3,
+              "side": "right"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 4346.5,
+              "side": "right"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 4404.5,
+              "side": "right"
+            }
+          ]
+        },
+        {
+          "corner_number": 13,
+          "start_m": 4601,
+          "end_m": 4790
+        }
       ]
     },
     {
@@ -89,7 +300,19 @@
       "start_m": 4850,
       "end_m": 5050,
       "name": "Campus",
-      "corner_number": 14
+      "corner_number": 14,
+      "brake_boards": [
+        {
+          "distance_m": 100,
+          "at_m": 4831.4,
+          "side": "left"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 4873.9,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "corner",
@@ -120,6 +343,35 @@
       "corner_numbers": [
         18,
         19
+      ],
+      "corners": [
+        {
+          "corner_number": 18,
+          "start_m": 6600,
+          "end_m": 6785,
+          "brake_boards": [
+            {
+              "distance_m": 150,
+              "at_m": 6599.7,
+              "side": "both"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 6646.3,
+              "side": "both"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 6698.8,
+              "side": "right"
+            }
+          ]
+        },
+        {
+          "corner_number": 19,
+          "start_m": 6785,
+          "end_m": 6877
+        }
       ]
     },
     {

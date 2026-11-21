@@ -1,7 +1,75 @@
 {
+  "schema_version": 2,
   "circuit_name": "Monza",
   "circuit_number": 11,
   "track_length": 5798,
+  "speed_trap_m": 716.3,
+  "drs_zones": [
+    {
+      "id": 1,
+      "detection_m": 2757.6,
+      "activation": [
+        {
+          "start_m": 3055.8,
+          "end_m": 3889.1
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "detection_m": 5502.6,
+      "activation": [
+        {
+          "start_m": 9.2,
+          "end_m": 881.3
+        }
+      ]
+    }
+  ],
+  "overtake_zones": [
+    {
+      "id": 1,
+      "detection_m": 5154.4,
+      "activation_m": 5253.6
+    }
+  ],
+  "active_aero_zones": [
+    {
+      "mode": "full",
+      "start_m": 1158.3,
+      "end_m": 2113.1
+    },
+    {
+      "mode": "full",
+      "start_m": 3055.8,
+      "end_m": 3915.8
+    },
+    {
+      "mode": "full",
+      "start_m": 4261.4,
+      "end_m": 5077.3
+    },
+    {
+      "mode": "full",
+      "start_m": 5529.7,
+      "end_m": 881.3
+    },
+    {
+      "mode": "partial",
+      "start_m": 3122,
+      "end_m": 3915.8
+    },
+    {
+      "mode": "partial",
+      "start_m": 4318.7,
+      "end_m": 5077.3
+    },
+    {
+      "mode": "partial",
+      "start_m": 5595.5,
+      "end_m": 881.3
+    }
+  ],
   "segments": [
     {
       "type": "straight",
@@ -17,6 +85,35 @@
       "corner_numbers": [
         1,
         2
+      ],
+      "corners": [
+        {
+          "corner_number": 1,
+          "start_m": 770,
+          "end_m": 952,
+          "brake_boards": [
+            {
+              "distance_m": 150,
+              "at_m": 776.3,
+              "side": "both"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 814.3,
+              "side": "both"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 851.5,
+              "side": "left"
+            }
+          ]
+        },
+        {
+          "corner_number": 2,
+          "start_m": 952,
+          "end_m": 1015
+        }
       ]
     },
     {
@@ -34,6 +131,30 @@
       "corner_numbers": [
         4,
         5
+      ],
+      "corners": [
+        {
+          "corner_number": 4,
+          "start_m": 1950,
+          "end_m": 2169,
+          "brake_boards": [
+            {
+              "distance_m": 100,
+              "at_m": 2036.2,
+              "side": "right"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 2073.2,
+              "side": "right"
+            }
+          ]
+        },
+        {
+          "corner_number": 5,
+          "start_m": 2169,
+          "end_m": 2250
+        }
       ]
     },
     {
@@ -41,14 +162,38 @@
       "start_m": 2400,
       "end_m": 2650,
       "name": "Curva di Lesmo 1",
-      "corner_number": 6
+      "corner_number": 6,
+      "brake_boards": [
+        {
+          "distance_m": 100,
+          "at_m": 2403.5,
+          "side": "left"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 2441.9,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 2755,
       "end_m": 2970,
       "name": "Curva di Lesmo 2",
-      "corner_number": 7
+      "corner_number": 7,
+      "brake_boards": [
+        {
+          "distance_m": 100,
+          "at_m": 2760.9,
+          "side": "left"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 2799.2,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "straight",
@@ -65,6 +210,45 @@
         8,
         9,
         10
+      ],
+      "corners": [
+        {
+          "corner_number": 8,
+          "start_m": 3790,
+          "end_m": 3994,
+          "brake_boards": [
+            {
+              "distance_m": 200,
+              "at_m": 3739.9,
+              "side": "right"
+            },
+            {
+              "distance_m": 150,
+              "at_m": 3800.9,
+              "side": "right"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 3845.6,
+              "side": "both"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 3887.2,
+              "side": "both"
+            }
+          ]
+        },
+        {
+          "corner_number": 9,
+          "start_m": 3994,
+          "end_m": 4088
+        },
+        {
+          "corner_number": 10,
+          "start_m": 4088,
+          "end_m": 4240
+        }
       ]
     },
     {
@@ -78,7 +262,34 @@
       "start_m": 5000,
       "end_m": 5540,
       "name": "Parabolica",
-      "corner_number": 11
+      "corner_number": 11,
+      "brake_boards": [
+        {
+          "distance_m": 300,
+          "at_m": 4819.3,
+          "side": "both"
+        },
+        {
+          "distance_m": 200,
+          "at_m": 4911.6,
+          "side": "both"
+        },
+        {
+          "distance_m": 150,
+          "at_m": 4975.1,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 5018.7,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 5069,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "straight",

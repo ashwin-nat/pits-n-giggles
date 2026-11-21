@@ -1,7 +1,50 @@
 {
+  "schema_version": 2,
   "circuit_name": "Suzuka",
   "circuit_number": 13,
   "track_length": 5809,
+  "speed_trap_m": 5130.5,
+  "drs_zones": [
+    {
+      "id": 1,
+      "detection_m": 5076.2,
+      "activation": [
+        {
+          "start_m": 5710.2,
+          "end_m": 625.4
+        }
+      ]
+    }
+  ],
+  "overtake_zones": [
+    {
+      "id": 1,
+      "detection_m": 5441.9,
+      "activation_m": 5564
+    }
+  ],
+  "active_aero_zones": [
+    {
+      "mode": "full",
+      "start_m": 4121.5,
+      "end_m": 4811.2
+    },
+    {
+      "mode": "full",
+      "start_m": 5710.2,
+      "end_m": 539.2
+    },
+    {
+      "mode": "partial",
+      "start_m": 4186.4,
+      "end_m": 4811.2
+    },
+    {
+      "mode": "partial",
+      "start_m": 5807.7,
+      "end_m": 539.2
+    }
+  ],
   "segments": [
     {
       "type": "straight",
@@ -16,6 +59,35 @@
       "corner_numbers": [
         1,
         2
+      ],
+      "corners": [
+        {
+          "corner_number": 1,
+          "start_m": 585,
+          "end_m": 732,
+          "brake_boards": [
+            {
+              "distance_m": 150,
+              "at_m": 516.2,
+              "side": "left"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 561.3,
+              "side": "left"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 614.7,
+              "side": "left"
+            }
+          ]
+        },
+        {
+          "corner_number": 2,
+          "start_m": 732,
+          "end_m": 975
+        }
       ]
     },
     {
@@ -28,6 +100,28 @@
         4,
         5,
         6
+      ],
+      "corners": [
+        {
+          "corner_number": 3,
+          "start_m": 1030,
+          "end_m": 1177
+        },
+        {
+          "corner_number": 4,
+          "start_m": 1177,
+          "end_m": 1342
+        },
+        {
+          "corner_number": 5,
+          "start_m": 1342,
+          "end_m": 1486
+        },
+        {
+          "corner_number": 6,
+          "start_m": 1486,
+          "end_m": 1700
+        }
       ]
     },
     {
@@ -42,7 +136,19 @@
       "start_m": 2190,
       "end_m": 2385,
       "name": "Degner Curve 1",
-      "corner_number": 8
+      "corner_number": 8,
+      "brake_boards": [
+        {
+          "distance_m": 100,
+          "at_m": 2193.8,
+          "side": "left"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 2246.8,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "corner",
@@ -80,6 +186,30 @@
       "corner_numbers": [
         13,
         14
+      ],
+      "corners": [
+        {
+          "corner_number": 13,
+          "start_m": 3675,
+          "end_m": 3901,
+          "brake_boards": [
+            {
+              "distance_m": 100,
+              "at_m": 3673.9,
+              "side": "right"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 3739.2,
+              "side": "right"
+            }
+          ]
+        },
+        {
+          "corner_number": 14,
+          "start_m": 3901,
+          "end_m": 4100
+        }
       ]
     },
     {
@@ -93,7 +223,29 @@
       "start_m": 4850,
       "end_m": 5180,
       "name": "130R",
-      "corner_number": 15
+      "corner_number": 15,
+      "brake_boards": [
+        {
+          "distance_m": 200,
+          "at_m": 4762.4,
+          "side": "right"
+        },
+        {
+          "distance_m": 150,
+          "at_m": 4806.4,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 4854,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 4905.5,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "straight",
@@ -109,6 +261,30 @@
       "corner_numbers": [
         16,
         17
+      ],
+      "corners": [
+        {
+          "corner_number": 16,
+          "start_m": 5300,
+          "end_m": 5431,
+          "brake_boards": [
+            {
+              "distance_m": 150,
+              "at_m": 5250.7,
+              "side": "left"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 5300.6,
+              "side": "left"
+            }
+          ]
+        },
+        {
+          "corner_number": 17,
+          "start_m": 5431,
+          "end_m": 5500
+        }
       ]
     },
     {

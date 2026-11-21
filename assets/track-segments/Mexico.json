@@ -1,7 +1,74 @@
 {
+  "schema_version": 2,
   "circuit_name": "Mexico",
   "circuit_number": 19,
   "track_length": 4525,
+  "speed_trap_m": 1004.1,
+  "drs_zones": [
+    {
+      "id": 1,
+      "detection_m": 4145.6,
+      "activation": [
+        {
+          "start_m": 185.6,
+          "end_m": 1225.3
+        },
+        {
+          "start_m": 1573.6,
+          "end_m": 2082.6
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "detection_m": 3026.5,
+      "activation": [
+        {
+          "start_m": 3354.2,
+          "end_m": 3796.3
+        }
+      ]
+    }
+  ],
+  "overtake_zones": [
+    {
+      "id": 1,
+      "detection_m": 4069.8,
+      "activation_m": 4258.9
+    }
+  ],
+  "active_aero_zones": [
+    {
+      "mode": "full",
+      "start_m": 1573.6,
+      "end_m": 2082.6
+    },
+    {
+      "mode": "full",
+      "start_m": 3311.9,
+      "end_m": 3796.3
+    },
+    {
+      "mode": "full",
+      "start_m": 4501.8,
+      "end_m": 1180.1
+    },
+    {
+      "mode": "partial",
+      "start_m": 57.4,
+      "end_m": 1180.1
+    },
+    {
+      "mode": "partial",
+      "start_m": 1653.8,
+      "end_m": 2082.6
+    },
+    {
+      "mode": "partial",
+      "start_m": 3391.2,
+      "end_m": 3796.3
+    }
+  ],
   "segments": [
     {
       "type": "straight",
@@ -18,6 +85,45 @@
         1,
         2,
         3
+      ],
+      "corners": [
+        {
+          "corner_number": 1,
+          "start_m": 1160,
+          "end_m": 1334,
+          "brake_boards": [
+            {
+              "distance_m": 200,
+              "at_m": 1061.1,
+              "side": "both"
+            },
+            {
+              "distance_m": 150,
+              "at_m": 1121.3,
+              "side": "both"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 1180.1,
+              "side": "both"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 1231.6,
+              "side": "both"
+            }
+          ]
+        },
+        {
+          "corner_number": 2,
+          "start_m": 1334,
+          "end_m": 1407
+        },
+        {
+          "corner_number": 3,
+          "start_m": 1407,
+          "end_m": 1512
+        }
       ]
     },
     {
@@ -34,6 +140,40 @@
       "corner_numbers": [
         4,
         5
+      ],
+      "corners": [
+        {
+          "corner_number": 4,
+          "start_m": 2060,
+          "end_m": 2195,
+          "brake_boards": [
+            {
+              "distance_m": 200,
+              "at_m": 1955.5,
+              "side": "both"
+            },
+            {
+              "distance_m": 150,
+              "at_m": 2008.4,
+              "side": "both"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 2061.6,
+              "side": "both"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 2114.5,
+              "side": "both"
+            }
+          ]
+        },
+        {
+          "corner_number": 5,
+          "start_m": 2195,
+          "end_m": 2300
+        }
       ]
     },
     {
@@ -54,6 +194,55 @@
         9,
         10,
         11
+      ],
+      "corners": [
+        {
+          "corner_number": 7,
+          "start_m": 2660,
+          "end_m": 2815,
+          "brake_boards": [
+            {
+              "distance_m": 200,
+              "at_m": 2555.9,
+              "side": "right"
+            },
+            {
+              "distance_m": 150,
+              "at_m": 2604,
+              "side": "right"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 2656.6,
+              "side": "right"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 2708.8,
+              "side": "right"
+            }
+          ]
+        },
+        {
+          "corner_number": 8,
+          "start_m": 2815,
+          "end_m": 2917
+        },
+        {
+          "corner_number": 9,
+          "start_m": 2917,
+          "end_m": 3025
+        },
+        {
+          "corner_number": 10,
+          "start_m": 3025,
+          "end_m": 3210
+        },
+        {
+          "corner_number": 11,
+          "start_m": 3210,
+          "end_m": 3370
+        }
       ]
     },
     {
@@ -67,7 +256,29 @@
       "start_m": 3740,
       "end_m": 3910,
       "name": "",
-      "corner_number": 12
+      "corner_number": 12,
+      "brake_boards": [
+        {
+          "distance_m": 200,
+          "at_m": 3649.3,
+          "side": "both"
+        },
+        {
+          "distance_m": 150,
+          "at_m": 3698.2,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 3749.3,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 3798.4,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "complex_corner",
@@ -78,6 +289,23 @@
         13,
         14,
         15
+      ],
+      "corners": [
+        {
+          "corner_number": 13,
+          "start_m": 3910,
+          "end_m": 4077
+        },
+        {
+          "corner_number": 14,
+          "start_m": 4077,
+          "end_m": 4128
+        },
+        {
+          "corner_number": 15,
+          "start_m": 4128,
+          "end_m": 4175
+        }
       ]
     },
     {

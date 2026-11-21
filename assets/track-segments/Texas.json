@@ -1,7 +1,65 @@
 {
+  "schema_version": 2,
   "circuit_name": "Texas",
   "circuit_number": 15,
   "track_length": 5514,
+  "speed_trap_m": 3558,
+  "drs_zones": [
+    {
+      "id": 1,
+      "detection_m": 2319,
+      "activation": [
+        {
+          "start_m": 2974,
+          "end_m": 3725.5
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "detection_m": 4909.2,
+      "activation": [
+        {
+          "start_m": 5444.5,
+          "end_m": 605.6
+        }
+      ]
+    }
+  ],
+  "overtake_zones": [
+    {
+      "id": 1,
+      "activation_m": 5420.7,
+      "detection_m": 5329.9
+    }
+  ],
+  "active_aero_zones": [
+    {
+      "mode": "full",
+      "start_m": 2089.2,
+      "end_m": 2502.6
+    },
+    {
+      "mode": "full",
+      "start_m": 2712.2,
+      "end_m": 3698.5
+    },
+    {
+      "mode": "full",
+      "start_m": 5481.6,
+      "end_m": 561.8
+    },
+    {
+      "mode": "partial",
+      "start_m": 33.6,
+      "end_m": 561.8
+    },
+    {
+      "mode": "partial",
+      "start_m": 2782.9,
+      "end_m": 3698.5
+    }
+  ],
   "segments": [
     {
       "type": "straight",
@@ -14,7 +72,29 @@
       "start_m": 530,
       "end_m": 750,
       "name": "Big Red",
-      "corner_number": 1
+      "corner_number": 1,
+      "brake_boards": [
+        {
+          "distance_m": 200,
+          "at_m": 404.6,
+          "side": "right"
+        },
+        {
+          "distance_m": 150,
+          "at_m": 456.2,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 512.3,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 571.4,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "corner",
@@ -33,6 +113,28 @@
         4,
         5,
         6
+      ],
+      "corners": [
+        {
+          "corner_number": 3,
+          "start_m": 1060,
+          "end_m": 1229
+        },
+        {
+          "corner_number": 4,
+          "start_m": 1229,
+          "end_m": 1320
+        },
+        {
+          "corner_number": 5,
+          "start_m": 1320,
+          "end_m": 1411
+        },
+        {
+          "corner_number": 6,
+          "start_m": 1411,
+          "end_m": 1640
+        }
       ]
     },
     {
@@ -43,6 +145,23 @@
         7,
         8,
         9
+      ],
+      "corners": [
+        {
+          "corner_number": 7,
+          "start_m": 1640,
+          "end_m": 1813
+        },
+        {
+          "corner_number": 8,
+          "start_m": 1813,
+          "end_m": 1962
+        },
+        {
+          "corner_number": 9,
+          "start_m": 1962,
+          "end_m": 2060
+        }
       ]
     },
     {
@@ -57,7 +176,34 @@
       "start_m": 2400,
       "end_m": 2660,
       "name": "The Bobby Pin",
-      "corner_number": 11
+      "corner_number": 11,
+      "brake_boards": [
+        {
+          "distance_m": 250,
+          "at_m": 2297.4,
+          "side": "right"
+        },
+        {
+          "distance_m": 200,
+          "at_m": 2348.9,
+          "side": "right"
+        },
+        {
+          "distance_m": 150,
+          "at_m": 2407.4,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 2466.5,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 2520.8,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "straight",
@@ -70,7 +216,39 @@
       "start_m": 3650,
       "end_m": 3860,
       "name": "",
-      "corner_number": 12
+      "corner_number": 12,
+      "brake_boards": [
+        {
+          "distance_m": 300,
+          "at_m": 3525.4,
+          "side": "right"
+        },
+        {
+          "distance_m": 250,
+          "at_m": 3596.3,
+          "side": "right"
+        },
+        {
+          "distance_m": 200,
+          "at_m": 3624.5,
+          "side": "right"
+        },
+        {
+          "distance_m": 150,
+          "at_m": 3652.6,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 3690.9,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 3728.7,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "complex_corner",
@@ -79,6 +257,18 @@
       "corner_numbers": [
         13,
         14
+      ],
+      "corners": [
+        {
+          "corner_number": 13,
+          "start_m": 3950,
+          "end_m": 4047
+        },
+        {
+          "corner_number": 14,
+          "start_m": 4047,
+          "end_m": 4170
+        }
       ]
     },
     {
@@ -96,6 +286,23 @@
         16,
         17,
         18
+      ],
+      "corners": [
+        {
+          "corner_number": 16,
+          "start_m": 4430,
+          "end_m": 4577
+        },
+        {
+          "corner_number": 17,
+          "start_m": 4577,
+          "end_m": 4662
+        },
+        {
+          "corner_number": 18,
+          "start_m": 4662,
+          "end_m": 4960
+        }
       ]
     },
     {

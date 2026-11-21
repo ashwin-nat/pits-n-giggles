@@ -1,7 +1,75 @@
 {
+  "schema_version": 2,
   "circuit_name": "Abu_Dhabi",
   "circuit_number": 14,
   "track_length": 5280,
+  "speed_trap_m": 2485.7,
+  "drs_zones": [
+    {
+      "id": 1,
+      "detection_m": 1172.4,
+      "activation": [
+        {
+          "start_m": 1758.4,
+          "end_m": 2597.7
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "detection_m": 2781.6,
+      "activation": [
+        {
+          "start_m": 2904.7,
+          "end_m": 3614.8
+        }
+      ]
+    }
+  ],
+  "overtake_zones": [
+    {
+      "id": 1,
+      "detection_m": 5050.9,
+      "activation_m": 5107.9
+    }
+  ],
+  "active_aero_zones": [
+    {
+      "mode": "full",
+      "start_m": 980.2,
+      "end_m": 1389.6
+    },
+    {
+      "mode": "full",
+      "start_m": 1584.9,
+      "end_m": 2625.7
+    },
+    {
+      "mode": "full",
+      "start_m": 2904.7,
+      "end_m": 3603.1
+    },
+    {
+      "mode": "full",
+      "start_m": 5182.8,
+      "end_m": 365
+    },
+    {
+      "mode": "partial",
+      "start_m": 1634.9,
+      "end_m": 2625.7
+    },
+    {
+      "mode": "partial",
+      "start_m": 3064.8,
+      "end_m": 3603.1
+    },
+    {
+      "mode": "partial",
+      "start_m": 5197.8,
+      "end_m": 365
+    }
+  ],
   "segments": [
     {
       "type": "straight",
@@ -14,7 +82,24 @@
       "start_m": 311,
       "end_m": 480,
       "name": "",
-      "corner_number": 1
+      "corner_number": 1,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 257.9,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 300.9,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 348.6,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "corner",
@@ -42,7 +127,24 @@
       "start_m": 1290,
       "end_m": 1550,
       "name": "",
-      "corner_number": 5
+      "corner_number": 5,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 1234.8,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 1286.4,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 1343.4,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "complex_corner",
@@ -51,6 +153,40 @@
       "corner_numbers": [
         6,
         7
+      ],
+      "corners": [
+        {
+          "corner_number": 6,
+          "start_m": 2525,
+          "end_m": 2697,
+          "brake_boards": [
+            {
+              "distance_m": 200,
+              "at_m": 2457,
+              "side": "right"
+            },
+            {
+              "distance_m": 150,
+              "at_m": 2507,
+              "side": "right"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 2557,
+              "side": "right"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 2607.1,
+              "side": "right"
+            }
+          ]
+        },
+        {
+          "corner_number": 7,
+          "start_m": 2697,
+          "end_m": 2800
+        }
       ]
     },
     {
@@ -65,7 +201,29 @@
       "start_m": 3550,
       "end_m": 3950,
       "name": "Marsa Corner",
-      "corner_number": 9
+      "corner_number": 9,
+      "brake_boards": [
+        {
+          "distance_m": 200,
+          "at_m": 3431.2,
+          "side": "right"
+        },
+        {
+          "distance_m": 150,
+          "at_m": 3481.3,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 3531.3,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 3581.3,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "complex_corner",
@@ -74,6 +232,18 @@
       "corner_numbers": [
         10,
         11
+      ],
+      "corners": [
+        {
+          "corner_number": 10,
+          "start_m": 4050,
+          "end_m": 4143
+        },
+        {
+          "corner_number": 11,
+          "start_m": 4143,
+          "end_m": 4300
+        }
       ]
     },
     {
@@ -91,6 +261,18 @@
       "corner_numbers": [
         13,
         14
+      ],
+      "corners": [
+        {
+          "corner_number": 13,
+          "start_m": 4430,
+          "end_m": 4576
+        },
+        {
+          "corner_number": 14,
+          "start_m": 4576,
+          "end_m": 4720
+        }
       ]
     },
     {
