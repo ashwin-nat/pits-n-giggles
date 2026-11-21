@@ -30,6 +30,9 @@ const WHOLE_PAD_M = 80;
 const SEGMENT_TICK_OVERHANG = 0.6;
 const SECTOR_TICK_OVERHANG = 0.9;
 const WHEEL_ZOOM = 0.85;
+const DOUBLE_CLICK_ZOOM = 0.4;
+// View width Follow jumps to from the whole-track view: enough to read a corner entry.
+const FOLLOW_VIEW_M = 300;
 
 interface MapSvgProps {
   geometry: MapGeometry;
@@ -94,10 +97,15 @@ export function MapSvg({ geometry, meta, formula, lines, lapPresent, labels, cro
 
   const dots = lines.map((line) => pointAt(line, crosshairPosition));
   const canFollow = lines[0] !== undefined && lines[0].pts.length > 0;
+  // Last place A's dot was seen, so Follow holds still when the cursor leaves the charts.
+  const followCentre = useRef<Pt | null>(null);
+  if (dots[0] !== null && dots[0] !== undefined) {
+    followCentre.current = dots[0];
+  }
   // Follow only applies while zoomed in; it centres the view on A's dot.
   let vb: Box = view ?? whole;
-  if (follow && canFollow && view !== null && dots[0] !== null && dots[0] !== undefined) {
-    vb = centreOn(vb, dots[0]);
+  if (follow && canFollow && view !== null && followCentre.current !== null) {
+    vb = centreOn(vb, followCentre.current);
   }
   const vbRef = useRef(vb);
   vbRef.current = vb;
@@ -116,8 +124,7 @@ export function MapSvg({ geometry, meta, formula, lines, lapPresent, labels, cro
       const k = e.deltaY < 0 ? WHEEL_ZOOM : 1 / WHEEL_ZOOM;
       const current = vbRef.current;
       const p = toMap(el.getBoundingClientRect(), current, e.clientX, e.clientY);
-      const next = clampZoom(zoomAbout(current, p, k), viewRef.current.whole);
-      setView(next[2] >= Math.max(viewRef.current.whole[2], viewRef.current.whole[3]) ? null : next);
+      setZoomed(clampZoom(zoomAbout(current, p, k), viewRef.current.whole), viewRef.current.whole);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
@@ -139,10 +146,27 @@ export function MapSvg({ geometry, meta, formula, lines, lapPresent, labels, cro
     setView([vb[0] - dx, vb[1] - dy, vb[2], vb[3]]);
   }
 
+  // Zooming all the way out is the whole-track view, which also ends Follow.
+  function setZoomed(next: Box, wholeBox: Box) {
+    if (next[2] >= Math.max(wholeBox[2], wholeBox[3])) {
+      setView(null);
+      setFollow(false);
+    } else {
+      setView(next);
+    }
+  }
+
   function zoomButton(k: number) {
     const centre: Pt = [vb[0] + vb[2] / 2, vb[1] + vb[3] / 2];
-    const next = clampZoom(zoomAbout(vb, centre, k), whole);
-    setView(next[2] >= Math.max(whole[2], whole[3]) ? null : next);
+    setZoomed(clampZoom(zoomAbout(vb, centre, k), whole), whole);
+  }
+
+  function toggleFollow() {
+    if (!follow && view === null) {
+      const centre = followCentre.current ?? lines[0].pts[0];
+      setView(centreOn([0, 0, FOLLOW_VIEW_M, FOLLOW_VIEW_M], centre));
+    }
+    setFollow((f) => !f);
   }
 
   const sc = pixelsPerUnit(size, vb);
@@ -179,7 +203,7 @@ export function MapSvg({ geometry, meta, formula, lines, lapPresent, labels, cro
         ref={svgRef}
         viewBox={vb.join(" ")}
         preserveAspectRatio="xMidYMid meet"
-        className="mt-9 h-[400px] w-full cursor-grab touch-none select-none active:cursor-grabbing"
+        className="mt-9 aspect-square max-h-[80vh] min-h-[400px] w-full cursor-grab touch-none select-none active:cursor-grabbing"
         role="img"
         aria-label="Track map"
         onPointerDown={onPointerDown}
@@ -187,9 +211,9 @@ export function MapSvg({ geometry, meta, formula, lines, lapPresent, labels, cro
         onPointerUp={() => (drag.current = null)}
         onPointerCancel={() => (drag.current = null)}
         onLostPointerCapture={() => (drag.current = null)}
-        onDoubleClick={() => {
-          setView(null);
-          setFollow(false);
+        onDoubleClick={(e) => {
+          const p = toMap(e.currentTarget.getBoundingClientRect(), vb, e.clientX, e.clientY);
+          setZoomed(clampZoom(zoomAbout(vb, p, DOUBLE_CLICK_ZOOM), whole), whole);
         }}
       >
         <path d={road} fill="#131a26" fillRule="evenodd" />
@@ -310,8 +334,8 @@ export function MapSvg({ geometry, meta, formula, lines, lapPresent, labels, cro
         <button
           type="button"
           disabled={!canFollow}
-          title={canFollow ? "Keep the car centred while hovering the charts" : "A has no position data"}
-          onClick={() => setFollow((f) => !f)}
+          title={canFollow ? "Close-up that keeps A's car centred while hovering the charts" : "A has no position data"}
+          onClick={toggleFollow}
           className={`${BUTTON} disabled:cursor-not-allowed disabled:opacity-40 ${follow && canFollow ? "bg-tone-100 text-tone-900 hover:bg-tone-100 hover:text-tone-900" : ""}`}
         >
           Follow
