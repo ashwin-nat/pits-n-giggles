@@ -2,6 +2,89 @@
   "circuit_name": "Singapore",
   "circuit_number": 12,
   "track_length": 4928,
+  "speed_trap_m": 273.1,
+  "drs_zones": [
+    {
+      "id": 1,
+      "detection_m": 744.9,
+      "activation": [
+        {
+          "start_m": 1091,
+          "end_m": 1776.7
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "detection_m": 2967.5,
+      "activation": [
+        {
+          "start_m": 3164.4,
+          "end_m": 3591.3
+        },
+        {
+          "start_m": 3740.2,
+          "end_m": 4335
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "detection_m": 4523.1,
+      "activation": [
+        {
+          "start_m": 4880.8,
+          "end_m": 374.9
+        }
+      ]
+    }
+  ],
+  "overtake_dist": {
+    "detection_m": 4289.4,
+    "activation_m": 4369.1
+  },
+  "active_aero_zones": [
+    {
+      "mode": "full",
+      "start_m": 1091,
+      "end_m": 1720.5
+    },
+    {
+      "mode": "full",
+      "start_m": 2340.5,
+      "end_m": 2601.6
+    },
+    {
+      "mode": "full",
+      "start_m": 3202.3,
+      "end_m": 3523.1
+    },
+    {
+      "mode": "full",
+      "start_m": 3740.4,
+      "end_m": 4278.4
+    },
+    {
+      "mode": "full",
+      "start_m": 4880.8,
+      "end_m": 400
+    },
+    {
+      "mode": "partial",
+      "start_m": 16.9,
+      "end_m": 400
+    },
+    {
+      "mode": "partial",
+      "start_m": 2389.2,
+      "end_m": 2601.6
+    },
+    {
+      "mode": "partial",
+      "start_m": 3251.6,
+      "end_m": 3523.1
+    }
+  ],
   "segments": [
     {
       "type": "straight",
@@ -14,35 +97,65 @@
       "start_m": 320,
       "end_m": 480,
       "name": "Sheares",
-      "corner_number": 1
+      "corner_number": 1,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 277.2,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 325.8,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 376.8,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 480,
       "end_m": 540,
-      "name": "",
       "corner_number": 2
     },
     {
       "type": "corner",
       "start_m": 540,
       "end_m": 650,
-      "name": "",
       "corner_number": 3
     },
     {
       "type": "corner",
       "start_m": 675,
       "end_m": 770,
-      "name": "",
       "corner_number": 4
     },
     {
       "type": "corner",
       "start_m": 850,
       "end_m": 1080,
-      "name": "",
-      "corner_number": 5
+      "corner_number": 5,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 824.6,
+          "side": "left"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 872.6,
+          "side": "left"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 919,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "straight",
@@ -54,7 +167,6 @@
       "type": "corner",
       "start_m": 1380,
       "end_m": 1530,
-      "name": "",
       "corner_number": 6
     },
     {
@@ -68,7 +180,29 @@
       "start_m": 1700,
       "end_m": 1860,
       "name": "Memorial Corner",
-      "corner_number": 7
+      "corner_number": 7,
+      "brake_boards": [
+        {
+          "distance_m": 200,
+          "at_m": 1607.7,
+          "side": "right"
+        },
+        {
+          "distance_m": 150,
+          "at_m": 1659.3,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 1706.8,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 1757.8,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "straight",
@@ -81,14 +215,33 @@
       "start_m": 1950,
       "end_m": 2090,
       "name": "Stamford",
-      "corner_number": 8
+      "corner_number": 8,
+      "brake_boards": [
+        {
+          "distance_m": 100,
+          "at_m": 1936.3,
+          "side": "left"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 1987.8,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 2120,
       "end_m": 2300,
       "name": "Padang",
-      "corner_number": 9
+      "corner_number": 9,
+      "brake_boards": [
+        {
+          "distance_m": 50,
+          "at_m": 2163.9,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "straight",
@@ -101,7 +254,24 @@
       "start_m": 2550,
       "end_m": 2775,
       "name": "Singapore Sling",
-      "corner_number": 10
+      "corner_number": 10,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 2502.7,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 2554.1,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 2602.4,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "complex_corner",
@@ -110,6 +280,18 @@
       "corner_numbers": [
         11,
         12
+      ],
+      "corners": [
+        {
+          "corner_number": 11,
+          "start_m": 2775,
+          "end_m": 2815
+        },
+        {
+          "corner_number": 12,
+          "start_m": 2815,
+          "end_m": 2890
+        }
       ]
     },
     {
@@ -122,8 +304,14 @@
       "type": "corner",
       "start_m": 3020,
       "end_m": 3130,
-      "name": "",
-      "corner_number": 13
+      "corner_number": 13,
+      "brake_boards": [
+        {
+          "distance_m": 50,
+          "at_m": 3037.9,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "straight",
@@ -136,7 +324,24 @@
       "start_m": 3500,
       "end_m": 3700,
       "name": "Connaught",
-      "corner_number": 14
+      "corner_number": 14,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 3467.6,
+          "side": "left"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 3516.7,
+          "side": "left"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 3567.4,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "straight",
@@ -148,8 +353,14 @@
       "type": "corner",
       "start_m": 3850,
       "end_m": 3950,
-      "name": "",
-      "corner_number": 15
+      "corner_number": 15,
+      "brake_boards": [
+        {
+          "distance_m": 50,
+          "at_m": 3743.7,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "straight",
@@ -164,6 +375,30 @@
       "corner_numbers": [
         16,
         17
+      ],
+      "corners": [
+        {
+          "corner_number": 16,
+          "start_m": 4240,
+          "end_m": 4393,
+          "brake_boards": [
+            {
+              "distance_m": 100,
+              "at_m": 4246.2,
+              "side": "left"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 4297.9,
+              "side": "left"
+            }
+          ]
+        },
+        {
+          "corner_number": 17,
+          "start_m": 4393,
+          "end_m": 4500
+        }
       ]
     },
     {
@@ -173,6 +408,30 @@
       "corner_numbers": [
         18,
         19
+      ],
+      "corners": [
+        {
+          "corner_number": 18,
+          "start_m": 4620,
+          "end_m": 4753,
+          "brake_boards": [
+            {
+              "distance_m": 100,
+              "at_m": 4620,
+              "side": "right"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 4672.5,
+              "side": "right"
+            }
+          ]
+        },
+        {
+          "corner_number": 19,
+          "start_m": 4753,
+          "end_m": 4928
+        }
       ]
     }
   ],

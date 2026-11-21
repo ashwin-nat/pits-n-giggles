@@ -2,6 +2,24 @@
   "circuit_name": "Monaco",
   "circuit_number": 5,
   "track_length": 3323,
+  "speed_trap_m": 1908.2,
+  "drs_zones": [
+    {
+      "id": 1,
+      "detection_m": 2825.6,
+      "activation": [
+        {
+          "start_m": 3046.8,
+          "end_m": 171.8
+        }
+      ]
+    }
+  ],
+  "overtake_dist": {
+    "detection_m": 2793,
+    "activation_m": 2937.4
+  },
+  "active_aero_zones": [],
   "segments": [
     {
       "type": "straight",
@@ -14,7 +32,24 @@
       "start_m": 100,
       "end_m": 290,
       "name": "Sainte Dévote",
-      "corner_number": 1
+      "corner_number": 1,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 43.9,
+          "side": "left"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 87.4,
+          "side": "left"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 142.2,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "corner",
@@ -48,7 +83,24 @@
       "start_m": 1070,
       "end_m": 1180,
       "name": "Mirabeau Haute",
-      "corner_number": 5
+      "corner_number": 5,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 989.7,
+          "side": "left"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 1041.6,
+          "side": "left"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 1093.7,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "corner",
@@ -86,6 +138,40 @@
       "corner_numbers": [
         10,
         11
+      ],
+      "corners": [
+        {
+          "corner_number": 10,
+          "start_m": 1965,
+          "end_m": 2130,
+          "brake_boards": [
+            {
+              "distance_m": 200,
+              "at_m": 1898.8,
+              "side": "right"
+            },
+            {
+              "distance_m": 150,
+              "at_m": 1949.5,
+              "side": "right"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 2006.4,
+              "side": "right"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 2054.8,
+              "side": "right"
+            }
+          ]
+        },
+        {
+          "corner_number": 11,
+          "start_m": 2130,
+          "end_m": 2180
+        }
       ]
     },
     {
@@ -93,7 +179,19 @@
       "start_m": 2280,
       "end_m": 2470,
       "name": "Tabac",
-      "corner_number": 12
+      "corner_number": 12,
+      "brake_boards": [
+        {
+          "distance_m": 100,
+          "at_m": 2274.6,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 2331.2,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "complex_corner",
@@ -103,6 +201,18 @@
       "corner_numbers": [
         13,
         14
+      ],
+      "corners": [
+        {
+          "corner_number": 13,
+          "start_m": 2480,
+          "end_m": 2558
+        },
+        {
+          "corner_number": 14,
+          "start_m": 2558,
+          "end_m": 2625
+        }
       ]
     },
     {
@@ -113,6 +223,18 @@
       "corner_numbers": [
         15,
         16
+      ],
+      "corners": [
+        {
+          "corner_number": 15,
+          "start_m": 2630,
+          "end_m": 2717
+        },
+        {
+          "corner_number": 16,
+          "start_m": 2717,
+          "end_m": 2800
+        }
       ]
     },
     {
@@ -123,6 +245,18 @@
       "corner_numbers": [
         17,
         18
+      ],
+      "corners": [
+        {
+          "corner_number": 17,
+          "start_m": 2820,
+          "end_m": 2923
+        },
+        {
+          "corner_number": 18,
+          "start_m": 2923,
+          "end_m": 2960
+        }
       ]
     },
     {

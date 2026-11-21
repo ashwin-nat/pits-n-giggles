@@ -2,19 +2,89 @@
   "circuit_name": "Baku_Azerbaijan",
   "circuit_number": 20,
   "track_length": 5994,
+  "speed_trap_m": 5251.6,
+  "drs_zones": [
+    {
+      "id": 1,
+      "detection_m": 557,
+      "activation": [
+        {
+          "start_m": 724.9,
+          "end_m": 1501
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "detection_m": 5051.9,
+      "activation": [
+        {
+          "start_m": 5413,
+          "end_m": 288.9
+        }
+      ]
+    }
+  ],
+  "overtake_dist": {
+    "detection_m": 4073.4,
+    "activation_m": 4169.8
+  },
+  "active_aero_zones": [
+    {
+      "mode": "full",
+      "start_m": 770.2,
+      "end_m": 1501
+    },
+    {
+      "mode": "full",
+      "start_m": 4788,
+      "end_m": 288.9
+    },
+    {
+      "mode": "partial",
+      "start_m": 828,
+      "end_m": 1501
+    },
+    {
+      "mode": "partial",
+      "start_m": 5115.2,
+      "end_m": 288.9
+    }
+  ],
   "segments": [
     {
       "type": "straight",
       "start_m": 0,
-      "end_m": 180,
+      "end_m": 115,
       "name": "Neftchilar Avenue"
     },
     {
       "type": "corner",
-      "start_m": 180,
+      "start_m": 115,
       "end_m": 400,
-      "name": "",
-      "corner_number": 1
+      "corner_number": 1,
+      "brake_boards": [
+        {
+          "distance_m": 200,
+          "at_m": 115.2,
+          "side": "right"
+        },
+        {
+          "distance_m": 150,
+          "at_m": 163.3,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 211.3,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 267.5,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "straight",
@@ -26,8 +96,24 @@
       "type": "corner",
       "start_m": 570,
       "end_m": 715,
-      "name": "",
-      "corner_number": 2
+      "corner_number": 2,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 506.4,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 558.5,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 598.7,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "straight",
@@ -39,8 +125,29 @@
       "type": "corner",
       "start_m": 1410,
       "end_m": 1580,
-      "name": "",
-      "corner_number": 3
+      "corner_number": 3,
+      "brake_boards": [
+        {
+          "distance_m": 200,
+          "at_m": 1325.9,
+          "side": "both"
+        },
+        {
+          "distance_m": 150,
+          "at_m": 1377.6,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 1425.9,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 1477.7,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "straight",
@@ -52,8 +159,19 @@
       "type": "corner",
       "start_m": 1680,
       "end_m": 1810,
-      "name": "",
-      "corner_number": 4
+      "corner_number": 4,
+      "brake_boards": [
+        {
+          "distance_m": 100,
+          "at_m": 1653.7,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 1706,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "straight",
@@ -68,6 +186,35 @@
       "corner_numbers": [
         5,
         6
+      ],
+      "corners": [
+        {
+          "corner_number": 5,
+          "start_m": 2000,
+          "end_m": 2132,
+          "brake_boards": [
+            {
+              "distance_m": 150,
+              "at_m": 1942.2,
+              "side": "both"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 1990.6,
+              "side": "both"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 2038.8,
+              "side": "both"
+            }
+          ]
+        },
+        {
+          "corner_number": 6,
+          "start_m": 2132,
+          "end_m": 2215
+        }
       ]
     },
     {
@@ -80,8 +227,24 @@
       "type": "corner",
       "start_m": 2450,
       "end_m": 2600,
-      "name": "",
-      "corner_number": 7
+      "corner_number": 7,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 2389.2,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 2437.1,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 2487.9,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "straight",
@@ -100,6 +263,45 @@
         10,
         11,
         12
+      ],
+      "corners": [
+        {
+          "corner_number": 8,
+          "start_m": 2700,
+          "end_m": 2770,
+          "brake_boards": [
+            {
+              "distance_m": 100,
+              "at_m": 2672.8,
+              "side": "both"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 2720.8,
+              "side": "both"
+            }
+          ]
+        },
+        {
+          "corner_number": 9,
+          "start_m": 2770,
+          "end_m": 2792
+        },
+        {
+          "corner_number": 10,
+          "start_m": 2792,
+          "end_m": 2829
+        },
+        {
+          "corner_number": 11,
+          "start_m": 2829,
+          "end_m": 2887
+        },
+        {
+          "corner_number": 12,
+          "start_m": 2887,
+          "end_m": 2960
+        }
       ]
     },
     {
@@ -112,7 +314,6 @@
       "type": "corner",
       "start_m": 3230,
       "end_m": 3385,
-      "name": "",
       "corner_number": 13
     },
     {
@@ -125,15 +326,35 @@
       "type": "corner",
       "start_m": 3465,
       "end_m": 3650,
-      "name": "",
       "corner_number": 14
     },
     {
       "type": "corner",
       "start_m": 3650,
       "end_m": 3800,
-      "name": "",
-      "corner_number": 15
+      "corner_number": 15,
+      "brake_boards": [
+        {
+          "distance_m": 200,
+          "at_m": 3556.1,
+          "side": "both"
+        },
+        {
+          "distance_m": 150,
+          "at_m": 3608.1,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 3648.2,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 3704.2,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "straight",
@@ -145,8 +366,24 @@
       "type": "corner",
       "start_m": 4020,
       "end_m": 4250,
-      "name": "",
-      "corner_number": 16
+      "corner_number": 16,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 3970.3,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 4022.2,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 4075.2,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "complex_corner",
@@ -156,6 +393,23 @@
         17,
         18,
         19
+      ],
+      "corners": [
+        {
+          "corner_number": 17,
+          "start_m": 4250,
+          "end_m": 4410
+        },
+        {
+          "corner_number": 18,
+          "start_m": 4410,
+          "end_m": 4641
+        },
+        {
+          "corner_number": 19,
+          "start_m": 4641,
+          "end_m": 4750
+        }
       ]
     },
     {
@@ -168,7 +422,6 @@
       "type": "corner",
       "start_m": 4980,
       "end_m": 5140,
-      "name": "",
       "corner_number": 20
     },
     {

@@ -2,6 +2,69 @@
   "circuit_name": "Hungaroring",
   "circuit_number": 9,
   "track_length": 4378,
+  "speed_trap_m": 288.3,
+  "drs_zones": [
+    {
+      "id": 1,
+      "detection_m": 3980.4,
+      "activation": [
+        {
+          "start_m": 670.5,
+          "end_m": 1020.7
+        },
+        {
+          "start_m": 4221.9,
+          "end_m": 542.9
+        }
+      ]
+    }
+  ],
+  "overtake_dist": {
+    "detection_m": 3971.2,
+    "activation_m": 4118.2
+  },
+  "active_aero_zones": [
+    {
+      "mode": "full",
+      "start_m": 774.7,
+      "end_m": 1020.7
+    },
+    {
+      "mode": "full",
+      "start_m": 1424.7,
+      "end_m": 1758.3
+    },
+    {
+      "mode": "full",
+      "start_m": 3199.3,
+      "end_m": 3438.3
+    },
+    {
+      "mode": "full",
+      "start_m": 4228.6,
+      "end_m": 542.9
+    },
+    {
+      "mode": "partial",
+      "start_m": 846,
+      "end_m": 1020.7
+    },
+    {
+      "mode": "partial",
+      "start_m": 1454.5,
+      "end_m": 1758.3
+    },
+    {
+      "mode": "partial",
+      "start_m": 3228.5,
+      "end_m": 3438.3
+    },
+    {
+      "mode": "partial",
+      "start_m": 4287.9,
+      "end_m": 542.9
+    }
+  ],
   "segments": [
     {
       "type": "straight",
@@ -14,14 +77,48 @@
       "start_m": 435,
       "end_m": 770,
       "name": "Piquet",
-      "corner_number": 1
+      "corner_number": 1,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 443.3,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 497.8,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 544.9,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 980,
       "end_m": 1215,
       "name": "Hamilton",
-      "corner_number": 2
+      "corner_number": 2,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 943.5,
+          "side": "left"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 995.3,
+          "side": "left"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 1056.7,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "corner",
@@ -52,6 +149,35 @@
       "corner_numbers": [
         6,
         7
+      ],
+      "corners": [
+        {
+          "corner_number": 6,
+          "start_m": 2250,
+          "end_m": 2396,
+          "brake_boards": [
+            {
+              "distance_m": 150,
+              "at_m": 2213.5,
+              "side": "both"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 2271.2,
+              "side": "both"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 2326.2,
+              "side": "both"
+            }
+          ]
+        },
+        {
+          "corner_number": 7,
+          "start_m": 2396,
+          "end_m": 2470
+        }
       ]
     },
     {
@@ -62,6 +188,30 @@
       "corner_numbers": [
         8,
         9
+      ],
+      "corners": [
+        {
+          "corner_number": 8,
+          "start_m": 2500,
+          "end_m": 2624,
+          "brake_boards": [
+            {
+              "distance_m": 100,
+              "at_m": 2464.4,
+              "side": "right"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 2515.7,
+              "side": "right"
+            }
+          ]
+        },
+        {
+          "corner_number": 9,
+          "start_m": 2624,
+          "end_m": 2790
+        }
       ]
     },
     {
@@ -89,7 +239,24 @@
       "start_m": 3400,
       "end_m": 3600,
       "name": "Schumacher",
-      "corner_number": 12
+      "corner_number": 12,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 3358.8,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 3410.5,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 3463.7,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "corner",

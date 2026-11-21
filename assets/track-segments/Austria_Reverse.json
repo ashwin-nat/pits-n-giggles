@@ -2,6 +2,85 @@
   "circuit_name": "Austria_Reverse",
   "circuit_number": 40,
   "track_length": 4323,
+  "speed_trap_m": 2721.2,
+  "drs_zones": [
+    {
+      "id": 1,
+      "detection_m": 1801.4,
+      "activation": [
+        {
+          "start_m": 2304.6,
+          "end_m": 2872.2
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "detection_m": 2796.5,
+      "activation": [
+        {
+          "start_m": 3056.9,
+          "end_m": 3809.5
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "detection_m": 3717.4,
+      "activation": [
+        {
+          "start_m": 3999.1,
+          "end_m": 260.7
+        }
+      ]
+    }
+  ],
+  "overtake_dist": {
+    "detection_m": 3761,
+    "activation_m": 3899.2
+  },
+  "active_aero_zones": [
+    {
+      "mode": "full",
+      "start_m": 625.2,
+      "end_m": 970
+    },
+    {
+      "mode": "full",
+      "start_m": 2178,
+      "end_m": 2841.9
+    },
+    {
+      "mode": "full",
+      "start_m": 3012.1,
+      "end_m": 3743.9
+    },
+    {
+      "mode": "full",
+      "start_m": 3916.3,
+      "end_m": 238.6
+    },
+    {
+      "mode": "partial",
+      "start_m": 676.3,
+      "end_m": 970
+    },
+    {
+      "mode": "partial",
+      "start_m": 2239.3,
+      "end_m": 2841.9
+    },
+    {
+      "mode": "partial",
+      "start_m": 3061.5,
+      "end_m": 3743.9
+    },
+    {
+      "mode": "partial",
+      "start_m": 3985.4,
+      "end_m": 238.6
+    }
+  ],
   "segments": [
     {
       "type": "straight",
@@ -14,7 +93,24 @@
       "start_m": 193,
       "end_m": 343,
       "name": "Red Bull Mobile",
-      "corner_number": 1
+      "corner_number": 1,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 157.6,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 205.4,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 251.3,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "corner",
@@ -27,7 +123,6 @@
       "type": "corner",
       "start_m": 903,
       "end_m": 1123,
-      "name": "",
       "corner_number": 3
     },
     {
@@ -48,7 +143,6 @@
       "type": "corner",
       "start_m": 1743,
       "end_m": 1913,
-      "name": "",
       "corner_number": 6
     },
     {
@@ -56,20 +150,58 @@
       "start_m": 1983,
       "end_m": 2233,
       "name": "Schlossgold",
-      "corner_number": 7
+      "corner_number": 7,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 1941.7,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 1990.4,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 2035.4,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 2823,
       "end_m": 3083,
       "name": "Remus",
-      "corner_number": 8
+      "corner_number": 8,
+      "brake_boards": [
+        {
+          "distance_m": 200,
+          "at_m": 2714.4,
+          "side": "right"
+        },
+        {
+          "distance_m": 150,
+          "at_m": 2763.7,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 2811.6,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 2861.2,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 3083,
       "end_m": 3273,
-      "name": "",
       "corner_number": 9
     },
     {
@@ -77,7 +209,19 @@
       "start_m": 3738,
       "end_m": 3963,
       "name": "Niki Lauda Kurve",
-      "corner_number": 10
+      "corner_number": 10,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 3698.1,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 3796.8,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "straight",

@@ -2,6 +2,85 @@
   "circuit_name": "Sakhir_Bahrain",
   "circuit_number": 3,
   "track_length": 5408,
+  "speed_trap_m": 565.2,
+  "drs_zones": [
+    {
+      "id": 1,
+      "detection_m": 665.4,
+      "activation": [
+        {
+          "start_m": 1005.7,
+          "end_m": 1474.9
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "detection_m": 2588.7,
+      "activation": [
+        {
+          "start_m": 2814,
+          "end_m": 3393.4
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "detection_m": 4802.4,
+      "activation": [
+        {
+          "start_m": 5300,
+          "end_m": 682.4
+        }
+      ]
+    }
+  ],
+  "overtake_dist": {
+    "detection_m": 4896.3,
+    "activation_m": 4951.9
+  },
+  "active_aero_zones": [
+    {
+      "mode": "full",
+      "start_m": 1020.2,
+      "end_m": 1453.3
+    },
+    {
+      "mode": "full",
+      "start_m": 2876.1,
+      "end_m": 3393.4
+    },
+    {
+      "mode": "full",
+      "start_m": 4238.6,
+      "end_m": 4850.3
+    },
+    {
+      "mode": "full",
+      "start_m": 5068.1,
+      "end_m": 673.9
+    },
+    {
+      "mode": "partial",
+      "start_m": 1090.1,
+      "end_m": 1453.3
+    },
+    {
+      "mode": "partial",
+      "start_m": 2926.3,
+      "end_m": 3393.4
+    },
+    {
+      "mode": "partial",
+      "start_m": 4300,
+      "end_m": 4850.3
+    },
+    {
+      "mode": "partial",
+      "start_m": 5133.5,
+      "end_m": 673.9
+    }
+  ],
   "segments": [
     {
       "type": "straight",
@@ -14,28 +93,59 @@
       "start_m": 540,
       "end_m": 780,
       "name": "Schumacher",
-      "corner_number": 1
+      "corner_number": 1,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 577.7,
+          "side": "left"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 633.4,
+          "side": "left"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 683.7,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 780,
       "end_m": 880,
-      "name": "",
       "corner_number": 2
     },
     {
       "type": "corner",
       "start_m": 880,
       "end_m": 1100,
-      "name": "",
       "corner_number": 3
     },
     {
       "type": "corner",
       "start_m": 1375,
       "end_m": 1615,
-      "name": "",
-      "corner_number": 4
+      "corner_number": 4,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 1373.6,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 1423,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 1472.8,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "complex_corner",
@@ -45,27 +155,41 @@
         5,
         6,
         7
+      ],
+      "corners": [
+        {
+          "corner_number": 5,
+          "start_m": 1735,
+          "end_m": 1867
+        },
+        {
+          "corner_number": 6,
+          "start_m": 1867,
+          "end_m": 1961
+        },
+        {
+          "corner_number": 7,
+          "start_m": 1961,
+          "end_m": 2100
+        }
       ]
     },
     {
       "type": "corner",
       "start_m": 2125,
       "end_m": 2375,
-      "name": "",
       "corner_number": 8
     },
     {
       "type": "corner",
       "start_m": 2525,
       "end_m": 2685,
-      "name": "",
       "corner_number": 9
     },
     {
       "type": "corner",
       "start_m": 2685,
       "end_m": 2800,
-      "name": "",
       "corner_number": 10
     },
     {
@@ -78,21 +202,35 @@
       "type": "corner",
       "start_m": 3290,
       "end_m": 3585,
-      "name": "",
-      "corner_number": 11
+      "corner_number": 11,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 3287,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 3336.7,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 3388,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 3670,
       "end_m": 3950,
-      "name": "",
       "corner_number": 12
     },
     {
       "type": "corner",
       "start_m": 4070,
       "end_m": 4275,
-      "name": "",
       "corner_number": 13
     },
     {
@@ -102,6 +240,35 @@
       "corner_numbers": [
         14,
         15
+      ],
+      "corners": [
+        {
+          "corner_number": 14,
+          "start_m": 4765,
+          "end_m": 4967,
+          "brake_boards": [
+            {
+              "distance_m": 150,
+              "at_m": 4765.1,
+              "side": "both"
+            },
+            {
+              "distance_m": 100,
+              "at_m": 4815,
+              "side": "both"
+            },
+            {
+              "distance_m": 50,
+              "at_m": 4865.9,
+              "side": "both"
+            }
+          ]
+        },
+        {
+          "corner_number": 15,
+          "start_m": 4967,
+          "end_m": 5080
+        }
       ]
     },
     {
