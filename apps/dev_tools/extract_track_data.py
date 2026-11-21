@@ -2,6 +2,10 @@
 
 usage: poetry run python -m apps.dev_tools.extract_track_data --game-dir "E:\\...\\F1 25" [--layout monza=11 ...]
 
+With --update, the geometry is left alone and the segment files in assets/track-segments get the speed trap,
+DRS, overtake and active aero zones, seeded sub-corners and brake boards. Zones and boards are rewritten on
+every run; `corners` is only created where missing. A file that fails validation is not written.
+
 With no --layout, every folder under <game>/2025_asset_groups/environment_package/tracks that maps to a
 TrackID is extracted. Each --layout is "<game track folder>=<circuit number>" and replaces that default.
 
@@ -10,6 +14,7 @@ table clears the folder first, so dropped layouts leave no stale file. A length 
 layout's midpoint lap length with track_length in assets/track-segments/*.json.
 """
 import argparse
+import copy
 import json
 import re
 import struct
@@ -20,6 +25,7 @@ import numpy as np
 import zstandard
 
 from lib.f1_types import TrackID
+from lib.track_segments_classifier.classifier import TrackSegmentsClassifier
 
 TRACKS_SUBDIR = Path("2025_asset_groups") / "environment_package" / "tracks"
 SOURCE_YEAR = 25  # F1 game year the data comes from; matches the 2025_asset_groups folder above
@@ -223,7 +229,8 @@ def extract_zones(markup: BxmlNode, to_m: Callable[[float], float]) -> Dict[str,
                 overtake.setdefault(ident, {})["activation_m"] = start
             elif kind == "x_mode":
                 aero.append({"mode": props.get("type", "").lower(), "start_m": start, "end_m": end})
-    out: Dict[str, Any] = {
+    out: Dict[str, Any] = {} if trap is None else {"speed_trap_m": trap}
+    out |= {
         "drs_zones": [{"id": i, "detection_m": z["detection_m"],
                        "activation": sorted(z["activation"], key=lambda a: a["start_m"])}
                       for i, z in sorted(drs.items()) if "detection_m" in z and z["activation"]],
@@ -231,8 +238,6 @@ def extract_zones(markup: BxmlNode, to_m: Callable[[float], float]) -> Dict[str,
                            if "detection_m" in z and "activation_m" in z],
         "active_aero_zones": sorted(aero, key=lambda a: (a["mode"], a["start_m"])),
     }
-    if trap is not None:
-        out["speed_trap_m"] = trap
     return out
 
 
@@ -450,6 +455,63 @@ def corner_report(segments: List[Dict[str, Any]], game: Dict[int, List[float]]) 
     return notes
 
 
+ZONE_FIELDS = ("speed_trap_m", "drs_zones", "overtake_zones", "active_aero_zones")
+
+
+def _whole_numbers(value: Any) -> Any:
+    """Floats that are whole become ints, so the files do not churn on `3055.0` vs `3055`."""
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, dict):
+        return {k: _whole_numbers(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_whole_numbers(v) for v in value]
+    return value
+
+
+def merge_track_data(data: Dict[str, Any], zones: Dict[str, Any], game: Dict[int, List[float]],
+                     boards: List[Dict[str, Any]]) -> Tuple[Dict[str, Any], List[str]]:
+    """A schema v2 copy of a segment file with the extractor-owned fields rewritten, plus notes on odd boards.
+
+    Zones and brake boards are replaced. `corners` is only created where a complex corner has none.
+    """
+    segments = copy.deepcopy(data["segments"])
+    for seg in segments:
+        if seg["type"] == "complex_corner" and not seg.get("corners"):
+            seg["corners"] = seed_sub_corners(seg, game)
+    notes = attach_boards(segments, boards, data["track_length"])
+    out: Dict[str, Any] = {"schema_version": 2}
+    for key, value in data.items():
+        if key == "schema_version" or key in ZONE_FIELDS:
+            continue
+        if key == "segments":
+            out.update(zones)
+            value = segments
+        out[key] = value
+    return _whole_numbers(out), notes
+
+
+def update_segment_file(path: Path, wep_dir: Path, folder: str) -> List[str]:
+    """Rewrite one segment file from the game data. Returns report lines; the file is untouched if it fails validation."""
+    raw = path.read_bytes().decode("utf-8")
+    data = json.loads(raw)
+    length = float(data["track_length"])
+    common = wep_dir / f"{folder}_common.erp"
+    knots = parse_maintrack_knots(read_erp_resource(common, ".trackspacespline"))
+    zones = extract_zones(parse_bxml(read_erp_resource(common, ".trackmarkup")), knot_mapper(knots, length))
+    game = game_corners(parse_bxml(read_erp_resource(common, ".taprogram")), length)
+    merged, notes = merge_track_data(data, zones, game, layout_boards(wep_dir, folder, knots, length))
+    notes = corner_report(data["segments"], game) + notes
+    try:
+        TrackSegmentsClassifier.model_validate({**merged, "use_cache": False})
+    except ValueError as err:
+        return notes + [f"NOT WRITTEN, fails validation: {str(err).splitlines()[0]}"]
+    text = json.dumps(merged, indent=2, ensure_ascii=False)
+    newline = "\r\n" if "\r\n" in raw else "\n"
+    path.write_bytes((text.replace("\n", newline) + (newline if raw.endswith("\n") else "")).encode("utf-8"))
+    return notes
+
+
 def circuit_for_folder(folder: str) -> Optional[int]:
     """Circuit number for a game track folder, or None if it is not a known TrackID."""
     return TrackID.lowercase_names().get(FOLDER_ALIASES.get(folder, folder))
@@ -465,22 +527,36 @@ def game_layouts(game_dir: Path) -> List[str]:
     return specs
 
 
+def segment_files() -> Dict[int, Path]:
+    """circuit_number -> segment file path."""
+    return {int(json.loads(path.read_text(encoding="utf-8"))["circuit_number"]): path
+            for path in SEGMENTS_DIR.glob("*.json")}
+
+
 def json_lengths() -> Dict[int, float]:
     """circuit_number -> track_length from the segment files."""
-    out: Dict[int, float] = {}
-    for path in SEGMENTS_DIR.glob("*.json"):
-        data = json.loads(path.read_text(encoding="utf-8"))
-        out[int(data["circuit_number"])] = float(data["track_length"])
-    return out
+    return {c: float(json.loads(p.read_text(encoding="utf-8"))["track_length"]) for c, p in segment_files().items()}
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--game-dir", required=True, type=Path)
     ap.add_argument("--layout", nargs="+", metavar="FOLDER=CIRCUIT")
+    ap.add_argument("--update", action="store_true",
+                    help="rewrite zones, corners and brake boards in assets/track-segments instead of the geometry")
     args = ap.parse_args()
 
     specs = args.layout or game_layouts(args.game_dir)
+    if args.update:
+        files = segment_files()
+        for spec in specs:
+            folder, _, number = spec.partition("=")
+            path = files.get(int(number)) if number.isdigit() else None
+            if path is None:
+                ap.error(f"--layout {spec!r} must be FOLDER=CIRCUIT with an existing segment file")
+            notes = update_segment_file(path, args.game_dir / TRACKS_SUBDIR / folder / "wep", folder)
+            print(f"{folder}: {path.name}" + "".join(f"\n    {n}" for n in notes))
+        return
     real = json_lengths()
     if not args.layout:
         for stale in OUT_DIR.glob("c*.npz"):
