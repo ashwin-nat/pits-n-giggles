@@ -5,6 +5,7 @@ import { isCompleteLap, type LapSelection } from "../types/store";
 import type { TelemetryPoint } from "../types/api";
 import { useSessions } from "./useSessions";
 import type { LoadedLap } from "../lib/lapSeries";
+import { POSITION_KEYS } from "../lib/mapGeometry";
 
 // One telemetry query per lap slot, keyed by lap alone and carrying every
 // sensor its session recorded. The charts, the section table and the map all
@@ -28,7 +29,8 @@ export function useLapTelemetries(laps: readonly LapSelection[]) {
             lap.sessionId,
             lap.driverIndex,
             lap.lapNumber,
-            manifest.map((s) => s.key)
+            // Not in the manifest (should_display=False), but the track map needs them.
+            [...manifest.map((s) => s.key), ...POSITION_KEYS]
           );
         },
         enabled: active !== null && manifest !== undefined && isCompleteLap(lap),
