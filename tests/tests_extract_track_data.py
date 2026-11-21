@@ -180,7 +180,8 @@ from lib.track_segments_classifier.classifier import TrackSegmentsClassifier
 
 from apps.dev_tools.extract_track_data import (attach_boards, board_objects, corner_report, extract_zones,
                                                game_corners, group_boards, knot_mapper, parse_bxml,
-                                               parse_maintrack_knots, seed_sub_corners, update_segment_file)
+                                               parse_maintrack_knots, project_to_track, seed_sub_corners,
+                                               update_segment_file)
 
 
 def _el(tag: str, attrs: dict = None, *children: bytes, text: str = "") -> bytes:
@@ -448,17 +449,17 @@ def _layout():
 @allure.story("Brake boards")
 @allure.title("Boards attach to the corner they warn about")
 def test_attach_boards():
-    """Three boards on a 2000 m lap: one just before the line (wraps to corner 1), one before the complex
-    corner, and one 700 m before it. Corner 1 held an old board.
+    """Three 100 m boards on a 2000 m lap: one just before the line (wraps to corner 1), one before the complex
+    corner, and one pointing 600 m short of it. Corner 1 held an old board.
 
-    Expected: the old board is replaced, the first two land on corner 1 and sub-corner 2, the far one
-    on sub-corner 2 with a note."""
+    Expected: the old board is replaced, the first two land on corner 1 and sub-corner 2, and the far one is
+    left off with a note."""
     segments, notes = attach_boards(_layout(), [_board(1950), _board(300), _board(900)], 2000)
     corner, complex_corner, _ = segments
     assert [b.at_m for b in corner.brake_boards] == [1950]
-    assert [b.at_m for b in complex_corner.corners[0].brake_boards] == [300, 900]
+    assert [b.at_m for b in complex_corner.corners[0].brake_boards] == [900]
     assert complex_corner.corners[1].brake_boards == ()
-    assert len(notes) == 1 and "300" in notes[0]
+    assert notes == ["100 m board at 300.0 m points 600 m short of the next corner, not attached"]
 
 
 @allure.story("Brake boards")
@@ -467,7 +468,7 @@ def test_attach_boards_rejects_a_board_outside_the_lap_later():
     """A board beyond track_length passes attach_boards, which only places it.
 
     Expected: the classifier refuses the track, so such a file is never written."""
-    segments, _ = attach_boards(_layout(), [_board(2500)], 2000)
+    segments, _ = attach_boards(_layout(), [_board(2050)], 2000)
     with pytest.raises(ValueError, match="must be in"):
         TrackSegmentsClassifier(circuit_name="t", circuit_number=1, track_length=2000, sectors={"s1": 600, "s2": 1300},
                                 segments=segments, use_cache=False)
@@ -695,3 +696,79 @@ def test_attach_boards_without_corners():
     segments = (StraightSegmentInfo(name="Only", start_m=0, end_m=2000),)
     assert attach_boards(segments, [_board(500)], 2000) == (segments, ["1 boards not attached: the file has no corners"])
     assert attach_boards(segments, [], 2000) == (segments, [])
+
+
+@allure.story("Brake boards")
+@allure.title("A board pointing {short} m short of the next corner is {outcome}")
+@pytest.mark.parametrize("at, short, outcome", [(850, 50, "attached"), (750, 150, "left off")])
+def test_attach_boards_far_from_any_corner(at, short, outcome):
+    """A 100 m board whose label points 50 m, or 150 m, short of the complex corner at 1000 m, as Baku's
+    left-side boards point about 285 m short of turn 1.
+
+    Expected: within 100 m it is attached; beyond that it is left off with a note."""
+    segments, notes = attach_boards(_layout(), [_board(at)], 2000)
+    held = [b.at_m for b in segments[1].corners[0].brake_boards]
+    if outcome == "attached":
+        assert held == [at] and notes == []
+    else:
+        assert held == [] and notes == [f"100 m board at {float(at)} m points {short} m short of the next corner, not attached"]
+
+
+@allure.story("Brake boards")
+@allure.title("A corner given two boards with the same label is reported")
+def test_attach_boards_repeated_label():
+    """Two 100 m boards at different spots, both counting down into corner 1 (100 to 200 m).
+
+    Expected: both attached, and a note naming the corner and the repeated label."""
+    segments, notes = attach_boards(_layout(), [_board(20), _board(60)], 2000)
+    assert [b.at_m for b in segments[0].brake_boards] == [20, 60]
+    assert notes == ["corner at 100 m has more than one board labelled 100 m"]
+
+
+@allure.story("Lap distance mapping")
+@allure.title("A position on the closing edge wraps to 0 instead of equalling the track length")
+def test_lap_distances_never_reach_track_length():
+    """A markup fraction of 0.99999 and a board projecting onto the last knot, on a 4000 m square lap.
+
+    Expected: both are below track_length, which the classifier requires."""
+    assert knot_mapper(_SQUARE, 4000)(0.99999) == 0.0
+    at, _ = project_to_track(0.0, 0.0, _SQUARE, 4000)
+    assert 0 <= at < 4000
+
+
+@allure.story("Brake boards")
+@allure.title("An object name with other numbers still yields its board distance")
+def test_board_distance_skips_other_numbers():
+    """A board named with an index before its distance, brakeboard_01_100_l.
+
+    Expected: 100, the first number that is a board distance, not 01."""
+    (obj,) = board_objects(_pkg([("layer$brakeboard_01_100_l", _matrix(1.0, 2.0), [])]))
+    assert obj["dist"] == 100
+
+
+@allure.story("Updating segment files")
+@allure.title("A bad --layout is refused before any file is written")
+def test_main_resolves_every_layout_first(tmp_path, monkeypatch, game_files):
+    """--update for a real file and then a circuit with no segment file.
+
+    Expected: exits with an error and the real file is unchanged."""
+    path = _write(tmp_path, _BASE_FILE)
+    before = path.read_bytes()
+    monkeypatch.setattr(extract_track_data, "SEGMENTS_DIR", tmp_path)
+    monkeypatch.setattr("sys.argv", ["x", "--game-dir", str(tmp_path), "--update", "--layout", "test=99", "foo=98"])
+    with pytest.raises(SystemExit):
+        extract_track_data.main()
+    assert path.read_bytes() == before
+
+
+@allure.story("Updating segment files")
+@allure.title("Two segment files for one circuit are refused")
+def test_segment_files_rejects_duplicate_circuit(tmp_path, monkeypatch):
+    """Test.json and a stray copy with the same circuit_number.
+
+    Expected: ValueError naming both files, so --update cannot rewrite the copy and leave the real file stale."""
+    _write(tmp_path, _BASE_FILE)
+    (tmp_path / "Test (1).json").write_text(json.dumps(_BASE_FILE))
+    monkeypatch.setattr(extract_track_data, "SEGMENTS_DIR", tmp_path)
+    with pytest.raises(ValueError, match="circuit_number 99"):
+        extract_track_data.segment_files()

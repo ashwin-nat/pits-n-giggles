@@ -6,7 +6,7 @@ import type { TrackSection } from "../types/api";
 // lib/track_segment_info/database.py's TrackSegmentsDatabase.
 interface SegmentEntry {
   type: "straight" | "corner" | "complex_corner";
-  name: string;
+  name?: string; // written only when set: unnamed corners have no key
   start_m: number;
   end_m: number;
   corner_number?: number;
@@ -33,7 +33,7 @@ export interface TrackMeta {
 
 function toSections(data: SegmentsFile): TrackSection[] {
   return data.segments.map((s) => ({
-    label: s.name,
+    label: s.name ?? "",
     distanceStart: s.start_m,
     distanceEnd: s.end_m,
     type: s.type,

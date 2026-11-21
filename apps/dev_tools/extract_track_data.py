@@ -205,7 +205,7 @@ def knot_mapper(knots: np.ndarray, track_length: float) -> Callable[[float], flo
     closed = np.vstack([knots, knots[:1]])
     arc = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(closed, axis=0), axis=1))])
     index = np.arange(len(arc))
-    return lambda frac: round(float(np.interp((frac % 1.0) * len(knots), index, arc) / arc[-1] * track_length), 1)
+    return lambda frac: round(float(np.interp((frac % 1.0) * len(knots), index, arc) / arc[-1] * track_length), 1) % track_length
 
 
 def extract_zones(markup: BxmlNode, to_m: Callable[[float], float]) -> Dict[str, Any]:
@@ -315,7 +315,7 @@ def _walk(node: Any) -> Iterator[Any]:
 
 _CONTEXT = re.compile(r"context=([^&]+)")
 _SPONSOR_DIST = re.compile(r"sp_(\d{2,3})_")
-_NAME_DIST = re.compile(r"(?:pole|_)(\d{2,3})(?:[lr]?_|$)")
+_NAME_DIST = re.compile(r"(?:pole|_)(\d{2,3})(?=[lr]?_|$)")
 BOARD_DISTANCES = (50, 100, 150, 200, 250, 300)
 
 
@@ -337,8 +337,8 @@ def board_objects(layer: bytes) -> List[Dict[str, Any]]:
         refs = [s for s in _walk(inst) if isinstance(s, str) and ".emb" in s]
         dist = next((int(m.group(1)) for r in refs for c in _CONTEXT.findall(r)
                      if (m := _SPONSOR_DIST.match(c))), None)
-        if dist is None and "sponsor" not in short and (m := _NAME_DIST.search(short)):
-            dist = int(m.group(1))
+        if dist is None and "sponsor" not in short:
+            dist = next((int(m.group(1)) for m in _NAME_DIST.finditer(short) if int(m.group(1)) in BOARD_DISTANCES), None)
         out.append({"name": short, "dist": dist, "x": mat[12], "z": mat[14]})
     return out
 
@@ -353,7 +353,8 @@ def project_to_track(x: float, z: float, knots: np.ndarray, track_length: float)
     dist = ((start + t[:, None] * vec - p) ** 2).sum(1)
     i = int(np.argmin(dist))
     side = np.sign(vec[i, 0] * (z - start[i, 1]) - vec[i, 1] * (x - start[i, 0]))
-    return float((arc[i] + t[i] * np.linalg.norm(vec[i])) / arc[-1] * track_length), float(np.sqrt(dist[i]) * side)
+    lap_m = float((arc[i] + t[i] * np.linalg.norm(vec[i])) / arc[-1] * track_length) % track_length
+    return lap_m, float(np.sqrt(dist[i]) * side)
 
 
 def group_boards(objects: List[Dict[str, Any]], knots: np.ndarray, track_length: float) -> List[Dict[str, Any]]:
@@ -398,6 +399,9 @@ def _replace(model: ModelT, **changes: Any) -> ModelT:
     return type(model).model_validate({**dict(model), **changes})
 
 
+MAX_SHORT_M = 100  # label spacing is off by up to about 20 m, so 100 m short means some other corner
+
+
 def attach_boards(segments: Tuple[SegmentInfo, ...], boards: List[BrakeBoardInfo],
                   track_length: float) -> Tuple[Tuple[SegmentInfo, ...], List[str]]:
     """`segments` with `brake_boards` set on the corner each board warns about, plus notes for odd boards.
@@ -405,7 +409,8 @@ def attach_boards(segments: Tuple[SegmentInfo, ...], boards: List[BrakeBoardInfo
     A board counts down to the spot `at_m + distance_m`. It belongs to the corner or complex corner containing
     that spot, or to the next one ahead (wrapping past the start line) when the spot is on a straight. Position
     alone is not enough: boards often stand in the tail of the previous corner. A complex corner is one braking
-    event, so its boards go on its first sub-corner, whose own boundaries are only seeded.
+    event, so its boards go on its first sub-corner, whose own boundaries are only seeded. A board pointing more
+    than MAX_SHORT_M before the next corner warns for no corner in the file, so it is reported and left off.
     Complex corners must already hold their `corners`. Boards already on a corner are replaced.
     """
     targets = sorted(((seg.start_m, seg.end_m, i) for i, seg in enumerate(segments)
@@ -417,10 +422,18 @@ def attach_boards(segments: Tuple[SegmentInfo, ...], boards: List[BrakeBoardInfo
     for board in boards:
         target_m = (board.at_m + board.distance_m) % track_length
         start, end, i = next((t for t in targets if t[1] > target_m), targets[0])
-        gap = 0.0 if start <= board.at_m < end else (start - board.at_m) % track_length
-        if 450 < gap < track_length - 200:
-            notes.append(f"{board.distance_m} m board at {board.at_m} m is {gap:.0f} m before its corner")
+        short_m = 0.0 if start <= target_m < end else (start - target_m) % track_length
+        if short_m > MAX_SHORT_M:
+            notes.append(f"{board.distance_m} m board at {board.at_m} m points {short_m:.0f} m short of the next "
+                         f"corner, not attached")
+            continue
         assigned.setdefault(i, []).append(board)
+    for i, held in assigned.items():
+        labels = [b.distance_m for b in held]
+        repeated = sorted({d for d in labels if labels.count(d) > 1})
+        if repeated:
+            notes.append(f"corner at {segments[i].start_m:g} m has more than one board labelled "
+                         f"{', '.join(str(d) for d in repeated)} m")
     out: List[SegmentInfo] = []
     for i, seg in enumerate(segments):
         if isinstance(seg, CornerSegmentInfo):
@@ -527,9 +540,14 @@ def game_layouts(game_dir: Path) -> List[str]:
 
 
 def segment_files() -> Dict[int, Path]:
-    """circuit_number -> segment file path."""
-    return {int(json.loads(path.read_text(encoding="utf-8"))["circuit_number"]): path
-            for path in SEGMENTS_DIR.glob("*.json")}
+    """circuit_number -> segment file path. Raises ValueError when two files share a circuit number."""
+    out: Dict[int, Path] = {}
+    for path in sorted(SEGMENTS_DIR.glob("*.json")):
+        number = int(json.loads(path.read_text(encoding="utf-8"))["circuit_number"])
+        if number in out:
+            raise ValueError(f"circuit_number {number} is in both {out[number].name} and {path.name}")
+        out[number] = path
+    return out
 
 
 def json_lengths() -> Dict[int, float]:
@@ -552,11 +570,14 @@ def main() -> None:
         ap.error(f"circuit {', '.join(repeated)} is given for more than one folder, so one would overwrite the other")
     if args.update:
         files = segment_files()
+        jobs = []
         for spec in specs:
             folder, _, number = spec.partition("=")
             path = files.get(int(number)) if number.isdigit() else None
             if path is None:
                 ap.error(f"--layout {spec!r} must be FOLDER=CIRCUIT with an existing segment file")
+            jobs.append((folder, path))
+        for folder, path in jobs:
             notes = update_segment_file(path, args.game_dir / TRACKS_SUBDIR / folder / "wep", folder)
             print(f"{folder}: {path.name}" + "".join(f"\n    {n}" for n in notes))
         return

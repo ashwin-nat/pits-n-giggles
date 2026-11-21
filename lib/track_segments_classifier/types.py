@@ -36,7 +36,7 @@ def _num(value: float) -> float:
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 class SectorBoundaries(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     s1: int
     s2: int
@@ -52,7 +52,7 @@ class SectorBoundaries(BaseModel):
 
 class BrakeBoardInfo(BaseModel):
     """A brake board: its label, its real lap distance, and which side of the track it stands on."""
-    model_config = ConfigDict(frozen=True, allow_inf_nan=False)
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False, extra="forbid")
 
     distance_m: Literal[50, 100, 150, 200, 250, 300]
     at_m: float
@@ -64,7 +64,7 @@ class BrakeBoardInfo(BaseModel):
 
 class SubCornerInfo(BaseModel):
     """One corner's part of a complex corner."""
-    model_config = ConfigDict(frozen=True, allow_inf_nan=False)
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False, extra="forbid")
 
     corner_number: int
     name: str = ""
@@ -92,7 +92,7 @@ class SubCornerInfo(BaseModel):
 
 class LapRangeInfo(BaseModel):
     """A lap range that may cross the start line, shown by end_m < start_m."""
-    model_config = ConfigDict(frozen=True, allow_inf_nan=False)
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False, extra="forbid")
 
     start_m: float
     end_m: float
@@ -113,7 +113,7 @@ class DrsActivationInfo(LapRangeInfo):
 
 class DrsZoneInfo(BaseModel):
     """A DRS detection point and the activation ranges it opens."""
-    model_config = ConfigDict(frozen=True, allow_inf_nan=False)
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False, extra="forbid")
 
     id: int
     detection_m: float
@@ -126,7 +126,7 @@ class DrsZoneInfo(BaseModel):
 
 class OvertakeDistInfo(BaseModel):
     """The track's overtake mode detection point and its activation point. There is one per track."""
-    model_config = ConfigDict(frozen=True, allow_inf_nan=False)
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False, extra="forbid")
 
     detection_m: float
     activation_m: float
@@ -144,7 +144,7 @@ class ActiveAeroZoneInfo(LapRangeInfo):
 
 
 class BaseSegmentInfo(BaseModel):
-    model_config = ConfigDict(frozen=True, allow_inf_nan=False)
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False, extra="forbid")
 
     TYPE: ClassVar[str]
     type: str

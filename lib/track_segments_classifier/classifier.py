@@ -61,7 +61,7 @@ class TrackSegmentsClassifier(BaseModel):
         Zones may cross the start line (end_m < start_m); segments may not.
     """
 
-    model_config = ConfigDict(frozen=True, allow_inf_nan=False)
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False, extra="forbid")
 
     circuit_name: str
     circuit_number: int

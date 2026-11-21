@@ -1558,3 +1558,21 @@ def test_v2_file_dict_keeps_empty_zone_lists():
     dumped = load(track, use_cache=False).to_file_dict()
     assert dumped["drs_zones"] == dumped["active_aero_zones"] == []
     assert "overtake_dist" not in dumped
+
+
+@allure.story("Schema v2: file form")
+@allure.title("An unknown key {where} is rejected")
+@pytest.mark.parametrize("where, key", [("at the top level", "overtake_zones"), ("in a segment", "corner_name"),
+                                        ("in a brake board", "lateral_m")])
+def test_unknown_key_rejected(where, key):
+    """The v2 Monza track with a retired or misspelled key added.
+
+    Expected: rejected, so a file cannot load with part of its data silently ignored."""
+    track = _v2()
+    if where == "at the top level":
+        track[key] = []
+    elif where == "in a segment":
+        track["segments"][2][key] = "x"
+    else:
+        track["segments"][2]["brake_boards"][0][key] = 1.0
+    _assert_rejected(track, key)
