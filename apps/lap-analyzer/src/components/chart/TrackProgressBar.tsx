@@ -5,6 +5,7 @@ import type { TrackSection } from "../../types/api";
 import type { ActiveSection } from "../../types/store";
 import { labelFits, sectionCode, sectionViewport } from "../../lib/sectionStrip";
 import { InfoTooltip } from "./InfoTooltip";
+import { StripMarkers } from "./StripMarkers";
 
 interface TrackProgressBarProps {
   // The shared chart crosshair (ChartLaneList/ChartArea-owned) -- drives the
@@ -79,9 +80,11 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
   const viewport = useTelemetryStore((state) => state.viewport);
   const setViewport = useTelemetryStore((state) => state.setViewport);
   const setHoverSection = useTelemetryStore((state) => state.setHoverSection);
+  const showMarkers = useTelemetryStore((state) => state.showMarkers);
 
   const { data: sessions } = useSessions();
-  const trackId = sessions?.find((s) => s.id === primarySessionId)?.trackId ?? null;
+  const session = sessions?.find((s) => s.id === primarySessionId);
+  const trackId = session?.trackId ?? null;
   const meta = useTrackMeta(trackId);
 
   if (primarySessionId === null) {
@@ -179,7 +182,8 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
           ›
         </button>
       </div>
-      <div className="relative h-7 min-w-0 flex-1">
+      <div className="min-w-0 flex-1">
+      <div className="relative h-7">
         {/* No overflow-hidden on this row -- it would clip InfoTooltip's
             popup, which renders outside the row's box (bottom-full). */}
         <div className="flex h-full w-full">
@@ -258,6 +262,8 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
             style={{ left: `${markerPct}%` }}
           />
         )}
+      </div>
+      {showMarkers && meta !== null && trackLength > 0 && <StripMarkers meta={meta} formula={session?.formula ?? ""} />}
       </div>
     </div>
   );

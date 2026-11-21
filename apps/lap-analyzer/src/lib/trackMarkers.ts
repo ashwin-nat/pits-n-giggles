@@ -32,7 +32,7 @@ export function zoneRanges(meta: TrackMeta): ZoneRanges {
 
 export const MARKER_COLORS = {
   drs: "#22c55e",
-  aero: "#ef4444",
+  aero: "#e6100a",
   speedTrap: "#d946ef",
   overtake: "#34d399",
   board: "#f87171",
