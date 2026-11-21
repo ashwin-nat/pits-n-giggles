@@ -6,45 +6,51 @@ export interface TrackGeometry {
   edges: Float32Array;
   // Lap fraction (0..1) of each gate.
   frac: Float32Array;
+  // F1 game year the geometry was extracted from, e.g. 25.
+  sourceYear: number;
 }
 
-// Bundled static asset synced by scripts/sync-segments.ts (POC, gitignored).
-// Globbed so a missing file means "no geometry" rather than a build error.
-const files = import.meta.glob<string>("../assets/track-data/track_geometry.npz", {
+// Format version written by apps/dev_tools/extract_track_data.py; a file with another version is rejected.
+export const GEOMETRY_VERSION = 1;
+
+// One file per layout, c<circuit>.npz, synced by scripts/sync-segments.ts. Globbed so a missing
+// file means "no geometry" rather than a build error.
+const files = import.meta.glob<string>("../assets/track-data/c*.npz", {
   query: "?url",
   import: "default",
 });
 
-let cachePromise: Promise<Map<number, TrackGeometry>> | null = null;
+const cache = new Map<number, Promise<TrackGeometry | null>>();
 
-function toFloat32(entries: Record<string, Uint8Array>, key: string): Float32Array {
+function toArray<T>(entries: Record<string, Uint8Array>, key: string): T {
   const bytes = entries[`${key}.npy`];
   const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-  return parseNpy(buffer).data as unknown as Float32Array;
+  return parseNpy(buffer).data as unknown as T;
 }
 
-async function load(): Promise<Map<number, TrackGeometry>> {
-  const map = new Map<number, TrackGeometry>();
-  const loader = Object.values(files)[0];
+async function load(trackId: number): Promise<TrackGeometry | null> {
+  const loader = Object.entries(files).find(([path]) => path.endsWith(`/c${trackId}.npz`))?.[1];
   if (loader === undefined) {
-    return map;
+    return null;
   }
   const response = await fetch(await loader());
-  const entries = unzipArchive(new Uint8Array(await response.arrayBuffer()), "track_geometry.npz");
-  for (const name of Object.keys(entries)) {
-    const match = /^c(\d+)_edges\.npy$/.exec(name);
-    if (match !== null) {
-      const circuit = match[1];
-      map.set(Number(circuit), {
-        edges: toFloat32(entries, `c${circuit}_edges`),
-        frac: toFloat32(entries, `c${circuit}_frac`),
-      });
-    }
+  const entries = unzipArchive(new Uint8Array(await response.arrayBuffer()), `c${trackId}.npz`);
+  const version = Number(toArray<ArrayLike<number>>(entries, "version")[0]);
+  if (version !== GEOMETRY_VERSION) {
+    throw new Error(`c${trackId}.npz has format version ${version}, expected ${GEOMETRY_VERSION}`);
   }
-  return map;
+  return {
+    edges: toArray<Float32Array>(entries, "edges"),
+    frac: toArray<Float32Array>(entries, "frac"),
+    sourceYear: Number(toArray<ArrayLike<number>>(entries, "source_year")[0]),
+  };
 }
 
-export async function getTrackGeometry(trackId: number): Promise<TrackGeometry | null> {
-  cachePromise ??= load();
-  return (await cachePromise).get(trackId) ?? null;
+export function getTrackGeometry(trackId: number): Promise<TrackGeometry | null> {
+  let cached = cache.get(trackId);
+  if (cached === undefined) {
+    cached = load(trackId);
+    cache.set(trackId, cached);
+  }
+  return cached;
 }

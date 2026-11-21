@@ -215,7 +215,7 @@ def main():
     # import.meta.glob in src/lib/segments.ts finds nothing and the track progress
     # bar silently renders empty. Must precede the build below since Vite's glob
     # resolves at build time, not runtime.
-    subprocess.run("pnpm sync-segments", cwd=analyzer_source, check=True, shell=True)
+    subprocess.run("pnpm sync-segments --strict", cwd=analyzer_source, check=True, shell=True)
     subprocess.run(
         "pnpm build",
         cwd=analyzer_source,

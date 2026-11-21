@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync, readFileSync, readdirSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { syncSegments } from "./sync-segments";
+import { syncGeometry, syncSegments } from "./sync-segments";
 
 function makeTempDir(): string {
   return mkdtempSync(join(tmpdir(), "sync-segments-test-"));
@@ -93,4 +93,34 @@ test("throws when the source directory does not exist", () => {
   } finally {
     rmSync(destDir, { recursive: true, force: true });
   }
+});
+
+function geometryFixture(circuits: number[], files: string[]) {
+  const segments = makeTempDir();
+  const source = makeTempDir();
+  const dest = join(makeTempDir(), "out");
+  for (const n of circuits) {
+    writeFileSync(join(segments, `t${n}.json`), JSON.stringify({ circuit_number: n }));
+  }
+  for (const f of files) {
+    writeFileSync(join(source, f), "x");
+  }
+  return { segments, source, dest };
+}
+
+test("geometry: copies only c<n>.npz files", () => {
+  const { segments, source, dest } = geometryFixture([1], ["c1.npz", "notes.txt"]);
+  assert.equal(syncGeometry(source, dest, segments, true), 1);
+  assert.deepEqual(readdirSync(dest), ["c1.npz"]);
+});
+
+test("geometry: strict fails when a circuit has no file", () => {
+  const { segments, source, dest } = geometryFixture([1, 2], ["c1.npz"]);
+  assert.throws(() => syncGeometry(source, dest, segments, true), /circuit\(s\): 2/);
+});
+
+test("geometry: not strict skips missing files and a missing folder", () => {
+  const { segments, source, dest } = geometryFixture([1, 2], ["c1.npz"]);
+  assert.equal(syncGeometry(source, dest, segments, false), 1);
+  assert.equal(syncGeometry(join(source, "nope"), dest, segments, false), 0);
 });
