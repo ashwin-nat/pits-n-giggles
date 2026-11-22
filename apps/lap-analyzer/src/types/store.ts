@@ -3,11 +3,19 @@
 // types describe UI selection and interaction state that never crosses a
 // provider boundary.
 
-export interface SelectionState {
-  sessionId: string | null;
-  driverIndex: number | null;
-  lapNumber: number | null;
-  sensors: string[]; // sensor keys, e.g. ["speed", "throttle", "brake"]
+// One complete lap. laps[0] is the reference lap (A); laps[1..3] are comparison laps.
+export interface LapRef {
+  sessionId: string;
+  driverIndex: number;
+  lapNumber: number;
+}
+
+// A slot's selection, any field null while unset. The Choose lap modal only
+// ever produces a complete LapRef.
+export type LapSelection = { [K in keyof LapRef]: LapRef[K] | null };
+
+export function isCompleteLap(lap: LapSelection | undefined): lap is LapRef {
+  return lap !== undefined && lap.sessionId !== null && lap.driverIndex !== null && lap.lapNumber !== null;
 }
 
 export interface Viewport {

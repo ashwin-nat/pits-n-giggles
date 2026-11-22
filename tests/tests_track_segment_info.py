@@ -21,6 +21,7 @@
 # SOFTWARE.
 # pylint: skip-file
 
+import copy
 import json
 import os
 import sys
@@ -29,17 +30,22 @@ import tempfile
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import allure
+import pytest
 from pydantic import ValidationError
 
 from lib.f1_types.packet_2_lap_data import LapData
 from lib.track_segments_classifier import TrackSegmentsDatabase
 from lib.track_segments_classifier.classifier import TrackSegmentsClassifier
 from lib.track_segments_classifier.types import (BaseSegmentInfo,
+                                           BrakeBoardInfo,
                                            ComplexCornerSegmentInfo,
                                            CornerSegmentInfo,
                                            StraightSegmentInfo)
 
 from tests_base import F1TelemetryUnitTestsBase
+
+pytestmark = [allure.epic("Track data"), allure.feature("Track segments")]
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -47,6 +53,7 @@ def load(data: dict, *, use_cache: bool) -> TrackSegmentsClassifier:
     return TrackSegmentsClassifier.model_validate({**data, "use_cache": use_cache})
 
 
+@allure.story("Segment lookup")
 class TestTrackSegments(F1TelemetryUnitTestsBase):
 
     @staticmethod
@@ -407,6 +414,7 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+@allure.story("Lookup cache")
 class TestLastSegmentCache(F1TelemetryUnitTestsBase):
     """Exercises the last-segment cache of TrackSegmentsClassifier.get_segment_info."""
 
@@ -469,6 +477,7 @@ class TestLastSegmentCache(F1TelemetryUnitTestsBase):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+@allure.story("Segment validation")
 class TestSegmentValidation(F1TelemetryUnitTestsBase):
     """Cross-segment checks: lap bounds and corner numbering."""
 
@@ -595,6 +604,7 @@ class TestSegmentValidation(F1TelemetryUnitTestsBase):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+@allure.story("Lookup cache")
 class TestClassifierCacheToggle(F1TelemetryUnitTestsBase):
 
     _DATA = {
@@ -643,6 +653,7 @@ class TestClassifierCacheToggle(F1TelemetryUnitTestsBase):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+@allure.story("Segment dict")
 class TestSegmentDict(F1TelemetryUnitTestsBase):
 
     def test_straight_named_Dict(self):
@@ -735,6 +746,7 @@ class TestSegmentDict(F1TelemetryUnitTestsBase):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+@allure.story("Sectors")
 class TestGetSector(F1TelemetryUnitTestsBase):
 
     _S1 = 500
@@ -897,6 +909,7 @@ _CIRCUIT_C = {
 }
 
 
+@allure.story("Database")
 class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
 
     def setUp(self):
@@ -1070,6 +1083,7 @@ class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
         self.assertEqual(self.db.get_sector(1, 100), LapData.Sector.SECTOR1)
 
 
+@allure.story("Shipped files")
 class TestShippedTrackSegments(F1TelemetryUnitTestsBase):
     """Checks on the track files shipped in assets/track-segments."""
 
@@ -1083,3 +1097,527 @@ class TestShippedTrackSegments(F1TelemetryUnitTestsBase):
         db = TrackSegmentsDatabase(self.ASSETS_DIR, cache=False)
         self.assertEqual(len(db), len(self._track_files()))
 
+
+# -------------------------------------- SCHEMA V2 ---------------------------------------------------------------------
+
+_V2_LENGTH = 5798
+
+# Trimmed from the generated Monza prototype; DRS 2 and the last aero zone cross the start line
+_V2_TRACK = {
+    "circuit_name": "Monza",
+    "circuit_number": 11,
+    "track_length": _V2_LENGTH,
+    "sectors": {"s1": 1898, "s2": 3727},
+    "speed_trap_m": 716.3,
+    "drs_zones": [
+        {"id": 1, "detection_m": 2757.6, "activation": [{"start_m": 3055.8, "end_m": 3889.1}]},
+        {"id": 2, "detection_m": 5502.6, "activation": [{"start_m": 9.2, "end_m": 881.3}]},
+    ],
+    "overtake_dist": {"detection_m": 5154.4, "activation_m": 5253.6},
+    "active_aero_zones": [
+        {"mode": "full", "start_m": 1158.3, "end_m": 2113.1},
+        {"mode": "full", "start_m": 5529.7, "end_m": 881.3},
+        {"mode": "partial", "start_m": 5595.5, "end_m": 881.3},
+    ],
+    "segments": [
+        {"type": "straight", "name": "Rettifilo Tribune", "start_m": 0, "end_m": 770},
+        {
+            "type": "complex_corner", "name": "Variante del Rettifilo", "start_m": 770, "end_m": 1015,
+            "corner_numbers": [1, 2],
+            "corners": [
+                {
+                    "corner_number": 1, "start_m": 770, "end_m": 952,
+                    "brake_boards": [
+                        {"distance_m": 150, "at_m": 776.3, "side": "both"},
+                        {"distance_m": 50, "at_m": 851.5, "side": "left"},
+                    ],
+                },
+                {"corner_number": 2, "start_m": 952, "end_m": 1015},
+            ],
+        },
+        {
+            "type": "corner", "name": "Curva Grande", "start_m": 1060, "end_m": 1860, "corner_number": 3,
+            "brake_boards": [{"distance_m": 100, "at_m": 1030.0, "side": "right"}],
+        },
+        {"type": "straight", "name": "Back", "start_m": 1860, "end_m": _V2_LENGTH},
+    ],
+}
+
+_V2_KEYS = ("speed_trap_m", "drs_zones", "overtake_dist", "active_aero_zones")
+
+
+def _v2() -> dict:
+    return copy.deepcopy(_V2_TRACK)
+
+
+def _as_v1(track: dict) -> dict:
+    """The same track with every schema v2 field removed."""
+    v1 = {k: v for k, v in copy.deepcopy(track).items() if k not in _V2_KEYS}
+    for seg in v1["segments"]:
+        seg.pop("brake_boards", None)
+        seg.pop("corners", None)
+    return v1
+
+
+def _rettifilo(track: dict) -> dict:
+    return track["segments"][1]
+
+
+def _assert_rejected(track: dict, message: str) -> None:
+    with pytest.raises(ValidationError, match=message):
+        load(track, use_cache=False)
+
+
+# --- v1 compatibility -------------------------------------------------------------------------------------------------
+
+@allure.story("Schema v2: v1 compatibility")
+@allure.title("A file with no v2 fields loads with every one at its default")
+def test_file_without_v2_fields_gets_defaults():
+    """Alpha Circuit, which has no speed trap, zones, sub-corners or brake boards.
+
+    Expected: no speed trap, no zones, and no brake boards on its corner."""
+    ts = load(_CIRCUIT_A, use_cache=False)
+    assert ts.speed_trap_m is None
+    assert ts.overtake_dist is None
+    assert ts.drs_zones == ts.active_aero_zones == ()
+    assert ts.segments[1].brake_boards == ()
+
+
+@allure.story("Schema v2: v1 compatibility")
+@allure.title("v2 fields do not change segment or sector lookups")
+def test_v2_fields_leave_lookups_unchanged():
+    """The v2 Monza track against the same track with its v2 fields stripped, probed every 50 m.
+
+    Expected: identical segment dicts and sectors at every probe."""
+    v2 = load(_v2(), use_cache=False)
+    v1 = load(_as_v1(_V2_TRACK), use_cache=False)
+    for dist in range(0, _V2_LENGTH, 50):
+        seg_v1, seg_v2 = v1.get_segment_info(dist), v2.get_segment_info(dist)
+        assert (seg_v1 and seg_v1.to_dict()) == (seg_v2 and seg_v2.to_dict()), dist
+        assert v1.get_sector(dist) == v2.get_sector(dist), dist
+
+
+@allure.story("Schema v2: v1 compatibility")
+@allure.title("to_dict() of the {seg_type} segment carries no v2 fields")
+@pytest.mark.parametrize("seg_type, index", [("corner", 2), ("complex_corner", 1)])
+def test_to_dict_unchanged(seg_type, index):
+    """A corner with brake boards, and a complex corner with sub-corners, from the v2 Monza track.
+
+    Expected: to_dict() returns exactly the v1 keys, so IPC payloads do not grow."""
+    seg = load(_v2(), use_cache=False).segments[index]
+    assert seg.type == seg_type
+    expected = {"corner": {"type", "name", "corner_number"},
+                "complex_corner": {"type", "name", "corner_numbers"}}[seg_type]
+    assert set(seg.to_dict()) == expected
+
+
+@allure.story("Schema v2: v1 compatibility")
+@allure.title("A v2 file loads through TrackSegmentsDatabase")
+def test_v2_file_loads_through_database(tmp_path):
+    """The v2 Monza track written to a JSON file in an otherwise empty directory.
+
+    Expected: the database loads it, keeping its zones and sub-corners."""
+    (tmp_path / "Monza.json").write_text(json.dumps(_V2_TRACK), encoding="utf-8")
+    ts = TrackSegmentsDatabase(tmp_path, cache=False)[11]
+    assert len(ts.drs_zones) == 2
+    assert len(ts.segments[1].corners) == 2
+
+
+# --- Brake boards -----------------------------------------------------------------------------------------------------
+
+@allure.story("Schema v2: brake boards")
+@allure.title("A {distance_m} m board on the {side} is valid")
+@pytest.mark.parametrize("side", ["left", "right", "both"])
+@pytest.mark.parametrize("distance_m", [50, 100, 150, 200, 250, 300])
+def test_brake_board_valid(distance_m, side):
+    """Every label from 50 to 300 m, on each side.
+
+    Expected: the board parses with its values intact."""
+    board = BrakeBoardInfo(distance_m=distance_m, at_m=1000.5, side=side)
+    assert (board.distance_m, board.at_m, board.side) == (distance_m, 1000.5, side)
+
+
+@allure.story("Schema v2: brake boards")
+@allure.title("A board labelled {distance_m} m is rejected")
+@pytest.mark.parametrize("distance_m", [0, 75, 350])
+def test_brake_board_bad_distance_rejected(distance_m):
+    """Labels off the 50 m grid or past 300 m.
+
+    Expected: rejected."""
+    with pytest.raises(ValidationError, match="distance_m"):
+        BrakeBoardInfo(distance_m=distance_m, at_m=100, side="left")
+
+
+@allure.story("Schema v2: brake boards")
+@allure.title("A board on side {side!r} is rejected")
+@pytest.mark.parametrize("side", ["Left", "centre", ""])
+def test_brake_board_bad_side_rejected(side):
+    """Spelling variants and unknown sides.
+
+    Expected: rejected, since side is a fixed enum."""
+    with pytest.raises(ValidationError, match="side"):
+        BrakeBoardInfo(distance_m=100, at_m=100, side=side)
+
+
+@allure.story("Schema v2: brake boards")
+@allure.title("A board in the segment before its corner is valid")
+def test_brake_board_before_its_corner_valid():
+    """Curva Grande starts at 1060 m; its 100 m board is at 1030 m, in the gap before it.
+
+    Expected: loads, because boards normally sit before the corner they warn about."""
+    seg = load(_v2(), use_cache=False).segments[2]
+    assert seg.brake_boards[0].at_m < seg.start_m
+
+
+@allure.story("Schema v2: brake boards")
+@allure.title("A board pointing {where} is {verdict}")
+@pytest.mark.parametrize("at_m, where, verdict", [
+    (1030.0, "inside its corner", "valid"),
+    (900.0, "short of its corner", "rejected"),
+    (1800.0, "past its corner", "rejected"),
+])
+def test_brake_board_target_must_be_inside_corner(at_m, where, verdict):
+    """Curva Grande (1060 m onwards) with its 100 m board moved along the lap.
+
+    Expected: accepted only when at_m + 100 lands inside the corner."""
+    track = _v2()
+    seg = next(s for s in track["segments"] if s.get("brake_boards") and s["type"] == "corner")
+    seg["brake_boards"][0]["at_m"] = at_m
+    if verdict == "valid":
+        load(track, use_cache=False)
+    else:
+        _assert_rejected(track, "points to")
+
+
+@allure.story("Schema v2: brake boards")
+@allure.title("A board pointing past the start line is rejected")
+def test_brake_board_target_past_start_line_rejected():
+    """A 100 m board at 6960 m on a 7000 m lap, for a corner at 50 to 120 m.
+
+    Expected: rejected, because segments never cross the start line so there is no wrapping."""
+    board = BrakeBoardInfo(distance_m=100, at_m=6960, side="left")
+    with pytest.raises(ValueError, match="points to"):
+        CornerSegmentInfo(name="", corner_number=1, start_m=50, end_m=120, brake_boards=(board,))
+
+
+@allure.story("Schema v2: brake boards")
+@allure.title("A sub-corner board is checked against the whole complex corner")
+def test_sub_corner_board_may_point_into_later_sub_corner():
+    """Rettifilo corner 1's 150 m board moved so it points into corner 2.
+
+    Expected: accepted, since the target is still inside the complex corner."""
+    track = _v2()
+    _rettifilo(track)["corners"][0]["brake_boards"][0]["at_m"] = 960 - 150
+    load(track, use_cache=False)
+
+
+# --- Sub-corners ------------------------------------------------------------------------------------------------------
+
+@allure.story("Schema v2: sub-corners")
+@allure.title("Sub-corners parse, with names defaulting to empty")
+def test_sub_corners_parse():
+    """Variante del Rettifilo, split into corners 1 and 2 at 952 m.
+
+    Expected: two sub-corners with their ranges, unnamed, boards only on corner 1."""
+    corners = load(_v2(), use_cache=False).segments[1].corners
+    assert [(c.corner_number, c.start_m, c.end_m) for c in corners] == [(1, 770, 952), (2, 952, 1015)]
+    assert [c.name for c in corners] == ["", ""]
+    assert len(corners[0].brake_boards) == 2
+    assert corners[1].brake_boards == ()
+
+
+@allure.story("Schema v2: sub-corners")
+@allure.title("A complex corner without sub-corners is valid")
+def test_complex_corner_without_sub_corners_valid():
+    """Variante del Rettifilo with its corners key removed.
+
+    Expected: loads with an empty corners tuple, as every v1 file does."""
+    track = _v2()
+    del _rettifilo(track)["corners"]
+    assert load(track, use_cache=False).segments[1].corners == ()
+
+
+def _sub_corner_case(track: dict, case: str) -> None:
+    corners = _rettifilo(track)["corners"]
+    if case == "renumbered":
+        corners[1]["corner_number"] = 3
+    elif case == "missing-one":
+        corners[0]["end_m"] = 1015
+        del corners[1]
+    elif case == "late-start":
+        corners[0]["start_m"] = 780
+    elif case == "early-end":
+        corners[1]["end_m"] = 1010
+    elif case == "gap":
+        corners[1]["start_m"] = 960
+    elif case == "overlap":
+        corners[1]["start_m"] = 940
+    elif case == "empty-range":
+        corners[1]["start_m"] = corners[1]["end_m"] = corners[0]["end_m"] = 1015
+    else:
+        raise AssertionError(case)
+
+
+@allure.story("Schema v2: sub-corners")
+@allure.title("Sub-corners that are {case} are rejected")
+@pytest.mark.parametrize("case, message", [
+    ("renumbered", "must match corner_numbers"),
+    ("missing-one", "must match corner_numbers"),
+    ("late-start", "not at the segment start"),
+    ("early-end", "not at the segment end"),
+    ("gap", "not where corner 1 ends"),
+    ("overlap", "not where corner 1 ends"),
+    ("empty-range", "must be less than end_m"),
+])
+def test_sub_corners_bad_coverage_rejected(case, message):
+    """Variante del Rettifilo's sub-corners, broken one way per case.
+
+    Expected: rejected with a message naming the rule broken."""
+    track = _v2()
+    _sub_corner_case(track, case)
+    _assert_rejected(track, message)
+
+
+# --- Zones ------------------------------------------------------------------------------------------------------------
+
+@allure.story("Schema v2: zones")
+@allure.title("Zones that cross the start line are valid")
+def test_wrapped_zones_valid():
+    """DRS 2 activates 9.2 to 881.3 m after detection at 5502.6 m; an aero zone runs 5529.7 to 881.3 m.
+
+    Expected: both load as given, with end_m below start_m on the aero zone."""
+    ts = load(_v2(), use_cache=False)
+    assert ts.drs_zones[1].detection_m > ts.drs_zones[1].activation[0].end_m
+    aero = ts.active_aero_zones[1]
+    assert (aero.mode, aero.start_m, aero.end_m) == ("full", 5529.7, 881.3)
+
+
+@allure.story("Schema v2: zones")
+@allure.title("A DRS zone with two activations is valid")
+def test_drs_zone_with_two_activations_valid():
+    """One detection point opening two activation ranges, as at Melbourne.
+
+    Expected: both activations are kept, in order."""
+    track = _v2()
+    track["drs_zones"][0]["activation"].append({"start_m": 4000, "end_m": 4500})
+    activations = load(track, use_cache=False).drs_zones[0].activation
+    assert [(a.start_m, a.end_m) for a in activations] == [(3055.8, 3889.1), (4000, 4500)]
+
+
+@allure.story("Schema v2: zones")
+@allure.title("A DRS zone with no activation is rejected")
+def test_drs_zone_without_activation_rejected():
+    """DRS 1 with an empty activation list.
+
+    Expected: rejected."""
+    track = _v2()
+    track["drs_zones"][0]["activation"] = []
+    _assert_rejected(track, "activation")
+
+
+@allure.story("Schema v2: zones")
+@allure.title("An empty {kind} zone is rejected")
+@pytest.mark.parametrize("kind", ["drs", "active_aero"])
+def test_empty_zone_rejected(kind):
+    """A zone whose start_m equals its end_m.
+
+    Expected: rejected, since it is neither a range nor a wrap."""
+    track = _v2()
+    zone = track["drs_zones"][0]["activation"][0] if kind == "drs" else track["active_aero_zones"][0]
+    zone["end_m"] = zone["start_m"]
+    _assert_rejected(track, "zone is empty")
+
+
+@allure.story("Schema v2: zones")
+@allure.title("Active aero mode {mode!r} is rejected")
+@pytest.mark.parametrize("mode", ["Full", "none", ""])
+def test_active_aero_bad_mode_rejected(mode):
+    """Spelling variants and unknown modes.
+
+    Expected: rejected, since mode is a fixed enum."""
+    track = _v2()
+    track["active_aero_zones"][0]["mode"] = mode
+    _assert_rejected(track, "mode")
+
+
+@allure.story("Schema v2: zones")
+@allure.title("Duplicate DRS zone ids are rejected")
+def test_duplicate_drs_zone_ids_rejected():
+    """Two DRS zones sharing id 1.
+
+    Expected: rejected, naming the field and the id."""
+    track = _v2()
+    track["drs_zones"].append(copy.deepcopy(track["drs_zones"][0]))
+    track["drs_zones"][-1]["id"] = 1
+    _assert_rejected(track, "drs_zones: duplicate id 1")
+
+
+@allure.story("Schema v2: zones")
+@allure.title("The overtake pair is a single pair, not a list")
+def test_overtake_dist_is_single():
+    """The v2 Monza track with its overtake_dist given as a one-item list.
+
+    Expected: rejected, so a list cannot load in place of the single pair."""
+    track = _v2()
+    track["overtake_dist"] = [track["overtake_dist"]]
+    _assert_rejected(track, "overtake_dist")
+
+
+# --- Lap positions ----------------------------------------------------------------------------------------------------
+
+def _set_position(track: dict, field: str, value: float) -> None:
+    if field == "speed_trap_m":
+        track["speed_trap_m"] = value
+    elif field == "drs detection_m":
+        track["drs_zones"][0]["detection_m"] = value
+    elif field == "drs activation end_m":
+        track["drs_zones"][0]["activation"][0]["end_m"] = value
+    elif field == "overtake activation_m":
+        track["overtake_dist"]["activation_m"] = value
+    elif field == "active aero start_m":
+        track["active_aero_zones"][0]["start_m"] = value
+    elif field == "corner board at_m":
+        track["segments"][2]["brake_boards"][0]["at_m"] = value
+    elif field == "sub-corner board at_m":
+        _rettifilo(track)["corners"][0]["brake_boards"][0]["at_m"] = value
+    else:
+        raise AssertionError(field)
+
+
+_POSITION_FIELDS = ["speed_trap_m", "drs detection_m", "drs activation end_m", "overtake activation_m",
+                    "active aero start_m", "corner board at_m", "sub-corner board at_m"]
+
+
+@allure.story("Schema v2: lap positions")
+@allure.title("{field} at {value} m is rejected")
+@pytest.mark.parametrize("value", [-0.1, _V2_LENGTH, 9000])
+@pytest.mark.parametrize("field", _POSITION_FIELDS)
+def test_lap_position_out_of_range_rejected(field, value):
+    """Each kind of v2 lap distance set below 0, at track_length, and past it.
+
+    Expected: rejected, with the value and track_length in the message."""
+    track = _v2()
+    _set_position(track, field, value)
+    expected = rf"\({float(value)}\) must be in \[0, track_length={float(_V2_LENGTH)}\)"
+    if "board" in field:
+        expected += "|points to"  # the parent's range check can fire first
+    _assert_rejected(track, expected)
+
+
+@allure.story("Schema v2: lap positions")
+@allure.title("{field} at 0 m is valid")
+@pytest.mark.parametrize("field", ["speed_trap_m", "drs detection_m", "active aero start_m"])
+def test_lap_position_at_zero_valid(field):
+    """Lap distances on the start line itself.
+
+    Expected: loads, since the range is [0, track_length)."""
+    track = _v2()
+    _set_position(track, field, 0)
+    load(track, use_cache=False)
+
+
+
+# --- file form --------------------------------------------------------------------------------------------------------
+
+_ASSETS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'assets', 'track-segments'))
+_SHIPPED_FILES = sorted(name for name in os.listdir(_ASSETS_DIR) if name.endswith('.json'))
+
+
+def _file_text(track: dict, newline: str) -> str:
+    """Text as the track files are written: 2-space indent, UTF-8, trailing newline."""
+    return json.dumps(track, indent=2, ensure_ascii=False).replace("\n", newline) + newline
+
+
+@allure.story("Schema v2: file form")
+@allure.title("{filename} loads and dumps back to the same file")
+@pytest.mark.parametrize("filename", _SHIPPED_FILES)
+def test_shipped_file_round_trips(filename):
+    """Each shipped track file, loaded and written back with to_file_dict().
+
+    Expected: identical text, so the lib is the one place that knows the file format and a tool rewriting
+    a file cannot drift from it."""
+    with open(os.path.join(_ASSETS_DIR, filename), "rb") as fh:
+        raw = fh.read().decode("utf-8")
+    newline = "\r\n" if "\r\n" in raw else "\n"
+    ts = load(json.loads(raw), use_cache=False)
+    assert _file_text(ts.to_file_dict(), newline) == raw.rstrip("\r\n") + newline
+
+
+@allure.story("Schema v2: file form")
+@allure.title("A v2 track dumps with the files' key order")
+def test_v2_file_dict_key_order():
+    """The v2 Monza track, dumped.
+
+    Expected: the identity keys first, then speed trap and zones, segments, and sectors last."""
+    assert list(load(_v2(), use_cache=False).to_file_dict()) == [
+        "circuit_name", "circuit_number", "track_length", "speed_trap_m",
+        "drs_zones", "overtake_dist", "active_aero_zones", "segments", "sectors"]
+
+
+@allure.story("Schema v2: file form")
+@allure.title("A v2 track dumps back to the data it was loaded from")
+def test_v2_file_dict_matches_input():
+    """The v2 Monza track, loaded and dumped.
+
+    Expected: equal to the input, including the sub-corners, brake boards and zones that cross the start line."""
+    assert load(_v2(), use_cache=False).to_file_dict() == _v2()
+
+
+@allure.story("Schema v2: file form")
+@allure.title("A track with no zone data dumps empty zone lists, no speed trap and no overtake_dist")
+def test_file_dict_without_zone_data():
+    """Alpha Circuit, which has no speed trap or zones.
+
+    Expected: no speed_trap_m or overtake_dist, the two zone lists present and empty, and the dump loads back
+    to the same dump."""
+    dumped = load(_CIRCUIT_A, use_cache=False).to_file_dict()
+    assert "speed_trap_m" not in dumped and "overtake_dist" not in dumped
+    assert dumped["drs_zones"] == dumped["active_aero_zones"] == []
+    assert load(dumped, use_cache=False).to_file_dict() == dumped
+
+
+@allure.story("Schema v2: file form")
+@allure.title("Whole lap distances are written as integers")
+def test_file_dict_whole_numbers_are_ints():
+    """The v2 Monza track with a speed trap at 716.0 and a board at 1030.0 m.
+
+    Expected: both are ints in the dump, and a fractional value such as 5253.6 is left alone."""
+    track = _v2()
+    track["speed_trap_m"] = 716.0
+    dumped = load(track, use_cache=False).to_file_dict()
+    assert type(dumped["speed_trap_m"]) is int
+    assert type(dumped["segments"][2]["brake_boards"][0]["at_m"]) is int
+    assert dumped["overtake_dist"]["activation_m"] == 5253.6
+
+
+@allure.story("Schema v2: file form")
+@allure.title("A v2 track with no zones keeps its empty zone lists")
+def test_v2_file_dict_keeps_empty_zone_lists():
+    """The v2 Monza track with every zone removed.
+
+    Expected: the two zone lists are still written, empty, as on Monaco, which has no active aero; the
+    overtake_dist is left out."""
+    track = _v2()
+    track.update(drs_zones=[], active_aero_zones=[])
+    track.pop("overtake_dist")
+    dumped = load(track, use_cache=False).to_file_dict()
+    assert dumped["drs_zones"] == dumped["active_aero_zones"] == []
+    assert "overtake_dist" not in dumped
+
+
+@allure.story("Schema v2: file form")
+@allure.title("An unknown key {where} is rejected")
+@pytest.mark.parametrize("where, key", [("at the top level", "overtake_zones"), ("in a segment", "corner_name"),
+                                        ("in a brake board", "lateral_m")])
+def test_unknown_key_rejected(where, key):
+    """The v2 Monza track with a retired or misspelled key added.
+
+    Expected: rejected, so a file cannot load with part of its data silently ignored."""
+    track = _v2()
+    if where == "at the top level":
+        track[key] = []
+    elif where == "in a segment":
+        track["segments"][2][key] = "x"
+    else:
+        track["segments"][2]["brake_boards"][0][key] = 1.0
+    _assert_rejected(track, key)

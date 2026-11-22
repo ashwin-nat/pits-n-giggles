@@ -2,6 +2,70 @@
   "circuit_name": "Silverstone",
   "circuit_number": 7,
   "track_length": 5890,
+  "speed_trap_m": 4833.6,
+  "drs_zones": [
+    {
+      "id": 1,
+      "detection_m": 848.2,
+      "activation": [
+        {
+          "start_m": 1316.5,
+          "end_m": 1883.4
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "detection_m": 3718.5,
+      "activation": [
+        {
+          "start_m": 4202.1,
+          "end_m": 4916.3
+        }
+      ]
+    }
+  ],
+  "overtake_dist": {
+    "detection_m": 5549.1,
+    "activation_m": 5630.3
+  },
+  "active_aero_zones": [
+    {
+      "mode": "full",
+      "start_m": 1316.5,
+      "end_m": 1856.9
+    },
+    {
+      "mode": "full",
+      "start_m": 2351.2,
+      "end_m": 2912.2
+    },
+    {
+      "mode": "full",
+      "start_m": 4257.6,
+      "end_m": 4977.5
+    },
+    {
+      "mode": "full",
+      "start_m": 5861.1,
+      "end_m": 250
+    },
+    {
+      "mode": "partial",
+      "start_m": 20.6,
+      "end_m": 250
+    },
+    {
+      "mode": "partial",
+      "start_m": 1376.6,
+      "end_m": 1856.9
+    },
+    {
+      "mode": "partial",
+      "start_m": 4317.8,
+      "end_m": 4977.5
+    }
+  ],
   "segments": [
     {
       "type": "straight",
@@ -14,7 +78,24 @@
       "start_m": 280,
       "end_m": 500,
       "name": "Abbey",
-      "corner_number": 1
+      "corner_number": 1,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 255.6,
+          "side": "left"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 310.2,
+          "side": "left"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 358.2,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "corner",
@@ -28,7 +109,24 @@
       "start_m": 780,
       "end_m": 950,
       "name": "Village",
-      "corner_number": 3
+      "corner_number": 3,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 739.3,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 789.1,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 839.4,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "corner",
@@ -55,7 +153,24 @@
       "start_m": 1800,
       "end_m": 2070,
       "name": "Brooklands",
-      "corner_number": 6
+      "corner_number": 6,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 1761.2,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 1811.1,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 1861.1,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "corner",
@@ -82,7 +197,24 @@
       "start_m": 2950,
       "end_m": 3260,
       "name": "Copse",
-      "corner_number": 9
+      "corner_number": 9,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 2900,
+          "side": "left"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 2950.1,
+          "side": "left"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 3000.1,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "complex_corner",
@@ -94,6 +226,28 @@
         11,
         12,
         13
+      ],
+      "corners": [
+        {
+          "corner_number": 10,
+          "start_m": 3520,
+          "end_m": 3690
+        },
+        {
+          "corner_number": 11,
+          "start_m": 3690,
+          "end_m": 3823
+        },
+        {
+          "corner_number": 12,
+          "start_m": 3823,
+          "end_m": 3970
+        },
+        {
+          "corner_number": 13,
+          "start_m": 3970,
+          "end_m": 4100
+        }
       ]
     },
     {
@@ -114,14 +268,48 @@
       "start_m": 4880,
       "end_m": 5260,
       "name": "Stowe",
-      "corner_number": 15
+      "corner_number": 15,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 4843.7,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 4889.5,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 4938.8,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 5420,
       "end_m": 5560,
       "name": "Vale",
-      "corner_number": 16
+      "corner_number": 16,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 5393,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 5430.7,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 5469.1,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "complex_corner",
@@ -131,6 +319,18 @@
       "corner_numbers": [
         17,
         18
+      ],
+      "corners": [
+        {
+          "corner_number": 17,
+          "start_m": 5560,
+          "end_m": 5689
+        },
+        {
+          "corner_number": 18,
+          "start_m": 5689,
+          "end_m": 5840
+        }
       ]
     },
     {

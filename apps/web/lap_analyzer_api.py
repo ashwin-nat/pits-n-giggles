@@ -50,7 +50,6 @@ from pydantic import BaseModel, Field, field_validator
 
 from lib.pngt import (LapCoverage, LapVerdict, ParsedDriver, ParsedLap,
                       SensorConfig, judge_lap_coverage)
-from lib.track_segments_classifier.types import BaseSegmentInfo
 
 from .pngt_discovery import PngtSessionEntry
 
@@ -225,28 +224,4 @@ def lap_to_api(lap: ParsedLap, track_length_m: float) -> Dict[str, Any]:
         'complete': verdict.complete,
         'incompleteReason': verdict.reason,
         'sectorEndsMs': None if lap.sector_ends_ms is None else list(lap.sector_ends_ms),
-    }
-
-
-def track_section_to_api(segment: BaseSegmentInfo) -> Dict[str, Any]:
-    """Maps one lib/track_segments_classifier segment to the API's TrackSection shape.
-
-    Mirrors apps/lap-analyzer/src/lib/segments.ts's toSections() field for
-    field, including corner_numbers derivation -- one-element list for a
-    plain corner, the full tuple for a complex corner, empty for a straight.
-    No "Full Lap"/"Sector N" synthesis here; see that module's own comment on
-    why sector/track-length data is a separate, not-yet-served concept.
-    """
-    if segment.type == "corner":
-        corner_numbers = [segment.corner_number]
-    elif segment.type == "complex_corner":
-        corner_numbers = list(segment.corner_numbers)
-    else:
-        corner_numbers = []
-    return {
-        'label': segment.name,
-        'distanceStart': segment.start_m,
-        'distanceEnd': segment.end_m,
-        'type': segment.type,
-        'cornerNumbers': corner_numbers,
     }

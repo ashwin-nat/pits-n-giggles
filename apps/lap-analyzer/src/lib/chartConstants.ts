@@ -13,30 +13,27 @@ export const SMOOTHING_WINDOW_SAMPLES = 10;
 
 // One height for every sensor type -- a shorter discrete lane next to a
 // taller continuous one read as a layout bug, not a deliberate difference.
-export const LANE_HEIGHT_PX = 100;
+export const LANE_HEIGHT_PX = 90;
 
-// The x-axis (tick labels + "Distance (m)" title) needs its own vertical
-// space on top of the plot area -- it isn't optional headroom the lane
-// height already includes. Every lane renders its own axis now (ChartLane),
-// so this is unconditional; without it the data line would sit flush
-// against the plot's bottom edge, squeezed by axis text drawn over it.
-export const X_AXIS_EXTRA_HEIGHT_PX = 40;
+// Default heights per lane; the delta lane is short and speed is tall, as mocked.
+export const DELTA_LANE_HEIGHT_PX = 70;
+export const SPEED_LANE_HEIGHT_PX = 150;
 
-export function getChartHeightPx(heightOverridePx?: number): number {
-  return (heightOverridePx ?? LANE_HEIGHT_PX) + X_AXIS_EXTRA_HEIGHT_PX;
+// Only the last lane draws distance labels, and they need room below the plot.
+export const X_AXIS_EXTRA_HEIGHT_PX = 28;
+
+export function getChartHeightPx(heightOverridePx?: number, withXAxis = false): number {
+  return (heightOverridePx ?? LANE_HEIGHT_PX) + (withXAxis ? X_AXIS_EXTRA_HEIGHT_PX : 0);
 }
 
 // Per-lane resize step/bounds -- view-local state (ChartLaneList), not
 // persisted across a reload, same as legend visibility and the crosshair.
 export const LANE_HEIGHT_STEP_PX = 20;
-export const MIN_LANE_HEIGHT_PX = 60;
+export const MIN_LANE_HEIGHT_PX = 40;
 export const MAX_LANE_HEIGHT_PX = 400;
 
-// Fixed, not derived from team livery (TEAM_COLORS/getTeamColor() in
-// teamColors.ts, still used elsewhere -- e.g. the driver selector). Team
-// color meant two same-team drivers rendered in the *identical* color here,
-// distinguished only by solid-vs-dashed line style -- easy to miss. Every
-// chart trace is just "primary" or "comparison" now, no per-driver variation.
-export const PRIMARY_TRACE_COLOR = "#ef4444"; // red-500
-export const COMPARISON_TRACE_COLOR = "#3b82f6"; // blue-500
-export const DELTA_TRACE_COLOR = "#facc15"; // amber-400 -- distinct from both above
+// Lap slots: A is the reference lap, B to D comparison laps (C0 spec). Hex
+// mirrors --color-slot-* in index.css because uPlot and SVG need literals.
+export const MAX_COMPARISON_LAPS = 3;
+export const LAP_SLOT_COLORS = ["#0aa2c6", "#ea580c", "#facc15", "#f472b6"] as const;
+export const LAP_SLOT_LETTERS = ["A", "B", "C", "D"] as const;

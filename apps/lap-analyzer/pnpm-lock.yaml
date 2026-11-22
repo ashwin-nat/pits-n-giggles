@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@fontsource-variable/geist':
+        specifier: 5.2.8
+        version: 5.2.8
+      '@fontsource/ia-writer-quattro':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@tanstack/react-query':
         specifier: 5.102.8
         version: 5.102.8(react@19.3.0)
@@ -215,6 +221,12 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@fontsource-variable/geist@5.2.8':
+    resolution: {integrity: sha512-cJ6m9e+8MQ5dCYJsLylfZrgBh6KkG4bOLckB35Tr9J/EqdkEM6QllH5PxqP1dhTvFup+HtMRPuz9xOjxXJggxw==}
+
+  '@fontsource/ia-writer-quattro@5.3.0':
+    resolution: {integrity: sha512-J249e+/1kBy9YzJ1JKRPDm0V3ELGwqSlxf3WlB7qNiExLA+kXGN+VwOhILNH21ZcezFVilvA9+ev2r/kZSyy/g==}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -883,6 +895,10 @@ snapshots:
 
   '@esbuild/win32-x64@0.28.2':
     optional: true
+
+  '@fontsource-variable/geist@5.2.8': {}
+
+  '@fontsource/ia-writer-quattro@5.3.0': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:

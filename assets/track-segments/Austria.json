@@ -2,6 +2,85 @@
   "circuit_name": "Austria",
   "circuit_number": 17,
   "track_length": 4323,
+  "speed_trap_m": 2028.6,
+  "drs_zones": [
+    {
+      "id": 1,
+      "detection_m": 291.4,
+      "activation": [
+        {
+          "start_m": 565.1,
+          "end_m": 1289.5
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "detection_m": 1349.3,
+      "activation": [
+        {
+          "start_m": 1520.9,
+          "end_m": 2153.8
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "detection_m": 3903.3,
+      "activation": [
+        {
+          "start_m": 4141.2,
+          "end_m": 342.6
+        }
+      ]
+    }
+  ],
+  "overtake_dist": {
+    "detection_m": 3940.3,
+    "activation_m": 4092.3
+  },
+  "active_aero_zones": [
+    {
+      "mode": "full",
+      "start_m": 565.1,
+      "end_m": 1357.8
+    },
+    {
+      "mode": "full",
+      "start_m": 1520.9,
+      "end_m": 2153.8
+    },
+    {
+      "mode": "full",
+      "start_m": 3330.9,
+      "end_m": 3719.9
+    },
+    {
+      "mode": "full",
+      "start_m": 4141.2,
+      "end_m": 406.7
+    },
+    {
+      "mode": "partial",
+      "start_m": 626.1,
+      "end_m": 1357.8
+    },
+    {
+      "mode": "partial",
+      "start_m": 1590.9,
+      "end_m": 2153.8
+    },
+    {
+      "mode": "partial",
+      "start_m": 3382,
+      "end_m": 3719.9
+    },
+    {
+      "mode": "partial",
+      "start_m": 4191,
+      "end_m": 406.7
+    }
+  ],
   "segments": [
     {
       "type": "straight",
@@ -14,13 +93,29 @@
       "start_m": 320,
       "end_m": 545,
       "name": "Niki Lauda Kurve",
-      "corner_number": 1
+      "corner_number": 1,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 299.3,
+          "side": "left"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 350.6,
+          "side": "left"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 392.7,
+          "side": "left"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 1010,
       "end_m": 1200,
-      "name": "",
       "corner_number": 2
     },
     {
@@ -28,20 +123,53 @@
       "start_m": 1200,
       "end_m": 1460,
       "name": "Remus",
-      "corner_number": 3
+      "corner_number": 3,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 1236.3,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 1285.8,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 1335.9,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 2050,
       "end_m": 2300,
       "name": "Schlossgold",
-      "corner_number": 4
+      "corner_number": 4,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 2040.3,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 2089.6,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 2137.5,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "corner",
       "start_m": 2370,
       "end_m": 2540,
-      "name": "",
       "corner_number": 5
     },
     {
@@ -49,7 +177,24 @@
       "start_m": 2540,
       "end_m": 2870,
       "name": "Rauch",
-      "corner_number": 6
+      "corner_number": 6,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 2517.5,
+          "side": "right"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 2567.1,
+          "side": "right"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 2612.7,
+          "side": "right"
+        }
+      ]
     },
     {
       "type": "corner",
@@ -62,7 +207,6 @@
       "type": "corner",
       "start_m": 3160,
       "end_m": 3380,
-      "name": "",
       "corner_number": 8
     },
     {
@@ -70,7 +214,24 @@
       "start_m": 3650,
       "end_m": 3900,
       "name": "Rindt Kurve",
-      "corner_number": 9
+      "corner_number": 9,
+      "brake_boards": [
+        {
+          "distance_m": 150,
+          "at_m": 3606.3,
+          "side": "both"
+        },
+        {
+          "distance_m": 100,
+          "at_m": 3658.7,
+          "side": "both"
+        },
+        {
+          "distance_m": 50,
+          "at_m": 3710,
+          "side": "both"
+        }
+      ]
     },
     {
       "type": "corner",

@@ -27,10 +27,16 @@ from typing import Annotated, Any, ClassVar, Dict, Literal, Tuple, Union
 from pydantic import (BaseModel, ConfigDict, Field, field_validator,
                       model_validator)
 
+# -------------------------------------- HELPERS -----------------------------------------------------------------------
+
+def _num(value: float) -> float:
+    """A whole float as an int, so files read `3055` rather than `3055.0`."""
+    return int(value) if float(value).is_integer() else value
+
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 class SectorBoundaries(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     s1: int
     s2: int
@@ -44,8 +50,113 @@ class SectorBoundaries(BaseModel):
         return self
 
 
+class BrakeBoardInfo(BaseModel):
+    """A brake board: its label, its real lap distance, and which side of the track it stands on."""
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False, extra="forbid")
+
+    distance_m: Literal[50, 100, 150, 200, 250, 300]
+    at_m: float
+    side: Literal["left", "right", "both"]
+
+    def to_file_dict(self) -> Dict[str, Any]:
+        return {"distance_m": self.distance_m, "at_m": _num(self.at_m), "side": self.side}
+
+
+def _check_boards_point_inside(parent: "BaseSegmentInfo", corner_number: int,
+                               boards: Tuple[BrakeBoardInfo, ...]) -> None:
+    # No wrap: segments never cross the start line (they are split in two), so a target past it has no parent.
+    for b in boards:
+        target = b.at_m + b.distance_m
+        if not parent.start_m <= target < parent.end_m:
+            raise ValueError(
+                f"corner {corner_number} {b.distance_m}m board at {b.at_m}m points to {target:.1f}m, "
+                f"outside its segment [{parent.start_m}, {parent.end_m})"
+            )
+
+
+class SubCornerInfo(BaseModel):
+    """One corner's part of a complex corner."""
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False, extra="forbid")
+
+    corner_number: int
+    name: str = ""
+    start_m: float
+    end_m: float
+    brake_boards: Tuple[BrakeBoardInfo, ...] = ()
+
+    @model_validator(mode="after")
+    def _check_range(self) -> "SubCornerInfo":
+        if self.start_m >= self.end_m:
+            raise ValueError(
+                f"corner {self.corner_number}: start_m ({self.start_m}) must be less than end_m ({self.end_m})"
+            )
+        return self
+
+    def to_file_dict(self) -> Dict[str, Any]:
+        out: Dict[str, Any] = {"corner_number": self.corner_number}
+        if self.name:
+            out["name"] = self.name
+        out |= {"start_m": _num(self.start_m), "end_m": _num(self.end_m)}
+        if self.brake_boards:
+            out["brake_boards"] = [b.to_file_dict() for b in self.brake_boards]
+        return out
+
+
+class LapRangeInfo(BaseModel):
+    """A lap range that may cross the start line, shown by end_m < start_m."""
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False, extra="forbid")
+
+    start_m: float
+    end_m: float
+
+    @model_validator(mode="after")
+    def _check_not_empty(self) -> "LapRangeInfo":
+        if self.start_m == self.end_m:
+            raise ValueError(f"zone is empty: start_m equals end_m ({self.start_m})")
+        return self
+
+    def to_file_dict(self) -> Dict[str, Any]:
+        return {"start_m": _num(self.start_m), "end_m": _num(self.end_m)}
+
+
+class DrsActivationInfo(LapRangeInfo):
+    """One DRS activation range."""
+
+
+class DrsZoneInfo(BaseModel):
+    """A DRS detection point and the activation ranges it opens."""
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False, extra="forbid")
+
+    id: int
+    detection_m: float
+    activation: Tuple[DrsActivationInfo, ...] = Field(min_length=1)
+
+    def to_file_dict(self) -> Dict[str, Any]:
+        return {"id": self.id, "detection_m": _num(self.detection_m),
+                "activation": [a.to_file_dict() for a in self.activation]}
+
+
+class OvertakeDistInfo(BaseModel):
+    """The track's overtake mode detection point and its activation point. There is one per track."""
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False, extra="forbid")
+
+    detection_m: float
+    activation_m: float
+
+    def to_file_dict(self) -> Dict[str, Any]:
+        return {"detection_m": _num(self.detection_m), "activation_m": _num(self.activation_m)}
+
+
+class ActiveAeroZoneInfo(LapRangeInfo):
+    """An active aero zone. Named to avoid lib.f1_types.ActiveAeroZone."""
+    mode: Literal["full", "partial"]
+
+    def to_file_dict(self) -> Dict[str, Any]:
+        return {"mode": self.mode, **super().to_file_dict()}
+
+
 class BaseSegmentInfo(BaseModel):
-    model_config = ConfigDict(frozen=True, allow_inf_nan=False)
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False, extra="forbid")
 
     TYPE: ClassVar[str]
     type: str
@@ -61,6 +172,10 @@ class BaseSegmentInfo(BaseModel):
         return self
 
     def to_dict(self) -> Dict[str, Any]:
+        raise NotImplementedError
+
+    def to_file_dict(self) -> Dict[str, Any]:
+        """The segment as it is written to a track file, schema v2 fields included. `to_dict()` is the payload form."""
         raise NotImplementedError
 
     def contains(self, lap_distance: float) -> bool:
@@ -83,12 +198,16 @@ class StraightSegmentInfo(BaseSegmentInfo):
             "name": self.name,
         }
 
+    def to_file_dict(self) -> Dict[str, Any]:
+        return {"type": "straight", "start_m": _num(self.start_m), "end_m": _num(self.end_m), "name": self.name}
+
 
 class CornerSegmentInfo(BaseSegmentInfo):
     TYPE: ClassVar[str] = "corner"
     type: Literal["corner"] = "corner"
     name: str = ""
     corner_number: int
+    brake_boards: Tuple[BrakeBoardInfo, ...] = ()
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -97,12 +216,27 @@ class CornerSegmentInfo(BaseSegmentInfo):
             "corner_number": self.corner_number,
         }
 
+    @model_validator(mode="after")
+    def _check_boards(self) -> "CornerSegmentInfo":
+        _check_boards_point_inside(self, self.corner_number, self.brake_boards)
+        return self
+
+    def to_file_dict(self) -> Dict[str, Any]:
+        out: Dict[str, Any] = {"type": "corner", "start_m": _num(self.start_m), "end_m": _num(self.end_m)}
+        if self.name:
+            out["name"] = self.name
+        out["corner_number"] = self.corner_number
+        if self.brake_boards:
+            out["brake_boards"] = [b.to_file_dict() for b in self.brake_boards]
+        return out
+
 
 class ComplexCornerSegmentInfo(BaseSegmentInfo):
     TYPE: ClassVar[str] = "complex_corner"
     type: Literal["complex_corner"] = "complex_corner"
     name: str = ""
     corner_numbers: Tuple[int, ...]
+    corners: Tuple[SubCornerInfo, ...] = ()
 
     @field_validator("corner_numbers")
     @classmethod
@@ -117,12 +251,60 @@ class ComplexCornerSegmentInfo(BaseSegmentInfo):
                 )
         return v
 
+    @model_validator(mode="after")
+    def _check_sub_corners(self) -> "ComplexCornerSegmentInfo":
+        """When present, corners must match corner_numbers and tile the segment exactly."""
+        if not self.corners:
+            return self
+        numbers = tuple(c.corner_number for c in self.corners)
+        if numbers != self.corner_numbers:
+            raise ValueError(
+                f"{self._label()}: corners numbered {list(numbers)} must match "
+                f"corner_numbers {list(self.corner_numbers)}"
+            )
+        if self.corners[0].start_m != self.start_m:
+            raise ValueError(
+                f"{self._label()}: corner {numbers[0]} starts at {self.corners[0].start_m}, "
+                f"not at the segment start {self.start_m}"
+            )
+        if self.corners[-1].end_m != self.end_m:
+            raise ValueError(
+                f"{self._label()}: corner {numbers[-1]} ends at {self.corners[-1].end_m}, "
+                f"not at the segment end {self.end_m}"
+            )
+        for prev, curr in zip(self.corners, self.corners[1:]):
+            if curr.start_m != prev.end_m:
+                raise ValueError(
+                    f"{self._label()}: corner {curr.corner_number} starts at {curr.start_m}, "
+                    f"not where corner {prev.corner_number} ends ({prev.end_m})"
+                )
+        return self
+
+    @model_validator(mode="after")
+    def _check_boards(self) -> "ComplexCornerSegmentInfo":
+        """Sub-corner boards are tested against the whole complex corner, not the sub-corner."""
+        for sub in self.corners:
+            _check_boards_point_inside(self, sub.corner_number, sub.brake_boards)
+        return self
+
+    def _label(self) -> str:
+        return f"complex_corner {self.name!r} at {self.start_m}m" if self.name else f"complex_corner at {self.start_m}m"
+
     def to_dict(self) -> Dict[str, object]:
         return {
             "type": "complex_corner",
             "name": self.name,
             "corner_numbers": list(self.corner_numbers),
         }
+
+    def to_file_dict(self) -> Dict[str, Any]:
+        out: Dict[str, Any] = {"type": "complex_corner", "start_m": _num(self.start_m), "end_m": _num(self.end_m)}
+        if self.name:
+            out["name"] = self.name
+        out["corner_numbers"] = list(self.corner_numbers)
+        if self.corners:
+            out["corners"] = [c.to_file_dict() for c in self.corners]
+        return out
 
 
 SegmentInfo = Annotated[

@@ -1,4 +1,4 @@
-import type { Session, Driver, Lap, TelemetryPoint, TrackSection } from "../types/api";
+import type { Session, Driver, Lap, TelemetryPoint } from "../types/api";
 import type { LapAnalyzerProvider, ProviderCapabilities } from "./types";
 import { npzToTelemetryPoints } from "../lib/parseNpy";
 
@@ -48,7 +48,6 @@ export class RemoteApiProvider implements LapAnalyzerProvider {
   readonly capabilities: ProviderCapabilities = {
     mutations: false,
     incidents: false,
-    segments: true,
   };
 
   async getSessions(): Promise<Session[]> {
@@ -74,9 +73,5 @@ export class RemoteApiProvider implements LapAnalyzerProvider {
     const path = `${API_ROOT}/telemetry/${encodeURIComponent(sessionId)}/${driverIndex}/${lapNumber}`;
     const bytes = new Uint8Array(await (await fetchOk(path)).arrayBuffer());
     return npzToTelemetryPoints(bytes, sensors, path);
-  }
-
-  async getTrackSections(trackId: number): Promise<TrackSection[]> {
-    return getJson<TrackSection[]>(`${API_ROOT}/tracks/${trackId}/sections`);
   }
 }

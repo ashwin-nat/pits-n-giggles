@@ -212,19 +212,19 @@ class LapAnalyzerSensorSettings(ConfigDiffMixin, BaseModel):
     motion_pos_x: bool = sensor_field(
         label="Position X", group=SensorGroup.MOTION, restricted=False,
         presets={SensorPreset.POSITION, SensorPreset.ALL},
-        info="World space X position in metres", visible=False)
+        info="World space X position in metres", visible=True)
     motion_pos_y: bool = sensor_field(
         label="Position Y", group=SensorGroup.MOTION, restricted=False,
         presets={SensorPreset.POSITION, SensorPreset.ALL},
-        info="World space Y position in metres", visible=False)
+        info="World space Y position in metres", visible=True)
     motion_pos_z: bool = sensor_field(
         label="Position Z", group=SensorGroup.MOTION, restricted=False,
         presets={SensorPreset.POSITION, SensorPreset.ALL},
-        info="World space Z position in metres", visible=False)
+        info="World space Z position in metres", visible=True)
     motion_yaw: bool = sensor_field(
         label="Yaw", group=SensorGroup.MOTION, restricted=False,
         presets={SensorPreset.POSITION, SensorPreset.ALL},
-        info="Yaw angle in radians", visible=False)
+        info="Yaw angle in radians", visible=True)
 
 class LapAnalyzerSettings(ConfigDiffMixin, BaseModel):
 

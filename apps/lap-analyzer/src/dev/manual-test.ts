@@ -45,9 +45,6 @@ async function main(): Promise<void> {
     console.log("  last point:", telemetry[telemetry.length - 1]);
   }
 
-  const sections = await provider.getTrackSections(session.trackId);
-  console.log(`\ngetTrackSections(trackId ${session.trackId}): ${sections.length} section(s)`);
-  console.log(JSON.stringify(sections.slice(0, 3), null, 2));
 }
 
 main().catch((err) => {

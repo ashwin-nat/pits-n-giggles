@@ -2,8 +2,13 @@ import { useSessions } from "../../hooks/useSessions";
 import { useTrackMeta } from "../../hooks/useTrackMeta";
 import { useTelemetryStore } from "../../store/telemetryStore";
 import type { TrackSection } from "../../types/api";
+import { isCompleteLap } from "../../types/store";
 import type { ActiveSection } from "../../types/store";
+import { labelFits, sectionCode, sectionViewport } from "../../lib/sectionStrip";
+import { useLapTelemetries } from "../../hooks/useLapTelemetries";
 import { InfoTooltip } from "./InfoTooltip";
+import { SegmentTooltipContent } from "./SegmentTooltipContent";
+import { StripMarkers } from "./StripMarkers";
 
 interface TrackProgressBarProps {
   // The shared chart crosshair (ChartLaneList/ChartArea-owned) -- drives the
@@ -11,11 +16,8 @@ interface TrackProgressBarProps {
   crosshairPosition: number | null;
 }
 
-const SEGMENT_COLOR: Record<TrackSection["type"], string> = {
-  straight: "bg-emerald-600 hover:bg-emerald-500",
-  corner: "bg-sky-700 hover:bg-sky-600",
-  complex_corner: "bg-indigo-700 hover:bg-indigo-600",
-};
+// Every named section is the same navy pill; unnamed gaps stay empty.
+const PILL = "bg-tone-800 hover:bg-tone-700";
 
 type BarSegment =
   | { kind: "section"; section: TrackSection }
@@ -75,14 +77,19 @@ export function segmentTooltip(section: TrackSection): string {
 // instead of a wrapping list of buttons. Clicking a segment still sets
 // store.activeSection (focus zone); the bar doesn't change the viewport.
 export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
-  const primarySessionId = useTelemetryStore((state) => state.primary.sessionId);
+  const primarySessionId = useTelemetryStore((state) => state.laps[0]?.sessionId ?? null);
   const activeSection = useTelemetryStore((state) => state.activeSection);
   const setActiveSection = useTelemetryStore((state) => state.setActiveSection);
   const viewport = useTelemetryStore((state) => state.viewport);
   const setViewport = useTelemetryStore((state) => state.setViewport);
+  const setHoverSection = useTelemetryStore((state) => state.setHoverSection);
+  const showMarkers = useTelemetryStore((state) => state.showMarkers);
+  const laps = useTelemetryStore((state) => state.laps);
+  const { laps: loadedLaps, isFetching } = useLapTelemetries(laps);
 
   const { data: sessions } = useSessions();
-  const trackId = sessions?.find((s) => s.id === primarySessionId)?.trackId ?? null;
+  const session = sessions?.find((s) => s.id === primarySessionId);
+  const trackId = session?.trackId ?? null;
   const meta = useTrackMeta(trackId);
 
   if (primarySessionId === null) {
@@ -108,38 +115,84 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
         }
       : null;
 
+  // Selecting zooms the charts to the section; selecting it again clears it.
+  function select(section: ActiveSection) {
+    setActiveSection(section);
+    setViewport(sectionViewport(section.distanceStart, section.distanceEnd));
+  }
+
+  function clear() {
+    setActiveSection(null);
+    setViewport(null);
+  }
+
   function handleSegmentClick(section: TrackSection) {
-    // No dedicated "Full Lap" reset button -- clicking the already-active
-    // segment again clears it instead, same toggle-off pattern as the
-    // legend's visibility dots.
     if (isSameSection(activeSection, section)) {
-      setActiveSection(null);
-      setViewport(null);
+      clear();
     } else {
-      setActiveSection(section);
+      select(section);
     }
   }
 
   function handleGapClick(gap: { distanceStart: number; distanceEnd: number }) {
     if (isSameSection(activeSection, { label: UNCLASSIFIED_LABEL, distanceStart: gap.distanceStart })) {
-      setActiveSection(null);
-      setViewport(null);
+      clear();
     } else {
-      setActiveSection(gapToActiveSection(gap));
+      select(gapToActiveSection(gap));
     }
   }
 
+  // Prev / next step through the named sections in track order.
+  const named = [...sectionList].sort((a, b) => a.distanceStart - b.distanceStart);
+  const activeIndex = named.findIndex((section) => isSameSection(activeSection, section));
+  function step(direction: -1 | 1) {
+    if (named.length === 0) {
+      return;
+    }
+    const next =
+      activeIndex === -1
+        ? direction === 1
+          ? 0
+          : named.length - 1
+        : (activeIndex + direction + named.length) % named.length;
+    select(named[next]);
+  }
+
   return (
-    <div className="border-b border-slate-800 bg-slate-900 px-4 py-2">
-      <div className="relative h-6 w-full">
+    <div className="flex items-center border-b border-tone-800/70 bg-chart-surface py-1.5">
+      {/* Same width as the lane headers, so the strip lines up with the plots. */}
+      <div className="flex w-[168px] shrink-0 items-center gap-1 px-2 text-xs text-tone-300">
+        <button
+          type="button"
+          onClick={() => step(-1)}
+          title="Previous section"
+          className="rounded px-1.5 py-0.5 hover:bg-tone-700"
+        >
+          ‹
+        </button>
+        <button
+          type="button"
+          onClick={clear}
+          title="Show the whole lap"
+          className={`rounded px-2 py-0.5 hover:bg-tone-700 ${activeSection === null ? "bg-tone-700 text-tone-100" : ""}`}
+        >
+          Full lap
+        </button>
+        <button
+          type="button"
+          onClick={() => step(1)}
+          title="Next section"
+          className="rounded px-1.5 py-0.5 hover:bg-tone-700"
+        >
+          ›
+        </button>
+      </div>
+      <div className="min-w-0 flex-1">
+      <div className="relative h-7">
         {/* No overflow-hidden on this row -- it would clip InfoTooltip's
-            popup, which renders outside the row's box (bottom-full). Rounded
-            ends come from the first/last block's own corners instead. */}
+            popup, which renders outside the row's box (bottom-full). */}
         <div className="flex h-full w-full">
-          {barSegments.map((bar, index) => {
-            const roundedClass = `${index === 0 ? "rounded-l-full" : ""} ${
-              index === barSegments.length - 1 ? "rounded-r-full" : ""
-            }`;
+          {barSegments.map((bar) => {
             const span =
               bar.kind === "gap"
                 ? bar.distanceEnd - bar.distanceStart
@@ -156,9 +209,12 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
                   key={`gap-${bar.distanceStart}`}
                   type="button"
                   onClick={() => handleGapClick(bar)}
+                  onMouseEnter={() => setHoverSection(gapToActiveSection(bar))}
+                  onMouseLeave={() => setHoverSection(null)}
                   style={flexStyle}
-                  className={`h-full border-r border-slate-950/40 bg-slate-700 hover:bg-slate-600 last:border-r-0 ${roundedClass} ${
-                    gapActive ? "brightness-150" : ""
+                  title="Unclassified"
+                  className={`h-full w-[calc(100%-2px)] rounded-md border border-dashed border-tone-700 hover:bg-white/10 ${
+                    gapActive ? "bg-white/15" : "bg-white/[0.04]"
                   }`}
                 />
               );
@@ -167,7 +223,7 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
             return (
               <InfoTooltip
                 key={`${section.label}-${section.distanceStart}`}
-                text={segmentTooltip(section)}
+                text={<SegmentTooltipContent title={segmentTooltip(section)} section={section} laps={loadedLaps} present={laps.map((lap) => isCompleteLap(lap))} loading={isFetching} />}
                 style={flexStyle}
                 className="h-full"
                 placement="bottom"
@@ -175,10 +231,16 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
                 <button
                   type="button"
                   onClick={() => handleSegmentClick(section)}
-                  className={`h-full w-full border-r border-slate-950/40 last:border-r-0 ${roundedClass} ${
-                    SEGMENT_COLOR[section.type]
-                  } ${isSameSection(activeSection, section) ? "brightness-150" : ""}`}
-                />
+                  onMouseEnter={() => setHoverSection(section)}
+                  onMouseLeave={() => setHoverSection(null)}
+                  className={`h-full w-[calc(100%-2px)] overflow-hidden rounded-md whitespace-nowrap text-xs font-medium text-tone-100 ${PILL} ${
+                    isSameSection(activeSection, section) ? "ring-1 ring-sky-400" : ""
+                  }`}
+                >
+                  {trackLength > 0 && labelFits((span / trackLength) * 100, sectionCode(section, trackLength))
+                    ? sectionCode(section, trackLength)
+                    : null}
+                </button>
               </InfoTooltip>
             );
           })}
@@ -186,13 +248,13 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
         {sectorMarkerPcts.map((pct, i) => (
           <div
             key={`sector-${i}`}
-            className="pointer-events-none absolute top-0 h-full w-1 bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.9)]"
+            className="pointer-events-none absolute top-[-2px] h-[calc(100%+4px)] w-[3px] rounded-full bg-amber-400"
             style={{ left: `${pct}%` }}
           />
         ))}
         {viewportRange !== null && (
           <div
-            className="pointer-events-none absolute top-0 h-full rounded-full border-2 border-white/80 bg-white/10"
+            className="pointer-events-none absolute top-0 h-full rounded-md border border-white/70 bg-white/10"
             style={{
               left: `${viewportRange.leftPct}%`,
               width: `${viewportRange.rightPct - viewportRange.leftPct}%`,
@@ -205,6 +267,8 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
             style={{ left: `${markerPct}%` }}
           />
         )}
+      </div>
+      {showMarkers && meta !== null && trackLength > 0 && <StripMarkers meta={meta} formula={session?.formula ?? ""} />}
       </div>
     </div>
   );
