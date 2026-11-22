@@ -646,6 +646,11 @@ class DataPerDriver:
         """The car is back in the garage, so the lap it was on won't be finished"""
         self.m_tel_rec.discard_in_progress_lap()
 
+    def onSessionSkip(self, new_lap_number: int) -> None:
+        """The sim skipped the session to its end and moved the car to new_lap_number without it crossing the line.
+        The lap it was on won't be finished, and nothing is booked for it."""
+        self.m_tel_rec.discard_in_progress_lap(next_lap_number=new_lap_number)
+
     def onLapChange(self, old_lap_number: int) -> None:
         """
         Perform snapshot and projection updates for the given lap change.

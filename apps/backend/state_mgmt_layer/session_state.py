@@ -367,7 +367,12 @@ class SessionState:
             driver_obj.onFlashback(new_lap, lap_data.m_lapDistance, self.m_session_info.m_session_type)
             rewound = True
         elif new_lap > current_lap:
-            driver_obj.onLapChange(old_lap_number=current_lap)
+            if self._isSessionSkip(driver_obj, lap_data):
+                self.m_logger.debug('Driver %s. Lap %d -> %d without crossing the line. Session skipped to its end',
+                                    driver_obj, current_lap, new_lap)
+                driver_obj.onSessionSkip(new_lap)
+            else:
+                driver_obj.onLapChange(old_lap_number=current_lap)
         elif new_lap == current_lap - 1 and new_lap >= 1:
             # The sim put this car back on its own after a flashback (AI cars, seconds after the landing)
             self.m_logger.debug('Driver %s. Lap count went back without a FLBK (lap %d -> %d). Handling as a flashback',
@@ -383,6 +388,24 @@ class SessionState:
             driver_obj.m_lap_info.m_current_lap = new_lap
             driver_obj.notifyLapChanged()
         return rewound
+
+    def _isSessionSkip(self, driver_obj: DataPerDriver, lap_data: LapData) -> bool:
+        """Whether this packet's lap number increase is the sim skipping a practice or quali to its end, not the car
+        crossing the line. A crossing wraps the lap distance from about the track length to about 0.
+
+        Args:
+            driver_obj: Driver object, with the previous LAP_DATA copy still in place
+            lap_data: Lap data for this packet, whose lap number is higher than the previous one
+
+        Returns:
+            bool: True if the lap distance didn't wrap
+        """
+        session_type = self.m_session_info.m_session_type
+        track_len = self.m_session_info.m_track_len
+        prev = driver_obj.m_packet_copies.m_packet_lap_data
+        if not session_type or session_type.isRaceTypeSession() or not track_len or prev is None:
+            return False
+        return prev.m_lapDistance - lap_data.m_lapDistance <= track_len / 2
 
     def _handleLapBoundaries(self, driver_obj: DataPerDriver, lap_data: LapData) -> None:
         """Report the lap boundaries the sim's lap number doesn't show, from driver status changes:

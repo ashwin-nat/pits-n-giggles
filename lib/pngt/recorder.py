@@ -118,12 +118,14 @@ class DriverTelemetryRecorder(Generic[S]):
         self._frame_id_buffer = []
         self._current_lap_number = metadata.lap_number + 1
 
-    def discard_in_progress_lap(self) -> None:
-        """Drop the current lap's samples, for a lap that ends without the sim's lap number
-        changing (garage, out lap -> flying lap, a pause in updates). Completed laps are kept,
-        and recording carries on under the same lap number."""
+    def discard_in_progress_lap(self, next_lap_number: Optional[int] = None) -> None:
+        """Drop the current lap's samples, for a lap that ends without being driven to the line (garage,
+        out lap -> flying lap, a pause in updates, the sim skipping the session to its end). Completed
+        laps are kept. Recording carries on under next_lap_number if given, else the same lap number."""
         self._current_buffers = self._new_buffers()
         self._frame_id_buffer = []
+        if next_lap_number is not None:
+            self._current_lap_number = next_lap_number
 
     def on_flashback(self, lap_number: int, landing_distance: float) -> None:
         """Called when the sim rewinds, before the update() for the packet the car landed in.

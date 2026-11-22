@@ -432,6 +432,22 @@ def test_recorder_discard_in_progress_lap_keeps_completed_laps_and_restarts_clea
     }
     assert export.in_progress_lap.metadata.lap_number == 2
 
+def test_recorder_discard_with_next_lap_number_carries_on_under_it():
+    """A session skipped to its end: the lap number jumps 4 -> 10 mid-lap. The cut-off lap is
+    dropped and what follows is recorded as lap 10."""
+    recorder = _recorder()
+    _drive(recorder, [1.0, 2000.0], lap=3)
+    recorder.on_lap_change(sample_lap_metadata(lap_number=3))
+    _drive(recorder, [1.0, 3253.0], lap=4)
+
+    recorder.discard_in_progress_lap(next_lap_number=10)
+    _drive(recorder, [3254.0], lap=10)
+
+    export = recorder.export()
+    assert [lap.metadata.lap_number for lap in export.completed_laps] == [3]
+    assert export.in_progress_lap.metadata.lap_number == 10
+    assert _distances(export.in_progress_lap) == [3254.0]
+
 def test_recorder_lap_resumed_after_discard_is_stored_from_the_resume_point():
     """Only the samples after a discard are stored for that lap -- never both recording periods."""
     recorder = _recorder()
