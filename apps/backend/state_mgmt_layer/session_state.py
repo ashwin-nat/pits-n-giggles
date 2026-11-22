@@ -549,6 +549,7 @@ class SessionState:
                          obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap)
             )
             obj_to_be_updated.m_packet_copies.m_packet_car_telemetry = car_telemetry_data
+            obj_to_be_updated.m_packet_copies.m_car_telemetry_frame = packet.m_header.m_frameIdentifier
 
     def processCarStatusUpdate(self, packet: PacketCarStatusData) -> None:
         """Process the car status update packet and update the necessary fields
@@ -566,6 +567,7 @@ class SessionState:
             obj_to_be_updated.m_car_info.m_drs_allowed = bool(car_status_data.m_drsAllowed)
             obj_to_be_updated.m_car_info.m_drs_distance = car_status_data.m_drsActivationDistance
             obj_to_be_updated.m_packet_copies.m_packet_car_status = car_status_data
+            obj_to_be_updated.m_packet_copies.m_car_status_frame = packet.m_header.m_frameIdentifier
 
             obj_to_be_updated.m_car_info.m_curr_lap_ers_deployed_j = self._safeMax(
                 obj_to_be_updated.m_car_info.m_curr_lap_ers_deployed_j,
@@ -866,6 +868,7 @@ class SessionState:
         for index, motion_data in enumerate(packet.m_carMotionData):
             obj_to_be_updated = self._getObjectByIndex(index, reason='Motion update')
             obj_to_be_updated.m_packet_copies.m_packet_motion = motion_data
+            obj_to_be_updated.m_packet_copies.m_motion_frame = packet.m_header.m_frameIdentifier
 
     def processCarSetupsUpdate(self, packet: PacketCarSetupData) -> None:
         """Process the car setup update packet and update the necessary fields

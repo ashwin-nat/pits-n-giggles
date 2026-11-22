@@ -52,6 +52,9 @@ class PacketCopies:
         m_packet_motion (Optional[CarMotionData]): Copy of the CarMotionData packet.
         m_packet_car_setup (Optional[CarSetupData]): Copy of the CarSetupData packet.
         m_packet_car_telemetry_2 (Optional[PacketCarTelemetry2Data]): Copy of the PacketCarTelemetry2Data packet.
+        m_car_telemetry_frame (Optional[int]): Frame identifier of the packet m_packet_car_telemetry came in.
+        m_car_status_frame (Optional[int]): Frame identifier of the packet m_packet_car_status came in.
+        m_motion_frame (Optional[int]): Frame identifier of the packet m_packet_motion came in.
     """
     m_packet_lap_data: Optional[LapData] = None
     m_packet_particpant_data: Optional[ParticipantData] = None
@@ -64,3 +67,11 @@ class PacketCopies:
     m_packet_motion: Optional[CarMotionData] = None
     m_packet_car_setup: Optional[CarSetupData] = None
     m_packet_car_telemetry_2: Optional[PacketCarTelemetry2Data] = None
+    m_car_telemetry_frame: Optional[int] = None
+    m_car_status_frame: Optional[int] = None
+    m_motion_frame: Optional[int] = None
+
+    def has_copy_newer_than(self, frame_id: int) -> bool:
+        """True if the car telemetry, car status or motion copy came in a frame after frame_id."""
+        copy_frames = (self.m_car_telemetry_frame, self.m_car_status_frame, self.m_motion_frame)
+        return any(frame is not None and frame > frame_id for frame in copy_frames)

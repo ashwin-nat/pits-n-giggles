@@ -26,7 +26,7 @@ manager and the per-lap snapshots. Flashbacks across the tyre set history are in
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional, Tuple
 
 import allure
 import pytest
@@ -86,6 +86,59 @@ async def test_time_trial_flashback_skips_the_delta(player_car: PlayerCar, sessi
 
     assert player_car.in_progress_lap() == (1, [0.6, 1500.0, 3000.0, 4000.0, 4154.3])
     assert player_car.delta_laps() == {}
+
+
+class CarFrame(NamedTuple):
+    """The MOTION and CAR_TELEMETRY values a frame carries for the player, after its LAP_DATA."""
+    x: float
+    y: float
+    z: float
+    yaw: float
+    kmph: int
+
+
+# From the Monza recording either side of the rewind, at float32-exact values
+BEFORE_REWIND = CarFrame(x=-439.75, y=-5.5, z=1086.25, yaw=-1.0, kmph=154)
+AFTER_REWIND = CarFrame(x=-331.5, y=-2.5, z=427.5, yaw=-0.125, kmph=315)
+
+
+async def _send_frame_copies(player_car: PlayerCar, frame: CarFrame) -> None:
+    await player_car.position(frame.x, frame.y, frame.z, frame.yaw)
+    await player_car.speed(frame.kmph)
+
+
+async def _drive_frames(player_car: PlayerCar, status: LapData.DriverStatus, lap: int, distances: List[float],
+                        frame: CarFrame) -> None:
+    for distance in distances:
+        await player_car.drive(status, lap, distance)
+        await _send_frame_copies(player_car, frame)
+
+
+@allure.story("Within a lap")
+@pytest.mark.parametrize("session", [FP, QUALI, RACE])
+@title("The landing sample carries no position or speed from before the rewind")
+async def test_flashback_landing_sample_has_no_pre_rewind_values(player_car: PlayerCar, session: SessionType24) -> None:
+    """Practice, quali or race. The game sends each frame's LAP_DATA first, then MOTION, then CAR_TELEMETRY. The car
+    drives lap 1 to 4511 m at z 1086.25 m and 154 km/h. A flashback then takes it back to 4154.3 m, where it is at
+    z 427.5 m and 315 km/h. It drives on to 5800 m and starts lap 2.
+    Seen in test_data/f1_26_sp_monza_restricted_5lap.f1pcap at overall frame 26059.
+
+    Expected: from 4154.3 m on, lap 1 holds only the position and speed from after the flashback. Nothing from
+    before it is recorded, including at the landing, where the LAP_DATA arrives before the new MOTION and
+    CAR_TELEMETRY."""
+    await player_car.session(session)
+    timed = racing_status(session)
+    await _drive_frames(player_car, timed, 1, [0.6, 1500.0, 3000.0, 4000.0, 4300.0, 4511.0], BEFORE_REWIND)
+    await player_car.flashback(timed, 1, 4154.3)
+    await _send_frame_copies(player_car, AFTER_REWIND)
+    await _drive_frames(player_car, timed, 1, [4300.0, 5800.0], AFTER_REWIND)
+    await player_car.drive(timed, 2, 0.6)
+
+    lap_1 = player_car.driver.m_tel_rec.export().completed_laps[0].telemetry
+    samples = zip(lap_1["lap_distance"], lap_1["motion.position.z"], lap_1["speed"])
+    from_before_rewind = [(round(distance, 1), z, kmph) for distance, z, kmph in samples
+                          if round(distance, 1) >= 4154.3 and (z, kmph) != (AFTER_REWIND.z, AFTER_REWIND.kmph)]
+    assert from_before_rewind == []
 
 # ------------------------- OVER THE LINE ------------------------------------------------------------------------------
 
@@ -233,8 +286,8 @@ async def test_ai_lap_count_back_after_a_flashback_redoes_the_lap(manager: Injec
     with allure.step("The player flashes back: the AI lands on lap 3 at 1405.1 m"):
         await flashback(manager, packets, car(AI, lap=3, lap_distance=1405.1, status=FLYING), UID)
     await _ai_drive(manager, packets, 3, 1800.0, 2832.9)
-    assert _ai_laps(state) == ({2: [24.5, 1500.0, 3000.0, 3300.0]}, (3, [1.1, 1000.0, 1405.1, 1800.0, 2832.9]),
-                               5.394)
+    # No 1405.1: the landing LAP_DATA is skipped, since the car status copy is from before the rewind
+    assert _ai_laps(state) == ({2: [24.5, 1500.0, 3000.0, 3300.0]}, (3, [1.1, 1000.0, 1800.0, 2832.9]), 5.394)
 
     with allure.step("No FLBK: the AI is put back on lap 2 at 3051.2 m"):
         await _ai_drive(manager, packets, 2, 3051.2)

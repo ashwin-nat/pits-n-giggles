@@ -1579,6 +1579,13 @@ class DataPerDriver:
         car_status_pkt = self.m_packet_copies.m_packet_car_status
         car_telemetry_pkt = self.m_packet_copies.m_packet_car_telemetry
         motion_pkt = self.m_packet_copies.m_packet_motion
+        # A copy newer than this LAP_DATA is from before a flashback; its own frame's copies come after it
+        if self.m_packet_copies.has_copy_newer_than(frame_id):
+            copies = self.m_packet_copies
+            self.m_logger.debug("Driver %s - skipping telemetry snapshot on frame %d, copies are newer "
+                                "(telemetry %s, status %s, motion %s)", str(self), frame_id,
+                                copies.m_car_telemetry_frame, copies.m_car_status_frame, copies.m_motion_frame)
+            return
         tyre_wear = self.m_tyre_info.tyre_wear.latest
         ers_store_energy_j = car_status_pkt.m_ersStoreEnergy if car_status_pkt else None
         surface_temps = self.m_tyre_info.getSurfaceTempsJSON()
