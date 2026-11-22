@@ -1269,6 +1269,48 @@ def test_brake_board_before_its_corner_valid():
     assert seg.brake_boards[0].at_m < seg.start_m
 
 
+@allure.story("Schema v2: brake boards")
+@allure.title("A board pointing {where} is {verdict}")
+@pytest.mark.parametrize("at_m, where, verdict", [
+    (1030.0, "inside its corner", "valid"),
+    (900.0, "short of its corner", "rejected"),
+    (1800.0, "past its corner", "rejected"),
+])
+def test_brake_board_target_must_be_inside_corner(at_m, where, verdict):
+    """Curva Grande (1060 m onwards) with its 100 m board moved along the lap.
+
+    Expected: accepted only when at_m + 100 lands inside the corner."""
+    track = _v2()
+    seg = next(s for s in track["segments"] if s.get("brake_boards") and s["type"] == "corner")
+    seg["brake_boards"][0]["at_m"] = at_m
+    if verdict == "valid":
+        load(track, use_cache=False)
+    else:
+        _assert_rejected(track, "points to")
+
+
+@allure.story("Schema v2: brake boards")
+@allure.title("A board pointing past the start line is rejected")
+def test_brake_board_target_past_start_line_rejected():
+    """A 100 m board at 6960 m on a 7000 m lap, for a corner at 50 to 120 m.
+
+    Expected: rejected, because segments never cross the start line so there is no wrapping."""
+    board = BrakeBoardInfo(distance_m=100, at_m=6960, side="left")
+    with pytest.raises(ValueError, match="points to"):
+        CornerSegmentInfo(name="", corner_number=1, start_m=50, end_m=120, brake_boards=(board,))
+
+
+@allure.story("Schema v2: brake boards")
+@allure.title("A sub-corner board is checked against the whole complex corner")
+def test_sub_corner_board_may_point_into_later_sub_corner():
+    """Rettifilo corner 1's 150 m board moved so it points into corner 2.
+
+    Expected: accepted, since the target is still inside the complex corner."""
+    track = _v2()
+    _rettifilo(track)["corners"][0]["brake_boards"][0]["at_m"] = 960 - 150
+    load(track, use_cache=False)
+
+
 # --- Sub-corners ------------------------------------------------------------------------------------------------------
 
 @allure.story("Schema v2: sub-corners")
@@ -1456,12 +1498,15 @@ def test_lap_position_out_of_range_rejected(field, value):
     Expected: rejected, with the value and track_length in the message."""
     track = _v2()
     _set_position(track, field, value)
-    _assert_rejected(track, rf"\({float(value)}\) must be in \[0, track_length={float(_V2_LENGTH)}\)")
+    expected = rf"\({float(value)}\) must be in \[0, track_length={float(_V2_LENGTH)}\)"
+    if "board" in field:
+        expected += "|points to"  # the parent's range check can fire first
+    _assert_rejected(track, expected)
 
 
 @allure.story("Schema v2: lap positions")
 @allure.title("{field} at 0 m is valid")
-@pytest.mark.parametrize("field", ["speed_trap_m", "drs detection_m", "active aero start_m", "corner board at_m"])
+@pytest.mark.parametrize("field", ["speed_trap_m", "drs detection_m", "active aero start_m"])
 def test_lap_position_at_zero_valid(field):
     """Lap distances on the start line itself.
 

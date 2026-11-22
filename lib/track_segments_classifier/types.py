@@ -62,6 +62,18 @@ class BrakeBoardInfo(BaseModel):
         return {"distance_m": self.distance_m, "at_m": _num(self.at_m), "side": self.side}
 
 
+def _check_boards_point_inside(parent: "BaseSegmentInfo", corner_number: int,
+                               boards: Tuple[BrakeBoardInfo, ...]) -> None:
+    # No wrap: segments never cross the start line (they are split in two), so a target past it has no parent.
+    for b in boards:
+        target = b.at_m + b.distance_m
+        if not parent.start_m <= target < parent.end_m:
+            raise ValueError(
+                f"corner {corner_number} {b.distance_m}m board at {b.at_m}m points to {target:.1f}m, "
+                f"outside its segment [{parent.start_m}, {parent.end_m})"
+            )
+
+
 class SubCornerInfo(BaseModel):
     """One corner's part of a complex corner."""
     model_config = ConfigDict(frozen=True, allow_inf_nan=False, extra="forbid")
@@ -204,6 +216,11 @@ class CornerSegmentInfo(BaseSegmentInfo):
             "corner_number": self.corner_number,
         }
 
+    @model_validator(mode="after")
+    def _check_boards(self) -> "CornerSegmentInfo":
+        _check_boards_point_inside(self, self.corner_number, self.brake_boards)
+        return self
+
     def to_file_dict(self) -> Dict[str, Any]:
         out: Dict[str, Any] = {"type": "corner", "start_m": _num(self.start_m), "end_m": _num(self.end_m)}
         if self.name:
@@ -261,6 +278,13 @@ class ComplexCornerSegmentInfo(BaseSegmentInfo):
                     f"{self._label()}: corner {curr.corner_number} starts at {curr.start_m}, "
                     f"not where corner {prev.corner_number} ends ({prev.end_m})"
                 )
+        return self
+
+    @model_validator(mode="after")
+    def _check_boards(self) -> "ComplexCornerSegmentInfo":
+        """Sub-corner boards are tested against the whole complex corner, not the sub-corner."""
+        for sub in self.corners:
+            _check_boards_point_inside(self, sub.corner_number, sub.brake_boards)
         return self
 
     def _label(self) -> str:

@@ -399,18 +399,15 @@ def _replace(model: ModelT, **changes: Any) -> ModelT:
     return type(model).model_validate({**dict(model), **changes})
 
 
-MAX_SHORT_M = 100  # label spacing is off by up to about 20 m, so 100 m short means some other corner
-
-
 def attach_boards(segments: Tuple[SegmentInfo, ...], boards: List[BrakeBoardInfo],
                   track_length: float) -> Tuple[Tuple[SegmentInfo, ...], List[str]]:
     """`segments` with `brake_boards` set on the corner each board warns about, plus notes for odd boards.
 
     A board counts down to the spot `at_m + distance_m`. It belongs to the corner or complex corner containing
-    that spot, or to the next one ahead (wrapping past the start line) when the spot is on a straight. Position
-    alone is not enough: boards often stand in the tail of the previous corner. A complex corner is one braking
-    event, so its boards go on its first sub-corner, whose own boundaries are only seeded. A board pointing more
-    than MAX_SHORT_M before the next corner warns for no corner in the file, so it is reported and left off.
+    that spot, because the classifier rejects a board pointing anywhere else. Position alone is not enough: boards
+    often stand in the tail of the previous corner. A complex corner is one braking event, so its boards go on its
+    first sub-corner, whose own boundaries are only seeded. A board whose spot is on a straight, or past the start
+    line, is reported and left off; the corner's start or the board needs fixing by hand.
     Complex corners must already hold their `corners`. Boards already on a corner are replaced.
     """
     targets = sorted(((seg.start_m, seg.end_m, i) for i, seg in enumerate(segments)
@@ -420,13 +417,15 @@ def attach_boards(segments: Tuple[SegmentInfo, ...], boards: List[BrakeBoardInfo
     assigned: Dict[int, List[BrakeBoardInfo]] = {}
     notes = []
     for board in boards:
-        target_m = (board.at_m + board.distance_m) % track_length
-        start, end, i = next((t for t in targets if t[1] > target_m), targets[0])
-        short_m = 0.0 if start <= target_m < end else (start - target_m) % track_length
-        if short_m > MAX_SHORT_M:
-            notes.append(f"{board.distance_m} m board at {board.at_m} m points {short_m:.0f} m short of the next "
-                         f"corner, not attached")
+        target_m = board.at_m + board.distance_m
+        hit = next((t for t in targets if t[0] <= target_m < t[1]), None)
+        if hit is None:
+            ahead = target_m % track_length
+            start = next((t[0] for t in targets if t[0] > ahead), targets[0][0])
+            notes.append(f"{board.distance_m} m board at {board.at_m} m points {(start - ahead) % track_length:.0f} m "
+                         f"short of the next corner, not attached")
             continue
+        i = hit[2]
         assigned.setdefault(i, []).append(board)
     for i, held in assigned.items():
         labels = [b.distance_m for b in held]

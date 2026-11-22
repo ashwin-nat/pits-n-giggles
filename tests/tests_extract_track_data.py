@@ -449,14 +449,14 @@ def _layout():
 @allure.story("Brake boards")
 @allure.title("Boards attach to the corner they warn about")
 def test_attach_boards():
-    """Three 100 m boards on a 2000 m lap: one just before the line (wraps to corner 1), one before the complex
+    """Three 100 m boards on a 2000 m lap: one before corner 1, one before the complex
     corner, and one pointing 600 m short of it. Corner 1 held an old board.
 
     Expected: the old board is replaced, the first two land on corner 1 and sub-corner 2, and the far one is
     left off with a note."""
-    segments, notes = attach_boards(_layout(), [_board(1950), _board(300), _board(900)], 2000)
+    segments, notes = attach_boards(_layout(), [_board(60), _board(300), _board(900)], 2000)
     corner, complex_corner, _ = segments
-    assert [b.at_m for b in corner.brake_boards] == [1950]
+    assert [b.at_m for b in corner.brake_boards] == [60]
     assert [b.at_m for b in complex_corner.corners[0].brake_boards] == [900]
     assert complex_corner.corners[1].brake_boards == ()
     assert notes == ["100 m board at 300.0 m points 600 m short of the next corner, not attached"]
@@ -465,10 +465,10 @@ def test_attach_boards():
 @allure.story("Brake boards")
 @allure.title("Replacing boards revalidates the segments")
 def test_attach_boards_rejects_a_board_outside_the_lap_later():
-    """A board beyond track_length passes attach_boards, which only places it.
+    """A board at -50 m pointing 150 m ahead lands in corner 1, so attach_boards places it.
 
     Expected: the classifier refuses the track, so such a file is never written."""
-    segments, _ = attach_boards(_layout(), [_board(2050)], 2000)
+    segments, _ = attach_boards(_layout(), [_board(-50, 150)], 2000)
     with pytest.raises(ValueError, match="must be in"):
         TrackSegmentsClassifier(circuit_name="t", circuit_number=1, track_length=2000, sectors={"s1": 600, "s2": 1300},
                                 segments=segments, use_cache=False)
@@ -700,12 +700,12 @@ def test_attach_boards_without_corners():
 
 @allure.story("Brake boards")
 @allure.title("A board pointing {short} m short of the next corner is {outcome}")
-@pytest.mark.parametrize("at, short, outcome", [(850, 50, "attached"), (750, 150, "left off")])
+@pytest.mark.parametrize("at, short, outcome", [(850, 50, "left off"), (750, 150, "left off")])
 def test_attach_boards_far_from_any_corner(at, short, outcome):
     """A 100 m board whose label points 50 m, or 150 m, short of the complex corner at 1000 m, as Baku's
     left-side boards point about 285 m short of turn 1.
 
-    Expected: within 100 m it is attached; beyond that it is left off with a note."""
+    Expected: left off with a note either way, since the classifier rejects a board pointing outside its corner."""
     segments, notes = attach_boards(_layout(), [_board(at)], 2000)
     held = [b.at_m for b in segments[1].corners[0].brake_boards]
     if outcome == "attached":
