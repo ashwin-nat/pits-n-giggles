@@ -443,8 +443,8 @@ export function ChartLane({
     chartRef.current?.redraw(false);
   }, [focusZone, hoverZone, bands, effectiveViewMode]);
 
-  // Header rows: each listed slot's value at the crosshair; no crosshair falls
-  // back to the lap's last point, never blank. A lap without the sensor reads missing.
+  // Header rows: each listed slot's value at the crosshair. With no crosshair only the delta lane
+  // shows rows, at the lap's last point. A lap without the sensor reads missing.
   const rows = slots.map((slot) => {
     const points = displayed.find((s) => s.slot === slot)?.points;
     if (points === undefined || points.length === 0) {

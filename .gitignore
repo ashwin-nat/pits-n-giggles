@@ -40,5 +40,3 @@ plans/
 *.pngt
 !apps/lap-analyzer/test-fixtures/sample-session.pngt
 data/
-
-# TODO: Track geometry bundle (storage decision pending)

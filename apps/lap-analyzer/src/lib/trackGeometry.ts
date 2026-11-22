@@ -34,6 +34,9 @@ async function load(trackId: number): Promise<TrackGeometry | null> {
     return null;
   }
   const response = await fetch(await loader());
+  if (!response.ok) {
+    throw new Error(`c${trackId}.npz: HTTP ${response.status}`);
+  }
   const entries = unzipArchive(new Uint8Array(await response.arrayBuffer()), `c${trackId}.npz`);
   const version = Number(toArray<ArrayLike<number>>(entries, "version")[0]);
   if (version !== GEOMETRY_VERSION) {
@@ -51,6 +54,8 @@ export function getTrackGeometry(trackId: number): Promise<TrackGeometry | null>
   if (cached === undefined) {
     cached = load(trackId);
     cache.set(trackId, cached);
+    // A failed load is retried on the next call rather than cached for the session.
+    cached.catch(() => cache.delete(trackId));
   }
   return cached;
 }

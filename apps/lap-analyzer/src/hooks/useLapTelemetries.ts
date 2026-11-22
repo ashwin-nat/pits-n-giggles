@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { keepPreviousData, useQueries } from "@tanstack/react-query";
+import { useMemo, useRef } from "react";
+import { useQueries } from "@tanstack/react-query";
 import { useLapAnalyzerProvider } from "../providers/ProviderContext";
 import { isCompleteLap, type LapSelection } from "../types/store";
 import type { TelemetryPoint } from "../types/api";
@@ -15,9 +15,12 @@ import { POSITION_KEYS } from "../lib/mapGeometry";
 export function useLapTelemetries(laps: readonly LapSelection[]) {
   const active = useLapAnalyzerProvider();
   const { data: sessions } = useSessions();
+  // Last loaded points per slot. keepPreviousData can't do this here: useQueries gives a new lap key a
+  // new observer, which has no previous data.
+  const lastData = useRef<(TelemetryPoint[] | undefined)[]>([]);
 
   const queries = useQueries({
-    queries: laps.map((lap) => {
+    queries: laps.map((lap, slot) => {
       const manifest = sessions?.find((s) => s.id === lap.sessionId)?.sensorManifest;
       return {
         queryKey: ["telemetry", active?.id ?? null, lap.sessionId, lap.driverIndex, lap.lapNumber],
@@ -36,10 +39,15 @@ export function useLapTelemetries(laps: readonly LapSelection[]) {
         enabled: active !== null && manifest !== undefined && isCompleteLap(lap),
         // A recorded lap never changes.
         staleTime: Infinity,
-        // Keep the previous lap on screen while a change loads.
-        placeholderData: keepPreviousData,
+        // Keep the slot's previous lap on screen while a change loads; a cleared slot shows nothing.
+        placeholderData: isCompleteLap(lap) ? () => lastData.current[slot] : undefined,
       };
     }),
+  });
+  queries.forEach((q, slot) => {
+    if (q.data !== undefined && !q.isPlaceholderData) {
+      lastData.current[slot] = q.data;
+    }
   });
 
   const data = queries.map((q) => q.data);

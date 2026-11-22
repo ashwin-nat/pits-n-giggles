@@ -183,6 +183,8 @@ export function ChartLaneList({ crosshairPosition, onCrosshairMove }: ChartLaneL
               gripProps={{
                 onDragStart: (e: DragEvent) => {
                   e.dataTransfer.effectAllowed = "move";
+                  // Firefox starts no drag on a non-link element without data.
+                  e.dataTransfer.setData("text/plain", key);
                   setDragKey(key);
                 },
                 onDragEnd: () => setDragKey(null),
