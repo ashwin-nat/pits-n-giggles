@@ -87,10 +87,7 @@ function lastValueIndex(points: InterpolatedPoint[]): number {
 // x-window -- wheel-zoom/pan only ever calls setScale("x", ...), so as long
 // as nothing re-derives this from view state, the y-axis stays put while
 // zooming/panning on x, which is what makes a chart readable while zoomed.
-function computeYAxisRange(sensor: SensorDefinition, series: LaneSeries[]): [number, number] {
-  if (sensor.range !== undefined) {
-    return sensor.range;
-  }
+function computeYAxisRange(sensor: SensorDefinition, series: LaneSeries[], viewMode: ViewMode): [number, number] {
   let min = Infinity;
   let max = -Infinity;
   for (const { points } of series) {
@@ -100,8 +97,18 @@ function computeYAxisRange(sensor: SensorDefinition, series: LaneSeries[]): [num
       if (p.value > max) max = p.value;
     }
   }
-  if (!Number.isFinite(min) || !Number.isFinite(max)) {
+  const hasData = Number.isFinite(min) && Number.isFinite(max);
+  // Rate values are per metre, so the sensor's own range says nothing about them.
+  if (sensor.range !== undefined && viewMode === "value") {
+    return sensor.range;
+  }
+  if (!hasData) {
     return [0, 1];
+  }
+  if (viewMode === "rate") {
+    // Keep zero in view so a flat-positive rate reads as such.
+    min = Math.min(min, 0);
+    max = Math.max(max, 0);
   }
   // Discrete sensors get fixed +/-1 unit padding (percentage padding fights
   // uPlot's "nice number" snapping on small integer ranges like DRS's 0/1),
@@ -125,7 +132,7 @@ function formatValue(sensor: SensorDefinition, value: number | null, viewMode: V
   }
   const unit = viewMode === "rate" ? `${sensor.unit}/m` : sensor.unit;
   // Discrete values are never fractional -- float32 is just the wire format.
-  const precision = sensor.type === "discrete" ? 0 : 1;
+  const precision = sensor.type === "discrete" ? 0 : viewMode === "rate" ? 4 : 1;
   return `${value.toFixed(precision)}${unit ? ` ${unit}` : ""}`;
 }
 
@@ -192,7 +199,7 @@ export function ChartLane({
 
   // Derived once per dataset (or sensor range), not per zoomed view, so the
   // y-axis stays put while zooming/panning on x.
-  const yRange = useMemo(() => computeYAxisRange(sensor, displayed), [sensor, displayed]);
+  const yRange = useMemo(() => computeYAxisRange(sensor, displayed, effectiveViewMode), [sensor, displayed, effectiveViewMode]);
   const yRangeRef = useRef(yRange);
   yRangeRef.current = yRange;
 
@@ -307,7 +314,8 @@ export function ChartLane({
             }
 
             // The range ends, inside the plot at the right edge.
-            const digits = Number.isInteger(yMin) && Number.isInteger(yMax) ? 0 : Math.abs(yMax - yMin) >= 10 ? 0 : 2;
+            const span = Math.abs(yMax - yMin);
+            const digits = Number.isInteger(yMin) && Number.isInteger(yMax) ? 0 : span >= 10 ? 0 : span >= 0.1 ? 2 : 4;
             const fmt = (v: number) => (v > 0 && signColored ? "+" : "") + v.toFixed(digits);
             ctx.save();
             ctx.fillStyle = "rgba(148, 163, 184, 0.55)";

@@ -130,7 +130,8 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             key="steering",
             label=_label("steering"),
             unit="%",
-            type=SensorType.CONTINUOUS),
+            type=SensorType.CONTINUOUS,
+            range=(-100, 100)),
         get=attrgetter("steering")),
 
     # ---- CAR STATE -----
@@ -188,32 +189,28 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             key="tyre_wear.fl",
             label=_label("tyre_wear_fl"),
             unit="%",
-            type=SensorType.CONTINUOUS,
-            range=(0, 100)),
+            type=SensorType.CONTINUOUS),
         get=attrgetter("tyre_wear_fl")),
     "tyre_wear_fr": RecordedSensor(
         config=SensorConfig(
             key="tyre_wear.fr",
             label=_label("tyre_wear_fr"),
             unit="%",
-            type=SensorType.CONTINUOUS,
-            range=(0, 100)),
+            type=SensorType.CONTINUOUS),
         get=attrgetter("tyre_wear_fr")),
     "tyre_wear_rl": RecordedSensor(
         config=SensorConfig(
             key="tyre_wear.rl",
             label=_label("tyre_wear_rl"),
             unit="%",
-            type=SensorType.CONTINUOUS,
-            range=(0, 100)),
+            type=SensorType.CONTINUOUS),
         get=attrgetter("tyre_wear_rl")),
     "tyre_wear_rr": RecordedSensor(
         config=SensorConfig(
             key="tyre_wear.rr",
             label=_label("tyre_wear_rr"),
             unit="%",
-            type=SensorType.CONTINUOUS,
-            range=(0, 100)),
+            type=SensorType.CONTINUOUS),
         get=attrgetter("tyre_wear_rr")),
 
     # ------ TYRE STATUS -------
