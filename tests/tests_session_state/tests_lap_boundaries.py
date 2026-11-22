@@ -42,7 +42,7 @@ from lib.f1_types import SessionType24
 from .harness import (ALL_SESSIONS, FLYING, FP, GARAGE, IN_LAP, ON_TRACK, OUT_LAP,
                       QUALI, RACE, TT, PlayerCar, leaving_garage_status,
                       racing_status, title)
-from .packet_helpers import ALL_FORMATS
+from .packet_helpers import ALL_FORMATS, FIRST_SOFT_IDX, classified
 
 # ------------------------- CONSTANTS ----------------------------------------------------------------------------------
 
@@ -180,6 +180,68 @@ async def test_garage_return_just_after_the_line_drops_the_lap(player_car: Playe
     await player_car.drive(FLYING, 2, 1.0, 2900.0, 5800.0)
     await player_car.drive(FLYING, 3, 0.6)
     assert player_car.completed_laps() == {1: [2900.0, 5800.0], 2: [1.0, 2900.0, 5800.0]}
+
+# ------------------------- SESSION FAST-FORWARD -----------------------------------------------------------------------
+
+# Found in FP recordings; no quali recording shows a fast-forward. QUALI is here for completeness.
+
+@allure.story("Session fast-forward")
+@pytest.mark.parametrize("session", [FP, QUALI])
+@title("Laps skipped by a session fast-forward are not booked")
+async def test_session_fast_forward_books_no_skipped_laps(player_car: PlayerCar, session: SessionType24) -> None:
+    """Practice or quali, as in f1_26_mp_fp_baku_short (car 3, overall frame 64842) and f1_26_sp_career_fp_singapore (car 0,
+    overall frame 51396). Flying lap 1 ends at 5.401 % wear, then the in lap on lap 2 and back to the garage at
+    8.039 %. The session is then fast-forwarded to its end: one LAP_DATA puts the car, still IN_GARAGE, on lap 7, the
+    next frame's CAR_DAMAGE reads 0.0 % on all four, and FINAL_CLASSIFICATION gives it 6 laps.
+
+    Expected: nothing is booked for laps 3 to 6, which the car never drove: no per-lap snapshot, stint entry or
+    recorded lap. Wear never goes down within the stint."""
+    await player_car.session(session)
+    await player_car.baseline(GARAGE, 188.4, fuel=7.0, wear=0.0, fitted_idx=FIRST_SOFT_IDX)
+    await player_car.drive(OUT_LAP, 1, -5588.3, -2900.0, -1.2)
+    await player_car.car_damage(1.971)
+    await player_car.drive(FLYING, 1, 0.4, 2900.0, 5800.0)
+    await player_car.car_damage(5.401)
+    await player_car.drive(IN_LAP, 2, 8.5, 2900.0)
+    await player_car.car_damage(8.039)
+    await player_car.drive(GARAGE, 2, 61.6, 58.5)
+    with allure.step("Fast-forward: lap 7 in the garage, then 0.0 % wear, then 6 laps classified"):
+        await player_car.drive(GARAGE, 7, 58.5)
+        await player_car.car_damage(0.0)
+        await player_car.manager.inject(player_car.packets.final_classification(
+            classified(position=1, num_laps=6), session_uid=player_car.session_uid))
+
+    driven = {0, 1, 2}
+    assert set(player_car.driver.m_per_lap_snapshots) <= driven
+    assert set(player_car.completed_laps()) <= driven
+    for _, samples in player_car.stints():
+        assert {lap for lap, _ in samples} <= driven
+        assert [wear for _, wear in samples] == sorted(wear for _, wear in samples), "wear went down in a stint"
+
+
+@allure.story("Session fast-forward")
+@pytest.mark.parametrize("session", [FP, QUALI])
+@title("A car on track at a session fast-forward gets no lap it never drove")
+async def test_session_fast_forward_on_track_books_no_skipped_laps(player_car: PlayerCar,
+                                                                   session: SessionType24) -> None:
+    """Practice or quali, as in f1_26_mp_fp_baku_short (car 18, overall frame 64842). Flying laps 1 to 3, then lap 4 is
+    3253 m in when the session is fast-forwarded to its end: one LAP_DATA puts the car, still FLYING_LAP, on lap 10
+    at 3254 m, one more follows at 3255 m, and FINAL_CLASSIFICATION gives it 9 laps.
+
+    Expected: nothing is booked for laps 5 to 9, which the car never drove: no per-lap snapshot or recorded lap."""
+    await player_car.session(session)
+    await player_car.drive(OUT_LAP, 1, -5588.3, -2900.0, -1.2)
+    for lap in (1, 2, 3):
+        await player_car.drive(FLYING, lap, 0.4, 2900.0, 5800.0)
+    await player_car.drive(FLYING, 4, 0.4, 1500.0, 3253.0)
+    with allure.step("Fast-forward: lap 10 at 3254 m, then 9 laps classified"):
+        await player_car.drive(FLYING, 10, 3254.0, 3255.0)
+        await player_car.manager.inject(player_car.packets.final_classification(
+            classified(position=1, num_laps=9), session_uid=player_car.session_uid))
+
+    driven = {0, 1, 2, 3, 4}
+    assert set(player_car.driver.m_per_lap_snapshots) <= driven
+    assert set(player_car.completed_laps()) <= driven
 
 # ------------------------- RACES --------------------------------------------------------------------------------------
 

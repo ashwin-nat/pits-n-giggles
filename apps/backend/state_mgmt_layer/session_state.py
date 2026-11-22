@@ -609,11 +609,22 @@ class SessionState:
         for index, data in enumerate(packet.m_classificationData):
             driver = self._getObjectByIndex(index, create=False)
 
-            driver.onLapChange(old_lap_number=data.m_numLaps)
+            # Only the lap in progress at the flag. An earlier one was booked at its lap change, or was
+            # never driven (a practice skipped to its end jumps the lap number)
+            current_lap = driver.m_lap_info.m_current_lap
+            if current_lap is None or data.m_numLaps >= current_lap:
+                driver.onLapChange(old_lap_number=data.m_numLaps)
+            else:
+                self.m_logger.debug("Driver %s - final classification lap %d is behind current lap %d, not booked",
+                                    driver, data.m_numLaps, current_lap)
 
             if data.m_position and data.m_position != 255:
                 driver.m_driver_info.position = data.m_position
-                driver.m_per_lap_snapshots[data.m_numLaps].m_track_position = data.m_position
+                if snapshot := driver.m_per_lap_snapshots.get(data.m_numLaps):
+                    snapshot.m_track_position = data.m_position
+                else:
+                    self.m_logger.debug("Driver %s - no lap %d snapshot for final classification position %d",
+                                        driver, data.m_numLaps, data.m_position)
 
             driver.m_packet_copies.m_packet_final_classification = data
             driver.m_lap_info.m_total_race_time = data.m_totalRaceTime
