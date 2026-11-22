@@ -6,15 +6,11 @@ import { RemoteApiProvider } from "./providers/RemoteApiProvider";
 import { Layout } from "./components/layout/Layout";
 import { Header } from "./components/header/Header";
 import { ChartArea } from "./components/chart/ChartArea";
+import { IS_BACKEND_MODE } from "./lib/appMode";
+import { parseLapsParam } from "./lib/lapsParam";
 import { useTelemetryStore } from "./store/telemetryStore";
 
 const queryClient = new QueryClient();
-
-// apps/web always mounts this SPA at /lap-analyzer/ (see render_lap_analyzer_index
-// in lap_analyzer_routes.py); a standalone `pnpm dev`/local dist/ is always served
-// from "/". Reading the live URL avoids depending on a build-time constant (Vite's
-// `base`, see vite.config.ts) staying in sync with how the page actually got here.
-const IS_BACKEND_MODE = window.location.pathname.startsWith("/lap-analyzer/");
 
 export function App() {
   const [active, setActive] = useState<ActiveProvider | null>(null);
@@ -36,6 +32,10 @@ export function App() {
   useEffect(() => {
     if (IS_BACKEND_MODE) {
       switchProvider(new RemoteApiProvider());
+      // Links from the save viewer carry the laps to open, A first.
+      parseLapsParam(new URLSearchParams(window.location.search).get("laps")).forEach((ref, slot) =>
+        useTelemetryStore.getState().setLap(slot, ref)
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

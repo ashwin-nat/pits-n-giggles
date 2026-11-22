@@ -3,6 +3,7 @@ import { useDriverBests } from "../../hooks/useDriverBests";
 import { useSessions } from "../../hooks/useSessions";
 import { LAP_SLOT_COLORS, LAP_SLOT_LETTERS } from "../../lib/chartConstants";
 import { formatLapTime, isPartialLap } from "../../lib/lapFormat";
+import { SaveViewerLink } from "../SaveViewerLink";
 import { comparableSessions, effectiveGame, gameLabel, newestFirst } from "../../lib/sessionFilters";
 import { useTelemetryStore } from "../../store/telemetryStore";
 import type { Lap, Session } from "../../types/api";
@@ -158,24 +159,26 @@ export function LapPickerModal({ slot, trackId, onClose }: LapPickerModalProps) 
             <Empty>No sessions</Empty>
           ) : (
             sessionList.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                aria-pressed={s.id === sessionId}
-                onClick={() => {
-                  setPickedSession(s.id);
-                  setPickedDriver(null);
-                }}
-                className={`${listItemClass} flex-col items-start gap-0`}
-              >
-                <span className="flex w-full items-center gap-2 text-sm text-tone-100">
-                  {s.type}
-                  <SlotBadges slots={holders(laps, s.id)} />
-                </span>
-                <span className="text-2xs text-tone-500">
-                  {s.trackName} · {formatDate(s.date)}
-                </span>
-              </button>
+              <div key={s.id} className="relative">
+                <button
+                  type="button"
+                  aria-pressed={s.id === sessionId}
+                  onClick={() => {
+                    setPickedSession(s.id);
+                    setPickedDriver(null);
+                  }}
+                  className={`${listItemClass} flex-col items-start gap-0`}
+                >
+                  <span className="flex w-full items-center gap-2 text-sm text-tone-100">
+                    {s.type}
+                    <SlotBadges slots={holders(laps, s.id)} />
+                  </span>
+                  <span className="text-2xs text-tone-500">
+                    {s.trackName} · {formatDate(s.date)}
+                  </span>
+                </button>
+                <SaveViewerLink session={s} className="absolute top-2 right-2" />
+              </div>
             ))
           )}
         </Column>

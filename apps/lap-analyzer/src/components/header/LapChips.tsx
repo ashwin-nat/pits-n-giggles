@@ -4,6 +4,7 @@ import { useSessions } from "../../hooks/useSessions";
 import { useLapAnalyzerProvider } from "../../providers/ProviderContext";
 import { LAP_SLOT_COLORS, LAP_SLOT_LETTERS, MAX_COMPARISON_LAPS } from "../../lib/chartConstants";
 import { formatGap, formatLapTime } from "../../lib/lapFormat";
+import { SaveViewerLink } from "../SaveViewerLink";
 import { useTelemetryStore } from "../../store/telemetryStore";
 import { isCompleteLap, type LapSelection } from "../../types/store";
 
@@ -76,6 +77,7 @@ function Chip({ slot, lap, timeMs, gapMs, fastest, onChoose, onRemove }: ChipPro
         </span>
         <span className="text-tone-500">⌄</span>
       </button>
+      <SaveViewerLink session={session} />
       {onRemove !== undefined && (
         <button
           type="button"
