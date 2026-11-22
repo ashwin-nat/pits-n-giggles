@@ -219,7 +219,8 @@ def _dict_to_lap(raw: Dict[str, Any]) -> ParsedLap:
 
 
 def _sensor_to_dict(sensor: SensorConfig) -> Dict[str, Any]:
-    d = {'key': sensor.key, 'label': sensor.label, 'unit': sensor.unit, 'type': sensor.type.value}
+    d = {'key': sensor.key, 'label': sensor.label, 'unit': sensor.unit, 'type': sensor.type.value,
+         'should_display': sensor.should_display}
     if sensor.range is not None:
         d['range'] = list(sensor.range)
     return d
@@ -232,6 +233,7 @@ def _dict_to_sensor(raw: Dict[str, Any]) -> SensorConfig:
         unit=raw['unit'],
         type=SensorType(raw['type']),
         range=tuple(raw['range']) if 'range' in raw else None,
+        should_display=raw.get('should_display', True),
     )
 
 # ---- DiscoveryConfig plumbing ----
