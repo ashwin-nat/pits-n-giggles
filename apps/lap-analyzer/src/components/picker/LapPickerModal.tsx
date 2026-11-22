@@ -4,7 +4,6 @@ import { useSessions } from "../../hooks/useSessions";
 import { LAP_SLOT_COLORS, LAP_SLOT_LETTERS } from "../../lib/chartConstants";
 import { formatLapTime, isPartialLap } from "../../lib/lapFormat";
 import { comparableSessions, effectiveGame, gameLabel, newestFirst } from "../../lib/sessionFilters";
-import { getTeamColor } from "../../lib/teamColors";
 import { useTelemetryStore } from "../../store/telemetryStore";
 import type { Lap, Session } from "../../types/api";
 import type { LapSelection } from "../../types/store";
@@ -189,18 +188,22 @@ export function LapPickerModal({ slot, trackId, onClose }: LapPickerModalProps) 
           ) : drivers.length === 0 ? (
             <Empty>No driver has laps in this session</Empty>
           ) : (
-            drivers.map(({ driver: d, bestMs }) => {
+            drivers.map(({ driver: d, bestMs }, rank) => {
               const isSessionBest = sessionBest !== null && sessionBest.driverIndex === d.index && sessionBest.lapTimeMs === bestMs;
+              const isPlayer = session?.playerIndex === d.index;
               return (
                 <button
                   key={d.index}
                   type="button"
                   aria-pressed={d.index === driverIndex}
                   onClick={() => setPickedDriver(d.index)}
-                  className={listItemClass}
+                  className={`${listItemClass} border ${isPlayer ? "border-tone-400" : "border-transparent"}`}
                 >
-                  <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: getTeamColor(d.team) }} />
-                  <span className="min-w-0 flex-1 truncate text-sm text-tone-100">{d.name}</span>
+                  <span className="w-5 shrink-0 text-right font-mono text-2xs text-tone-500">{rank + 1}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm text-tone-100">
+                    {d.name}
+                    {isPlayer && <span className="ml-1.5 text-2xs text-tone-500">You</span>}
+                  </span>
                   <SlotBadges slots={holders(laps, sessionId, d.index)} />
                   <span className={`font-mono text-xs ${isSessionBest ? "text-best" : "text-tone-400"}`}>
                     {formatLapTime(bestMs)}

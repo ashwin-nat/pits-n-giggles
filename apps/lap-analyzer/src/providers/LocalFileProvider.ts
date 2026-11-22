@@ -33,6 +33,7 @@ interface SessionJson {
   game_year?: number;
   formula?: string;
   game_version?: string;
+  player_index?: number | null;
   timestamp?: string;
   track?: { id?: number; name?: string };
   laps?: {
@@ -181,6 +182,7 @@ export class LocalFileProvider implements LapAnalyzerProvider {
       formula: sessionJson.formula ?? "",
       gameVersion: sessionJson.game_version ?? "",
       sessionBest,
+      playerIndex: sessionJson.player_index ?? null,
       sensorManifest,
     };
 

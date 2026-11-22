@@ -34,6 +34,8 @@ export interface Session {
   sessionBest: SessionBest | null;
   // The save-viewer session in the same container; absent for local files and older saves.
   sessionSlug?: string | null;
+  // Driver index of the recording player's car; absent/null for older recordings.
+  playerIndex?: number | null;
   sensorManifest: SensorDefinition[];
 }
 
