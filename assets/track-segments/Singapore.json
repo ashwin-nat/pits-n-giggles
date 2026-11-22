@@ -316,12 +316,12 @@
     {
       "type": "straight",
       "start_m": 3130,
-      "end_m": 3500,
+      "end_m": 3465,
       "name": "Esplanade Drive"
     },
     {
       "type": "corner",
-      "start_m": 3500,
+      "start_m": 3465,
       "end_m": 3700,
       "name": "Connaught",
       "corner_number": 14,
@@ -344,14 +344,8 @@
       ]
     },
     {
-      "type": "straight",
-      "start_m": 3700,
-      "end_m": 3850,
-      "name": "Raffles Avenue"
-    },
-    {
       "type": "corner",
-      "start_m": 3850,
+      "start_m": 3740,
       "end_m": 3950,
       "corner_number": 15,
       "brake_boards": [
