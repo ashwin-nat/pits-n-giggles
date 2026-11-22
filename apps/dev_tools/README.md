@@ -11,6 +11,8 @@ poetry run python -m apps.dev_tools.compress_pcap <src-file> <dst-file>
 poetry run python -m apps.dev_tools.udp_action_code_injector --action-code <code>
 poetry run python -m apps.dev_tools.check_save_invariants "data/**/*.json"
 poetry run python -m apps.dev_tools.pcap_trace <f1pcap-file-path> [--car N ...] [--all-events] [--json]
+poetry run python -m apps.dev_tools.pcap_trace <f1pcap-file-path> --around <session-time> [--window S] [--car N ...]
+poetry run python -m apps.dev_tools.pcap_trace <f1pcap-file-path> --at-lap <lap> --lap-time <seconds> [--window S] [--car N ...]
 ```
 
 ## Recording Trace
@@ -24,6 +26,16 @@ lap, a garage tyre change) before writing a test for it.
 - Fitted set changes and the key events (flashback, session start/end, lights, chequered flag, retirement) in between
 - Session UID changes (menu packets on UID 0 aside), each session's type, track and length, and the first
   `FINAL_CLASSIFICATION` on each UID
+- `REWIND` when the frame goes back while the overall frame carries on (a flashback, with or without a FLBK event),
+  and `RESTART` when both go back to 0, each with the frames and session times either side
+- `--around T` prints every packet within `--window` seconds (default 0.1) of session time `T` instead of the
+  timeline, in capture order: index, session time, frames, packet type, and each traced car's values from lap data,
+  motion, car telemetry, car status, car damage and tyre sets. A time seen twice (a flashback) shows both passes
+- `--jumps M` adds a `JUMP` line to the timeline wherever a traced car's position moves more than `M` metres between
+  two MOTION packets, with the positions either side. A rewind shows up as a jump next to its `REWIND` line
+- `--at-lap N --lap-time S` finds each time the car reached lap time `S` seconds on lap `N` (the form a `.pngt`
+  sample's position takes), then prints the packets around each, as `--around` does. A flashback that goes back
+  before that point gives a second match
 - `--car N` traces car N, and can be repeated. Default: the player. A recording with no player car (index 255) needs
   `--car`
 - `--all-events` prints every event, not just the key ones
