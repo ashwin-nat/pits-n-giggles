@@ -78,9 +78,11 @@ class TcpTransport(TelemetryTransport):
                 "Use `on_packet` to register an async callback before calling `run`."
             )
         while not self._closed:
-            await self._ensure_connection()
-            if self._closed:
-                break
+            # Checked here so the common case (already connected) creates no coroutine per packet
+            if self.m_connection is None:
+                await self._ensure_connection()
+                if self._closed:
+                    break
             try:
                 length_bytes = await self._reader.readexactly(4)
                 message_length = struct.unpack('!I', length_bytes)[0]

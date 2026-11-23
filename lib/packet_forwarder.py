@@ -124,17 +124,14 @@ class AsyncUDPForwarder:
 
     async def forward(self, data: bytes) -> None:
         """
-        Concurrently forwards the given data to all configured destinations.
+        Forwards the given data to each configured destination in turn.
 
         :param data: The data (bytes) to forward
         """
-        if not self.m_forward_addresses:
-            return
-
-        await asyncio.gather(*(
-            self._send_to_destination(data, dest)
-            for dest in self.m_forward_addresses
-        ))
+        # One at a time, not gather(): a UDP send on a non-blocking socket completes without
+        # suspending, so gather() only added a Task per destination per packet
+        for dest in self.m_forward_addresses:
+            await self._send_to_destination(data, dest)
 
     async def _send_to_destination(self, data: bytes, destination: Tuple[str, int]) -> None:
         """

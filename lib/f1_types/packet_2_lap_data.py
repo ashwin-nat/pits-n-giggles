@@ -22,7 +22,7 @@
 
 
 import struct
-from typing import Any, Dict, List, final
+from typing import Any, Dict, List, Tuple, final
 
 from .base_pkt import (F1BaseEnum, F1CompareableEnum, F1PacketBase,
                        F1SubPacketBase)
@@ -640,45 +640,24 @@ class LapData(F1SubPacketBase):
         ))
         return cls(data, packet_format)
 
-    @property
-    def s1TimeMS(self) -> int:
-        """Return the total S1 time in ms."""
+    def sectorTimesMS(self) -> Tuple[int, int, int]:
+        """Return the S1, S2 and S3 times in ms. The ongoing sector counts up from the current lap time, a finished
+        one is read from the packet, and one not reached yet is 0. All 0 unless the car is ACTIVE with a running
+        lap timer."""
         if not self._is_active_with_valid_time():
-            return 0
+            return 0, 0, 0
 
-        if self.m_sector == LapData.Sector.SECTOR1:
-            # S1 is ongoing, use current lap time
-            return self.m_currentLapTimeInMS
+        lap_ms = self.m_currentLapTimeInMS
+        sector = self.m_sector
+        if sector == LapData.Sector.SECTOR1:
+            return lap_ms, 0, 0
 
-        return self._get_combined_time_ms(self.m_sector1TimeInMS, self.m_sector1TimeMinutes)
+        s1_ms = self._get_combined_time_ms(self.m_sector1TimeInMS, self.m_sector1TimeMinutes)
+        if sector == LapData.Sector.SECTOR2:
+            return s1_ms, lap_ms - s1_ms, 0
 
-    @property
-    def s2TimeMS(self) -> int:
-        """Return the total S2 time in ms."""
-        if not self._is_active_with_valid_time():
-            return 0
-
-        if self.m_sector == LapData.Sector.SECTOR1:
-            return 0
-
-        if self.m_sector == LapData.Sector.SECTOR2:
-            # S2 is ongoing, calculate as current lap time minus S1
-            return self.m_currentLapTimeInMS - self.s1TimeMS
-
-        # S2 is completed, read from packet
-        return self._get_combined_time_ms(self.m_sector2TimeInMS, self.m_sector2TimeMinutes)
-
-    @property
-    def s3TimeMS(self) -> int:
-        """Return the total S3 time in ms."""
-        if not self._is_active_with_valid_time():
-            return 0
-
-        if self.m_sector < LapData.Sector.SECTOR3:
-            return 0
-
-        # Calculate S3 as remaining time after S1 and S2
-        return self.m_currentLapTimeInMS - (self.s1TimeMS + self.s2TimeMS)
+        s2_ms = self._get_combined_time_ms(self.m_sector2TimeInMS, self.m_sector2TimeMinutes)
+        return s1_ms, s2_ms, lap_ms - (s1_ms + s2_ms)
 
     @property
     def deltaToFrontTotalMs(self) -> int:

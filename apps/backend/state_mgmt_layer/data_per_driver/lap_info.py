@@ -110,6 +110,4 @@ class LapInfo:
         self.m_curr_lap_invalid = lap_data.m_currentLapInvalid
         self.m_curr_status = lap_data.m_driverStatus
         self.m_curr_sector = lap_data.m_sector
-        self.m_curr_lap_s1_ms = lap_data.s1TimeMS
-        self.m_curr_lap_s2_ms = lap_data.s2TimeMS
-        self.m_curr_lap_s3_ms = lap_data.s3TimeMS
+        self.m_curr_lap_s1_ms, self.m_curr_lap_s2_ms, self.m_curr_lap_s3_ms = lap_data.sectorTimesMS()
