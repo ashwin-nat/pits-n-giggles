@@ -71,14 +71,14 @@ class _LapBuffer:
 
     def __init__(self, keys: tuple[str, ...]) -> None:
         self._keys = keys
-        # Column-major, so each column copies out contiguous
-        self._data = np.empty((_INITIAL_CAPACITY, len(keys)), dtype=np.float32, order="F")
+        # Column-major, so each column copies out contiguous. No rows until the first sample: empty car slots get none
+        self._data = np.empty((0, len(keys)), dtype=np.float32, order="F")
         self.n = 0
 
     def append(self, row: tuple) -> None:
         """Add a sample. None values become NaN."""
         if self.n == len(self._data):
-            self._reserve(2 * self.n)
+            self._reserve(max(_INITIAL_CAPACITY, 2 * self.n))
         self._data[self.n] = row
         self.n += 1
 
@@ -91,8 +91,9 @@ class _LapBuffer:
         return float(self._data[self.n - 1, col])
 
     def bisect_left(self, col: int, value: float) -> int:
-        """Where value would go in column col, which must be ascending. Same as bisect.bisect_left."""
-        return int(np.searchsorted(self._data[:self.n, col], value, side="left"))
+        """Where value would go in column col, which must be ascending. Same as bisect.bisect_left, at float32."""
+        # As float32, or numpy compares a float in float64 and keeps a stored sample equal to value
+        return int(np.searchsorted(self._data[:self.n, col], np.float32(value), side="left"))
 
     def truncate(self, n: int) -> None:
         """Keep the first n samples."""
@@ -272,7 +273,7 @@ class DriverTelemetryRecorder(Generic[S]):
 
         restored = self._completed_laps.pop()
         telemetry = restored.lap.telemetry
-        keep = int(np.searchsorted(telemetry["lap_distance"], landing_distance, side="left"))
+        keep = int(np.searchsorted(telemetry["lap_distance"], np.float32(landing_distance), side="left"))
         self._frame_id_buffer = restored.frame_ids[:keep]
         self._buffer.load(telemetry, keep)
         self._resync_last_sample()

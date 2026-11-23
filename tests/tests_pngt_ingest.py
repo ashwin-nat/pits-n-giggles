@@ -557,6 +557,25 @@ def test_recorder_flashback_restores_a_lap_longer_than_the_initial_capacity():
 
 
 @allure.story("Lap buffer")
+@pytest.mark.parametrize("lap_landed_in", ["in-progress", "completed"])
+@allure.title("A flashback landing on a stored distance float32 rounds down drops that sample ({lap_landed_in} lap)")
+def test_recorder_flashback_onto_a_rounded_down_distance_drops_it(lap_landed_in):
+    """Lap 1 samples at 0.5, 0.7 and 0.9 m. float32 stores 0.7 as 0.69999999, below what was sent. For the completed
+    case, lap 1 ends and lap 2 starts. A flashback then lands in lap 1 at exactly 0.7 m.
+
+    Expected: lap 1 is 0.5 m then the landing sample. The stored 0.7 m sample is dropped as at or past the landing
+    point, not kept next to the landing sample at the same stored distance."""
+    recorder = _recorder()
+    _drive(recorder, [0.5, 0.7, 0.9], lap=1)
+    if lap_landed_in == "completed":
+        recorder.on_lap_change(sample_lap_metadata(lap_number=1))
+        _drive(recorder, [1.0], lap=2)
+
+    _land(recorder, 0.7, lap=1, t=100)
+    assert _distances(recorder.export().in_progress_lap) == [0.5, 0.7]
+
+
+@allure.story("Lap buffer")
 @allure.title("Exported telemetry is read-only float32")
 def test_recorder_exports_read_only_float32_arrays():
     """A completed lap and an in-progress lap, then an export.

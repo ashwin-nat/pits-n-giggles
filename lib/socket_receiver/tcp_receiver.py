@@ -94,12 +94,16 @@ class TcpTransport(TelemetryTransport):
     async def _ensure_connection(self) -> None:
         """Accept a new connection if none is active. Returns early if closed."""
         while self.m_connection is None and not self._closed:
+            conn = None
             try:
                 conn, _ = await asyncio.get_event_loop().sock_accept(self.m_socket)
-                self.m_connection = conn
-                self.m_connection.setblocking(False)
+                conn.setblocking(False)
                 self._reader, self._writer = await asyncio.open_connection(sock=conn)
+                # Only now: run() takes a set m_connection to mean the reader is ready
+                self.m_connection = conn
             except OSError as e:
+                if conn is not None:
+                    conn.close()
                 if self._closed:
                     return
                 print(f"Connection error: {e}")
