@@ -38,6 +38,7 @@ poetry run pytest tests/tests_session_state/ -rx -q             # list the known
 | `tests_race_end.py` | Race end: the AI lap timer reset at the flag, and the recorder's rollback cases |
 | `tests_unified_save.py` | Unified save: one container per save, gating, claims, concurrency, `stop()` |
 | `tests_power_estimators.py` | Harvest power estimate: only the reference car (player, or spectated car) is fed, and a spectator switch restarts it |
+| `tests_undeclared_values.py` | Undeclared wire values: a status the enums don't declare yet is treated as no special state, not a failed packet |
 
 ## Adding a test
 

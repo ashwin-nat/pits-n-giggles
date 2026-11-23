@@ -25,7 +25,7 @@ only for its reference car: the player's, or the spectated car while spectating.
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from typing import List
+from typing import List, Optional
 
 import allure
 import pytest
@@ -68,14 +68,14 @@ class Grid:
         if self.frame == 0:
             await self.manager.inject(self.packets.participants(*self.drivers, session_uid=UID))
 
-    async def drive(self, frames: int) -> None:
-        """frames more frames for every car."""
+    async def drive(self, frames: int, *, absent: Optional[int] = None) -> None:
+        """frames more frames for every car, except car index absent, which LAP_DATA sends as an empty slot."""
         num_cars = len(self.drivers)
         for _ in range(frames):
             self.frame += 1
             await self.manager.inject(self.packets.lap(
                 *[car(index, lap=1, lap_distance=100.0 + self.frame, lap_time_ms=10_000 + self.frame * FRAME_MS)
-                  for index in range(num_cars)], session_uid=UID))
+                  for index in range(num_cars) if index != absent], session_uid=UID))
             await self.manager.inject(self.packets.car_status(
                 *[fuel_and_ers(index, ers_harvested_mguk=self.frame * HARVEST_PER_FRAME_J) for index in range(num_cars)],
                 session_uid=UID))
@@ -147,4 +147,57 @@ async def test_spectator_switch_restarts_the_estimate(manager: InjectingTelemetr
 
     await grid.drive(window)
     assert 1 in _tracked(state)
+    assert state.m_driver_data[1].m_car_info.getPowerEstimates()[0] == pytest.approx(HARVEST_POWER_W)
+
+
+@allure.story("Reference car")
+@allure.title("Spectating: no estimate from an earlier stint between the switching SESSION and lap data "
+              "({packet_format})")
+async def test_spectator_switch_reports_no_old_stint_before_lap_data(manager: InjectingTelemetryManager,
+                                                                     packets: Packets, state: SessionState) -> None:
+    """Spectated race. The spectated car goes 1 -> 0 -> 1, a full filter window on each. The estimate is read for
+    the reference car, as the PU overlay picks it, straight after the SESSION switching back to car 1 and before
+    the next LAP_DATA. The PU overlay can publish in that gap.
+
+    Expected: the reference is car 1 at once, and its estimate is not reported: its filter was emptied when car 0
+    took over, so nothing from car 1's first stint is left to read."""
+    packets.player_index = 255
+    grid = Grid(manager, packets, [player("Host"), player("Guest"), ai("AI")])
+    window = state.m_power_filter_window_size
+    await grid.session(spectating=1)
+    await grid.drive(window + 5)
+    await grid.session(spectating=0)
+    await grid.drive(window + 5)
+
+    await grid.session(spectating=1)
+    assert state.ref_index == 1
+    assert state.ref_index not in _tracked(state)
+    assert state.m_driver_data[state.ref_index].m_car_info.getPowerEstimates() == (0.0, 0.0)
+
+
+@allure.story("Reference car")
+@allure.title("Spectating: switching to a car missing from that frame's lap data still restarts it ({packet_format})")
+async def test_spectator_switch_to_absent_car_restarts_the_estimate(manager: InjectingTelemetryManager,
+                                                                    packets: Packets, state: SessionState) -> None:
+    """Spectated race. The spectated car goes 1 -> 0 -> 1, a full filter window on each. On the first LAP_DATA after
+    switching back, car 1's slot is empty (INVALID result status), then it comes back. No recording has a switch
+    onto an empty slot; the sequence is built.
+
+    Expected: one frame after car 1 is back, its estimate is not reported, since its window holds samples from
+    before car 0's stint. A full window later it is the harvest rate again."""
+    packets.player_index = 255
+    grid = Grid(manager, packets, [player("Host"), player("Guest"), ai("AI")])
+    window = state.m_power_filter_window_size
+    await grid.session(spectating=1)
+    await grid.drive(window + 5)
+    await grid.session(spectating=0)
+    await grid.drive(window + 5)
+
+    await grid.session(spectating=1)
+    await grid.drive(1, absent=1)
+    await grid.drive(1)
+    assert 1 not in _tracked(state)
+    assert state.m_driver_data[1].m_car_info.getPowerEstimates() == (0.0, 0.0)
+
+    await grid.drive(window)
     assert state.m_driver_data[1].m_car_info.getPowerEstimates()[0] == pytest.approx(HARVEST_POWER_W)

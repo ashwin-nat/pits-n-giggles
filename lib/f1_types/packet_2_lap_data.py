@@ -22,12 +22,18 @@
 
 
 import struct
-from typing import Any, Dict, List, Tuple, final
+from typing import Any, Dict, List, Tuple, Union, final
 
 from .base_pkt import (F1BaseEnum, F1CompareableEnum, F1PacketBase,
                        F1SubPacketBase)
 from .common import F1Utils, ResultStatus, get_num_cars
 from .header import F1PacketType, PacketHeader
+
+# --------------------- HELPERS ------------------------------------------------
+
+def _wire_value(field: Union[F1BaseEnum, int]) -> int:
+    """The wire value of a safeCast field: the member's value, or the raw int safeCast kept for an undeclared one."""
+    return field.value if isinstance(field, F1BaseEnum) else field
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -116,10 +122,10 @@ class LapData(F1SubPacketBase):
         "B" # uint8    m_deltaToCarInFrontMinutesPart; // Time delta to car in front whole minute part
         "H" # uint16   m_deltaToRaceLeaderMSPart;      // Time delta to race leader milliseconds part
         "B" # uint8    m_deltaToRaceLeaderMinutesPart; // Time delta to race leader whole minute part
-        "f" # float    m_lapDistance;         // Distance vehicle is around current lap in metres – could
-                      #  // be negative if line hasn’t been crossed yet
-        "f" # float    m_totalDistance;         // Total distance travelled in session in metres – could
-                      #  // be negative if line hasn’t been crossed yet
+        "f" # float    m_lapDistance;         // Distance vehicle is around current lap in metres â€“ could
+                      #  // be negative if line hasnâ€™t been crossed yet
+        "f" # float    m_totalDistance;         // Total distance travelled in session in metres â€“ could
+                      #  // be negative if line hasnâ€™t been crossed yet
         "f" # float    m_safetyCarDelta;            // Delta in seconds for safety car
         "B" # uint8   # m_carPosition;                // Car race position
         "B" # uint8    m_currentLapNum;         // Current lap number
@@ -241,14 +247,19 @@ class LapData(F1SubPacketBase):
         PITTING = 1
         IN_PIT_AREA = 2
 
-        def isInPits(self) -> bool:
+        # Static, taking the value: safeCast hands back the raw int for an undeclared value
+        @staticmethod
+        def isInPits(status: Union["LapData.PitStatus", int]) -> bool:
             """
             Check if the car is in the pits (PITTING or IN_PIT_AREA).
 
+            Args:
+                status (Union[LapData.PitStatus, int]): The status, or the raw int for an undeclared value
+
             Returns:
-                bool: True if the status is PITTING or IN_PIT_AREA, False otherwise.
+                bool: True if the status is PITTING or IN_PIT_AREA, False otherwise (undeclared values included).
             """
-            return self in _IN_PIT_STATUSES
+            return status in _IN_PIT_STATUSES
 
     class Sector(F1CompareableEnum):  # pylint: disable=invalid-enum-extension
         """
@@ -561,9 +572,9 @@ class LapData(F1SubPacketBase):
             self.m_safetyCarDelta,
             self.m_carPosition,
             self.m_currentLapNum,
-            self.m_pitStatus.value,
+            _wire_value(self.m_pitStatus),
             self.m_numPitStops,
-            self.m_sector.value,
+            _wire_value(self.m_sector),
             int(self.m_currentLapInvalid),
             self.m_penalties,
             self.m_totalWarnings,
@@ -571,8 +582,8 @@ class LapData(F1SubPacketBase):
             self.m_numUnservedDriveThroughPens,
             self.m_numUnservedStopGoPens,
             self.m_gridPosition,
-            self.m_driverStatus.value,
-            self.m_resultStatus.value,
+            _wire_value(self.m_driverStatus),
+            _wire_value(self.m_resultStatus),
             int(self.m_pitLaneTimerActive),
             self.m_pitLaneTimeInLaneInMS,
             self.m_pitStopTimerInMS,

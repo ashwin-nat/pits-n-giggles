@@ -31,7 +31,7 @@
 
 import math
 from abc import abstractmethod
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Set, Union
 
 from .base_pkt import F1BaseEnum, F1CompareableEnum, F1RawValueEnum
 
@@ -60,23 +60,32 @@ class ResultStatus(F1BaseEnum):
     NOT_CLASSIFIED = 6
     RETIRED = 7
 
-    def isInactive(self) -> bool:
+    # Static, taking the value: safeCast hands back the raw int for an undeclared value
+    @staticmethod
+    def isInactive(status: Union["ResultStatus", int]) -> bool:
         """
-        Check if this car slot holds no car in the session (INVALID or INACTIVE).
+        Check if a car slot holds no car in the session (INVALID or INACTIVE).
+
+        Args:
+            status (Union[ResultStatus, int]): The status, or the raw int for an undeclared value
 
         Returns:
-            bool: True if the status is INVALID or INACTIVE, False otherwise.
+            bool: True if the status is INVALID or INACTIVE, False otherwise (undeclared values included).
         """
-        return self in _INACTIVE_RESULT_STATUSES
+        return status in _INACTIVE_RESULT_STATUSES
 
-    def dnfStatusCode(self) -> str:
+    @staticmethod
+    def dnfStatusCode(status: Union["ResultStatus", int]) -> str:
         """
         Get the short code for a car out of the race ("DNF" or "DSQ").
+
+        Args:
+            status (Union[ResultStatus, int]): The status, or the raw int for an undeclared value
 
         Returns:
             str: "DNF" for DID_NOT_FINISH or RETIRED, "DSQ" for DISQUALIFIED, else an empty string.
         """
-        return _DNF_STATUS_CODES.get(self, "")
+        return _DNF_STATUS_CODES.get(status, "")
 
 # Built once: a set literal of members in a method is rebuilt and re-hashed on every call
 _INACTIVE_RESULT_STATUSES = frozenset({ResultStatus.INVALID, ResultStatus.INACTIVE})

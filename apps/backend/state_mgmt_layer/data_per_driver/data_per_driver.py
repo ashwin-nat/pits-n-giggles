@@ -31,7 +31,7 @@ from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.delta import LapDeltaManager
 from lib.f1_types import (CarDamageData, CarStatusData, F1Utils, LapData,
-                          PacketLapPositionsData, SessionType,
+                          PacketLapPositionsData, ResultStatus, SessionType,
                           TrackID)
 from lib.last_corner_stats import LastCornerTracker, TelemetrySample
 from lib.pngt import CompletedLap, DriverExportData, DriverTelemetryRecorder, LapMetadata
@@ -113,6 +113,7 @@ class DataPerDriver:
         m_delta_mgr (LapDeltaManager): Lap delta manager
         m_last_corner_tracker (LastCornerTracker): Tracks stats regarding last corner
         m_tel_rec (DriverTelemetryRecorder): Telemetry recorder for the driver
+        m_power_filter_enabled (bool): Whether the harvest power estimators are fed (only for the reference car)
     """
 
     __slots__ = (
@@ -135,6 +136,7 @@ class DataPerDriver:
         "m_last_corner_tracker",
         "m_state_ref",
         "m_tel_rec",
+        "m_power_filter_enabled",
     )
 
     CAR_DMG_RACE_CTRL_MSG_INTERESTED_FIELDS = [
@@ -231,6 +233,30 @@ class DataPerDriver:
             sensors=F1_SENSORS.values(),
         )
 
+        self.m_power_filter_enabled: bool = False
+
+    def updatePowerFilterState(self, ref_index: Optional[int]) -> None:
+        """Enable the harvest power filter if this is the reference car.
+
+        Args:
+            ref_index (Optional[int]): Index of the reference car. This method does not know/care about whether it is
+                player or spectator mode. just whether it is ref or not
+        """
+        should_enable = ref_index == self.m_index
+
+        if should_enable == self.m_power_filter_enabled:
+            # Already in the correct state, no need to change anything
+            return
+
+        self.m_power_filter_enabled = should_enable
+
+        if should_enable:
+            self.m_logger.debug("%s - power filter enabled", self)
+        else:
+            # Empty on disable so the next enable never reads samples from this stint
+            self.m_car_info.resetPowerEstimators()
+            self.m_logger.debug("%s - power filter disabled", self)
+
     @property
     def is_valid(self) -> bool:
         """Check if this DataPerDriver entry is valid. Reuse the same fields as __repr__
@@ -241,7 +267,7 @@ class DataPerDriver:
 
         # AI cars that have not been added to the race will have invalid/inactive result status
         result_status = self.m_lap_info.m_result_status
-        if result_status is not None and result_status.isInactive():
+        if result_status is not None and ResultStatus.isInactive(result_status):
             return False
 
         has_valid_position = (
@@ -991,7 +1017,7 @@ class DataPerDriver:
             lap_data (LapData): The lap data
         """
 
-        curr_is_pitting = lap_data.m_pitStatus.isInPits()
+        curr_is_pitting = LapData.PitStatus.isInPits(lap_data.m_pitStatus)
         if not self.m_lap_info.m_is_pitting and curr_is_pitting:
             # entering pits
             self.m_logger.debug("Driver %s - entering pits.", str(self))
