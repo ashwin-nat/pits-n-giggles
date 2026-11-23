@@ -1746,7 +1746,8 @@ class PacketSessionData(F1PacketBase):
                     track_length: int,
                     weather_forecast_samples: List[WeatherForecastSample],
                     formula: "PacketSessionData.FormulaType",
-                    is_spectating: bool) -> "PacketSessionData":
+                    is_spectating: bool,
+                    spectator_car_index: int = 255) -> "PacketSessionData":
         """Create a PacketSessionData object from values. Every other field is what the parser
         produces from zero bytes for header.m_packetFormat, except the ones noted inline.
 
@@ -1760,6 +1761,7 @@ class PacketSessionData(F1PacketBase):
                 one is what the state layer reads as the current weather.
             formula (PacketSessionData.FormulaType): Formula of the session's cars
             is_spectating (bool): Whether the player is spectating
+            spectator_car_index (int): Index of the car being spectated. 255, the game's "none", by default
 
         Raises:
             ValueError: If there are more forecast samples than the format allows
@@ -1786,7 +1788,7 @@ class PacketSessionData(F1PacketBase):
             3600, 3600,     # time left, duration
             0, 0,           # pit speed limit, game paused
             int(is_spectating),
-            255,            # spectator car index - 255 is the game's "none"
+            spectator_car_index,
             0, 0,           # SLI Pro support, num marshal zones
         )
         data += bytes(cls.F1_23_MAX_NUM_MARSHAL_ZONES * MarshalZone.PACKET_LEN)

@@ -215,12 +215,12 @@ class Packets:
                 track_length: int,
                 weather: WeatherForecastSample.WeatherCondition = WeatherForecastSample.WeatherCondition.CLEAR,
                 formula: PacketSessionData.FormulaType = PacketSessionData.FormulaType.F1_MODERN,
-                is_spectating: bool = False,
+                is_spectating: bool = False, spectator_car_index: int = 255,
                 **header_kwargs: Optional[int]) -> PacketSessionData:
         """A SESSION packet. session_type is the enum member name (e.g. "RACE", "SHORT_QUALIFYING",
         "TIME_TRIAL"), resolved per format, since the numeric values differ between SessionType23 and
         SessionType24. weather is the single forecast sample's weather, which the state layer reads as the
-        current weather."""
+        current weather. spectator_car_index is 255, the game's "none", unless set."""
         session_type_enum = self._session_type(session_type)
         forecast = WeatherForecastSample.from_values(
             self.packet_format, session_type_enum, time_offset=0, weather=weather,
@@ -229,7 +229,8 @@ class Packets:
         return PacketSessionData.from_values(
             self.header(F1PacketType.SESSION, session_uid, **header_kwargs),
             session_type_enum, track, total_laps=total_laps, track_length=track_length,
-            weather_forecast_samples=[forecast], formula=formula, is_spectating=is_spectating)
+            weather_forecast_samples=[forecast], formula=formula, is_spectating=is_spectating,
+            spectator_car_index=spectator_car_index)
 
     def participants(self, *drivers: DriverSpec, session_uid: int, **header_kwargs: Optional[int]) -> PacketParticipantsData:
         """A PARTICIPANTS packet. drivers fill car indices 0.. in order. The rest of the grid is

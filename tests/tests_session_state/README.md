@@ -37,6 +37,7 @@ poetry run pytest tests/tests_session_state/ -rx -q             # list the known
 | `tests_pngt_save_gate.py` | `.pngt` save gate: when a lap telemetry save is made, and what goes into it |
 | `tests_race_end.py` | Race end: the AI lap timer reset at the flag, and the recorder's rollback cases |
 | `tests_unified_save.py` | Unified save: one container per save, gating, claims, concurrency, `stop()` |
+| `tests_power_estimators.py` | Harvest power estimate: only the reference car (player, or spectated car) is fed, and a spectator switch restarts it |
 
 ## Adding a test
 
