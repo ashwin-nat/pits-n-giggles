@@ -24,7 +24,7 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import Optional, Sequence
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -171,7 +171,8 @@ class LapMetadata:
 @dataclass(frozen=True)
 class CompletedLap:
     metadata: LapMetadata
-    telemetry: dict[str, list]  # "lap_distance" + "lap_time_ms" + sensor keys, all equal length
+    # "lap_distance" + "lap_time_ms" + sensor keys, all equal length. The recorder gives float32 arrays
+    telemetry: dict[str, Sequence[float]]
 
     def __post_init__(self) -> None:
         lengths = {key: len(values) for key, values in self.telemetry.items()}

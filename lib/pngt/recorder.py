@@ -22,12 +22,20 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import bisect
 from dataclasses import dataclass
-from typing import Callable, Generic, Optional, Sequence, TypeVar
+from operator import attrgetter
+from typing import Generic, Optional, Sequence, TypeVar
+
+import numpy as np
 
 from .dto import (MANDATORY_TELEMETRY_KEYS, CompletedLap, DriverExportData,
                   LapMetadata, SensorConfig)
+
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+
+_INITIAL_CAPACITY = 5000  # samples: over half of 9,759 saved laps fit (median 4,961). Doubles when full
+_DISTANCE_COL = MANDATORY_TELEMETRY_KEYS.index("lap_distance")
+_LAP_TIME_COL = MANDATORY_TELEMETRY_KEYS.index("lap_time_ms")
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -42,13 +50,12 @@ S = TypeVar("S", bound=BaseTelemetrySnapshot)
 
 @dataclass(frozen=True)
 class RecordedSensor(Generic[S]):
-    """One sensor: its manifest entry (`config`) plus how to read its value off a
-    real snapshot (`get`). `get` returning None means "unavailable this packet" --
-    stored as NaN, not raised. The lib only knows a sensor has a config and a
-    getter; which snapshot field backs which key is decided entirely by whoever
-    builds the `RecordedSensor` list (e.g. apps/backend's F1_SENSORS)."""
+    """One sensor: its manifest entry (`config`) plus the snapshot attribute it is read from
+    (`field`). A None value means "unavailable this packet" and is stored as NaN. Which snapshot
+    field backs which key is decided by whoever builds the `RecordedSensor` list (e.g.
+    apps/backend's F1_SENSORS). A derived value belongs in its own snapshot field."""
     config: SensorConfig
-    get: Callable[[S], Optional[float]]
+    field: str
 
 @dataclass
 class _InternalCompletedLap:
@@ -56,6 +63,61 @@ class _InternalCompletedLap:
     export() copies out just the CompletedLap, dropping frame_ids."""
     lap: CompletedLap
     frame_ids: list[int]
+
+class _LapBuffer:
+    """One lap's samples: a float32 row per sample, a column per key. Grows by doubling."""
+
+    __slots__ = ("_keys", "_data", "n")
+
+    def __init__(self, keys: tuple[str, ...]) -> None:
+        self._keys = keys
+        # Column-major, so each column copies out contiguous
+        self._data = np.empty((_INITIAL_CAPACITY, len(keys)), dtype=np.float32, order="F")
+        self.n = 0
+
+    def append(self, row: tuple) -> None:
+        """Add a sample. None values become NaN."""
+        if self.n == len(self._data):
+            self._reserve(2 * self.n)
+        self._data[self.n] = row
+        self.n += 1
+
+    def overwrite_last(self, row: tuple) -> None:
+        """Replace the last sample. None values become NaN."""
+        self._data[self.n - 1] = row
+
+    def last(self, col: int) -> float:
+        """The last sample's value in column col."""
+        return float(self._data[self.n - 1, col])
+
+    def bisect_left(self, col: int, value: float) -> int:
+        """Where value would go in column col, which must be ascending. Same as bisect.bisect_left."""
+        return int(np.searchsorted(self._data[:self.n, col], value, side="left"))
+
+    def truncate(self, n: int) -> None:
+        """Keep the first n samples."""
+        self.n = n
+
+    def columns(self) -> dict[str, np.ndarray]:
+        """A read-only copy of each column, keyed by its key."""
+        out = {}
+        for col, key in enumerate(self._keys):
+            values = self._data[:self.n, col].copy()
+            values.flags.writeable = False
+            out[key] = values
+        return out
+
+    def load(self, columns: dict[str, np.ndarray], n: int) -> None:
+        """Replace the contents with the first n samples of columns, as columns() returns them."""
+        # No growth needed: columns were recorded in this buffer, which never shrinks
+        for col, key in enumerate(self._keys):
+            self._data[:n, col] = columns[key][:n]
+        self.n = n
+
+    def _reserve(self, capacity: int) -> None:
+        grown = np.empty((capacity, len(self._keys)), dtype=np.float32, order="F")
+        grown[:self.n] = self._data[:self.n]
+        self._data = grown
 
 class DriverTelemetryRecorder(Generic[S]):
     """Accumulates one driver's telemetry history for a session. One instance per
@@ -77,15 +139,19 @@ class DriverTelemetryRecorder(Generic[S]):
         if len(keys) != len(set(keys)):
             raise ValueError(f"sensors must have unique keys, got duplicates in {keys!r}")
 
+        # One C-level call reads a whole sample, in column order
+        self._read_row = attrgetter(*MANDATORY_TELEMETRY_KEYS, *(sensor.field for sensor in self._sensors))
         self._current_lap_number: Optional[int] = None
-        self._current_buffers: dict[str, list] = self._new_buffers()
+        self._buffer = _LapBuffer((*MANDATORY_TELEMETRY_KEYS, *keys))
+        # The last sample's values as the sim sent them, so update() compares them unrounded
+        self._last_distance: float = 0.0
+        self._last_lap_time_ms: float = 0.0
         self._frame_id_buffer: list[int] = []
         self._completed_laps: list[_InternalCompletedLap] = []
 
     def update(self, snapshot: S, frame_id: int, lap_number: int) -> None:
         """Called on every lap data packet, with the sim's current lap number."""
-        lap_distance_buffer = self._current_buffers["lap_distance"]
-        if not lap_distance_buffer:
+        if not self._buffer.n:
             self._append_sample(snapshot, frame_id)
             if self._current_lap_number is None:
                 self._current_lap_number = lap_number
@@ -93,28 +159,27 @@ class DriverTelemetryRecorder(Generic[S]):
 
         # Lap timer went back -- drop. F1 zeroes the AI cars' lap timers mid-lap when the player
         # finishes the race. A flashback landing that rewinds the timer is dropped too; accepted.
-        if snapshot.lap_time_ms < self._current_buffers["lap_time_ms"][-1]:
+        if snapshot.lap_time_ms < self._last_lap_time_ms:
             return
 
-        last_distance = lap_distance_buffer[-1]
-        if snapshot.lap_distance > last_distance:
+        if snapshot.lap_distance > self._last_distance:
             self._append_sample(snapshot, frame_id)
-        elif snapshot.lap_distance == last_distance:
+        elif snapshot.lap_distance == self._last_distance:
             self._overwrite_last_sample(snapshot, frame_id)
         # else: lap_distance went back -- drop, a sim reporting edge case.
 
     def on_lap_change(self, metadata: LapMetadata) -> None:
         """Called when the sim's lap number increments by 1."""
-        if not self._current_buffers["lap_distance"]:
+        if not self._buffer.n:
             # Nothing to keep: no samples since the last lap change. Keep the lap number current.
             self._current_lap_number = metadata.lap_number + 1
             return
 
-        lap = CompletedLap(metadata=metadata, telemetry=self._copy_buffers(self._current_buffers))
+        lap = CompletedLap(metadata=metadata, telemetry=self._buffer.columns())
         self._completed_laps.append(
-            _InternalCompletedLap(lap=lap, frame_ids=list(self._frame_id_buffer))
+            _InternalCompletedLap(lap=lap, frame_ids=self._frame_id_buffer)
         )
-        self._current_buffers = self._new_buffers()
+        self._buffer.truncate(0)
         self._frame_id_buffer = []
         self._current_lap_number = metadata.lap_number + 1
 
@@ -122,7 +187,7 @@ class DriverTelemetryRecorder(Generic[S]):
         """Drop the current lap's samples, for a lap that ends without being driven to the line (garage,
         out lap -> flying lap, a pause in updates, the sim skipping the session to its end). Completed
         laps are kept. Recording carries on under next_lap_number if given, else the same lap number."""
-        self._current_buffers = self._new_buffers()
+        self._buffer.truncate(0)
         self._frame_id_buffer = []
         if next_lap_number is not None:
             self._current_lap_number = next_lap_number
@@ -138,14 +203,15 @@ class DriverTelemetryRecorder(Generic[S]):
             self._rollback_case_a(landing_distance)
 
     def export(self) -> DriverExportData:
-        """May be called multiple times safely -- never mutates internal state."""
+        """May be called multiple times safely -- never mutates internal state. Each telemetry value is
+        a read-only float32 array."""
         completed_laps = [
-            CompletedLap(metadata=internal.lap.metadata, telemetry=self._copy_buffers(internal.lap.telemetry))
+            CompletedLap(metadata=internal.lap.metadata, telemetry=dict(internal.lap.telemetry))
             for internal in self._completed_laps
         ]
 
         in_progress_lap = None
-        if self._current_buffers["lap_distance"]:
+        if self._buffer.n:
             in_progress_lap = CompletedLap(
                 metadata=LapMetadata(
                     lap_number=self._current_lap_number if self._current_lap_number is not None else 1,
@@ -157,7 +223,7 @@ class DriverTelemetryRecorder(Generic[S]):
                     pit_out_lap=False,
                     ers_harvest_limit_j=None,
                 ),
-                telemetry=self._copy_buffers(self._current_buffers),
+                telemetry=self._buffer.columns(),
             )
 
         return DriverExportData(
@@ -166,43 +232,31 @@ class DriverTelemetryRecorder(Generic[S]):
             in_progress_lap=in_progress_lap,
         )
 
-    def _new_buffers(self) -> dict[str, list]:
-        buffers: dict[str, list] = {key: [] for key in MANDATORY_TELEMETRY_KEYS}
-        for sensor in self._sensors:
-            buffers[sensor.config.key] = []
-        return buffers
-
-    @staticmethod
-    def _copy_buffers(buffers: dict[str, list]) -> dict[str, list]:
-        return {key: list(values) for key, values in buffers.items()}
-
     def _append_sample(self, snapshot: S, frame_id: int) -> None:
-        self._current_buffers["lap_distance"].append(snapshot.lap_distance)
-        self._current_buffers["lap_time_ms"].append(snapshot.lap_time_ms)
-        for sensor in self._sensors:
-            self._current_buffers[sensor.config.key].append(self._sample_value(snapshot, sensor))
+        self._buffer.append(self._read_row(snapshot))
         self._frame_id_buffer.append(frame_id)
+        self._last_distance = snapshot.lap_distance
+        self._last_lap_time_ms = snapshot.lap_time_ms
 
     def _overwrite_last_sample(self, snapshot: S, frame_id: int) -> None:
-        self._current_buffers["lap_distance"][-1] = snapshot.lap_distance
-        self._current_buffers["lap_time_ms"][-1] = snapshot.lap_time_ms
-        for sensor in self._sensors:
-            self._current_buffers[sensor.config.key][-1] = self._sample_value(snapshot, sensor)
+        self._buffer.overwrite_last(self._read_row(snapshot))
         self._frame_id_buffer[-1] = frame_id
+        self._last_lap_time_ms = snapshot.lap_time_ms
 
-    @staticmethod
-    def _sample_value(snapshot: S, sensor: RecordedSensor[S]):
-        value = sensor.get(snapshot)
-        return float("nan") if value is None else value
+    def _resync_last_sample(self) -> None:
+        """Re-read the last sample's values after the buffer was cut back or reloaded."""
+        if self._buffer.n:
+            self._last_distance = self._buffer.last(_DISTANCE_COL)
+            self._last_lap_time_ms = self._buffer.last(_LAP_TIME_COL)
 
     def _rollback_case_a(self, landing_distance: float) -> None:
         """Landed within the current (in-progress) lap -- truncate every buffer to the
         samples before landing_distance. Frame IDs can't be used: the sim resumes later
         than its own target frame."""
-        keep = bisect.bisect_left(self._current_buffers["lap_distance"], landing_distance)
+        keep = self._buffer.bisect_left(_DISTANCE_COL, landing_distance)
         self._frame_id_buffer = self._frame_id_buffer[:keep]
-        for key, values in self._current_buffers.items():
-            self._current_buffers[key] = values[:keep]
+        self._buffer.truncate(keep)
+        self._resync_last_sample()
 
     def _rollback_case_b(self, lap_number: int, landing_distance: float) -> None:
         """Landed in an earlier lap -- discard the current one, unwind the last completed
@@ -211,13 +265,15 @@ class DriverTelemetryRecorder(Generic[S]):
         object when on_lap_change() fires again."""
         if not self._completed_laps or self._completed_laps[-1].lap.metadata.lap_number != lap_number:
             # The lap being returned to was never stored -- carry on from the landing point
-            self._current_buffers = self._new_buffers()
+            self._buffer.truncate(0)
             self._frame_id_buffer = []
             self._current_lap_number = lap_number
             return
 
         restored = self._completed_laps.pop()
-        keep = bisect.bisect_left(restored.lap.telemetry["lap_distance"], landing_distance)
+        telemetry = restored.lap.telemetry
+        keep = int(np.searchsorted(telemetry["lap_distance"], landing_distance, side="left"))
         self._frame_id_buffer = restored.frame_ids[:keep]
-        self._current_buffers = {key: values[:keep] for key, values in restored.lap.telemetry.items()}
+        self._buffer.load(telemetry, keep)
+        self._resync_last_sample()
         self._current_lap_number = restored.lap.metadata.lap_number

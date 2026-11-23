@@ -26,6 +26,8 @@ import sys
 from dataclasses import dataclass
 from typing import Optional
 
+import allure
+import numpy as np
 import pytest
 
 # Add the parent directory to the Python path
@@ -33,6 +35,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.pngt import (BaseTelemetrySnapshot, DriverTelemetryRecorder,
                       LapMetadata, RecordedSensor, SensorConfig, SensorType)
+from lib.pngt.recorder import _INITIAL_CAPACITY
+
+pytestmark = [allure.epic("Lap telemetry recording"), allure.feature("Driver telemetry recorder")]
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Fixtures
@@ -68,9 +73,9 @@ def _sensors() -> list[RecordedSensor[_FakeSnapshot]]:
     domain-specific and belongs with whatever code builds the real snapshot."""
     return [
         RecordedSensor(SensorConfig(key="speed", label="Speed", unit="u/s", type=SensorType.CONTINUOUS),
-                       lambda s: s.speed),
+                       field="speed"),
         RecordedSensor(SensorConfig(key="gear", label="Gear", unit="", type=SensorType.DISCRETE),
-                       lambda s: s.gear),
+                       field="gear"),
     ]
 
 
@@ -94,13 +99,26 @@ def _land(recorder: DriverTelemetryRecorder, distance: float, *, lap: int, t: in
     recorder.update(_FakeSnapshot(lap_distance=distance, lap_time_ms=t, speed=1.0, gear=1), frame_id=0, lap_number=lap)
 
 
+def _lists(telemetry) -> dict:
+    """Each column as a list, at the float32 precision the recorder stores."""
+    return {key: [round(float(value), 3) for value in values] for key, values in telemetry.items()}
+
+
 def _distances(lap) -> list:
-    return lap.telemetry["lap_distance"]
+    return _lists(lap.telemetry)["lap_distance"]
+
+
+def _view(export) -> tuple:
+    """An export as plain values, for comparing two exports."""
+    in_progress = export.in_progress_lap
+    return ([(lap.metadata, _lists(lap.telemetry)) for lap in export.completed_laps],
+            None if in_progress is None else (in_progress.metadata, _lists(in_progress.telemetry)))
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Construction
 # ----------------------------------------------------------------------------------------------------------------------
 
+@allure.story("Construction")
 def test_recorder_rejects_duplicate_sensor_keys():
     sensors = _sensors() + [_sensors()[0]]
     with pytest.raises(ValueError):
@@ -110,6 +128,7 @@ def test_recorder_rejects_duplicate_sensor_keys():
 # DriverTelemetryRecorder -- normal path (no flashback yet)
 # ----------------------------------------------------------------------------------------------------------------------
 
+@allure.story("Normal path")
 def test_recorder_export_before_any_update():
     recorder = _recorder()
 
@@ -120,6 +139,7 @@ def test_recorder_export_before_any_update():
     assert export.in_progress_lap is None
 
 
+@allure.story("Normal path")
 def test_recorder_normal_accumulation():
     recorder = _recorder()
 
@@ -130,7 +150,7 @@ def test_recorder_normal_accumulation():
     export = recorder.export()
 
     assert export.completed_laps == []
-    assert export.in_progress_lap.telemetry == {
+    assert _lists(export.in_progress_lap.telemetry) == {
         "lap_distance": [0.0, 10.0, 20.0],
         "lap_time_ms": [0, 0, 0],
         "speed": [100.0, 150.0, 200.0],
@@ -138,6 +158,7 @@ def test_recorder_normal_accumulation():
     }
 
 
+@allure.story("Normal path")
 def test_recorder_first_update_seeds_lap_number():
     recorder = _recorder()
 
@@ -146,6 +167,7 @@ def test_recorder_first_update_seeds_lap_number():
     assert recorder.export().in_progress_lap.metadata.lap_number == 4
 
 
+@allure.story("Normal path")
 def test_recorder_stationary_update_in_place():
     recorder = _recorder()
 
@@ -154,11 +176,12 @@ def test_recorder_stationary_update_in_place():
 
     export = recorder.export()
 
-    assert export.in_progress_lap.telemetry == {
+    assert _lists(export.in_progress_lap.telemetry) == {
         "lap_distance": [10.0], "lap_time_ms": [0], "speed": [105.0], "gear": [3],
     }
 
 
+@allure.story("Normal path")
 def test_recorder_lap_distance_decrease_dropped():
     recorder = _recorder()
 
@@ -167,11 +190,12 @@ def test_recorder_lap_distance_decrease_dropped():
 
     export = recorder.export()
 
-    assert export.in_progress_lap.telemetry == {
+    assert _lists(export.in_progress_lap.telemetry) == {
         "lap_distance": [10.0], "lap_time_ms": [0], "speed": [100.0], "gear": [3],
     }
 
 
+@allure.story("Normal path")
 @pytest.mark.parametrize("distance", [41.0, 40.0], ids=["moving", "stationary"])
 def test_recorder_lap_time_decrease_dropped(distance):
     # The race end zeroes the AI cars' lap timers while lap_distance still creeps forward
@@ -180,13 +204,13 @@ def test_recorder_lap_time_decrease_dropped(distance):
     recorder.update(_FakeSnapshot(lap_distance=distance, lap_time_ms=16, speed=999.0, gear=9),
                     frame_id=next(_FRAME_IDS), lap_number=5)
 
-    telemetry = recorder.export().in_progress_lap.telemetry
+    telemetry = _lists(recorder.export().in_progress_lap.telemetry)
 
     assert telemetry["lap_distance"] == [0.0, 20.0, 40.0]
     assert telemetry["lap_time_ms"] == [1000, 1100, 1200]
 
 
-
+@allure.story("Normal path")
 def test_recorder_missing_sample_value_is_nan():
     # Every sensor is stored float32 now -- NaN is the only missing-value marker,
     # for continuous and discrete sensors alike.
@@ -199,6 +223,7 @@ def test_recorder_missing_sample_value_is_nan():
     assert telemetry["gear"][0] != telemetry["gear"][0]  # NaN
 
 
+@allure.story("Normal path")
 def test_recorder_on_lap_change_empty_buffer_guard():
     recorder = _recorder()
 
@@ -209,6 +234,7 @@ def test_recorder_on_lap_change_empty_buffer_guard():
     assert export.in_progress_lap is None  # on_lap_change() discarded silently, nothing buffered since
 
 
+@allure.story("Normal path")
 def test_recorder_multi_lap():
     recorder = _recorder()
 
@@ -223,18 +249,19 @@ def test_recorder_multi_lap():
 
     assert len(export.completed_laps) == 1
     assert export.completed_laps[0].metadata is lap_1_metadata
-    assert export.completed_laps[0].telemetry == {
+    assert _lists(export.completed_laps[0].telemetry) == {
         "lap_distance": [0.0, 10.0],
         "lap_time_ms": [0, 0],
         "speed": [100.0, 150.0],
         "gear": [3, 4],
     }
     assert export.in_progress_lap.metadata.lap_number == 2  # lap_1_metadata.lap_number + 1
-    assert export.in_progress_lap.telemetry == {
+    assert _lists(export.in_progress_lap.telemetry) == {
         "lap_distance": [0.0], "lap_time_ms": [0], "speed": [200.0], "gear": [5],
     }
 
 
+@allure.story("Normal path")
 def test_recorder_export_is_non_mutating():
     recorder = _recorder()
     recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=100.0, gear=3), frame_id=1, lap_number=1)
@@ -244,12 +271,13 @@ def test_recorder_export_is_non_mutating():
     first = recorder.export()
     second = recorder.export()
 
-    assert first == second
+    assert _view(first) == _view(second)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # DriverTelemetryRecorder -- flashback rollback
 # ----------------------------------------------------------------------------------------------------------------------
 
+@allure.story("Flashback rollback")
 def test_recorder_flashback_before_any_update_is_ignored():
     recorder = _recorder()
 
@@ -258,6 +286,7 @@ def test_recorder_flashback_before_any_update_is_ignored():
     assert recorder.export().in_progress_lap is None
 
 
+@allure.story("Flashback rollback")
 def test_recorder_flashback_case_a_truncates_within_current_lap():
     """Landed at 25 within the current lap -- truncate to the samples before it, then
     process the landing packet itself as a normal append against the now-truncated last sample."""
@@ -274,7 +303,7 @@ def test_recorder_flashback_case_a_truncates_within_current_lap():
 
     export = recorder.export()
 
-    assert export.in_progress_lap.telemetry == {
+    assert _lists(export.in_progress_lap.telemetry) == {
         "lap_distance": [0.0, 10.0, 20.0, 25.0],
         "lap_time_ms": [0, 0, 0, 0],
         "speed": [100.0, 110.0, 120.0, 999.0],
@@ -283,6 +312,7 @@ def test_recorder_flashback_case_a_truncates_within_current_lap():
     assert export.completed_laps == []
 
 
+@allure.story("Flashback rollback")
 def test_recorder_flashback_keeps_everything_before_the_landing_point():
     """The sim can resume a rewind well past its own target frame (seen: 154 m later).
     Truncating at the landing distance leaves no hole."""
@@ -294,6 +324,7 @@ def test_recorder_flashback_keeps_everything_before_the_landing_point():
     assert _distances(recorder.export().in_progress_lap) == [3900.0, 4000.7, 4100.0, 4154.0, 4154.3]
 
 
+@allure.story("Flashback rollback")
 def test_recorder_repeated_rewinds_to_just_after_the_line():
     recorder = _recorder()
     _drive(recorder, [1.1, 20.0, 39.0, 300.0, 545.0], lap=1)
@@ -304,6 +335,7 @@ def test_recorder_repeated_rewinds_to_just_after_the_line():
     assert _distances(recorder.export().in_progress_lap) == [1.1, 20.0, 39.0, 42.2, 200.0, 450.0]
 
 
+@allure.story("Flashback rollback")
 def test_recorder_flashback_case_b_restores_completed_lap_then_reallows_finalising_it():
     """Landed in lap 1 from the current (second) lap -- pop the last completed lap,
     truncate it to the landing distance, restore it as the new current buffer, then
@@ -327,7 +359,7 @@ def test_recorder_flashback_case_b_restores_completed_lap_then_reallows_finalisi
     export = recorder.export()
     assert export.completed_laps == []  # lap 1 was popped, not restored to completed_laps
     assert export.in_progress_lap.metadata.lap_number == 1  # the restored lap's own number, not 2
-    assert export.in_progress_lap.telemetry == {
+    assert _lists(export.in_progress_lap.telemetry) == {
         "lap_distance": [0.0, 5.0],
         "lap_time_ms": [0, 0],
         "speed": [100.0, 999.0],
@@ -346,6 +378,7 @@ def test_recorder_flashback_case_b_restores_completed_lap_then_reallows_finalisi
     assert final_export.in_progress_lap is None  # nothing buffered yet for lap 2
 
 
+@allure.story("Flashback rollback")
 def test_recorder_flashback_case_b_into_unstored_lap_carries_on_from_landing():
     recorder = _recorder()
     _drive(recorder, [3000.0, 5800.0], lap=1)
@@ -362,6 +395,7 @@ def test_recorder_flashback_case_b_into_unstored_lap_carries_on_from_landing():
     assert export.in_progress_lap is None
 
 
+@allure.story("Flashback rollback")
 def test_recorder_flashback_before_first_sample_restarts_lap():
     """Landed before even the first sample recorded -- buffers are cleared, not crashed,
     and recording continues normally from the landing packet itself."""
@@ -373,7 +407,7 @@ def test_recorder_flashback_before_first_sample_restarts_lap():
 
     export = recorder.export()
 
-    assert export.in_progress_lap.telemetry == {
+    assert _lists(export.in_progress_lap.telemetry) == {
         "lap_distance": [3.0], "lap_time_ms": [0], "speed": [2.0], "gear": [2],
     }
     assert export.in_progress_lap.metadata.lap_number == 1
@@ -382,6 +416,7 @@ def test_recorder_flashback_before_first_sample_restarts_lap():
 # DriverTelemetryRecorder -- laps that end without a lap change, and partial laps
 # ----------------------------------------------------------------------------------------------------------------------
 
+@allure.story("Laps that end without a lap change")
 def test_recorder_discard_at_the_line_drops_out_lap_and_records_flying_lap():
     """A later quali run: the out lap has positive distances and the flying lap keeps its
     lap number, so without a discard at the line every flying-lap sample would be below the
@@ -398,6 +433,7 @@ def test_recorder_discard_at_the_line_drops_out_lap_and_records_flying_lap():
     assert _distances(export.completed_laps[0]) == [1.0, 2900.0, 5809.8]
 
 
+@allure.story("Laps that end without a lap change")
 def test_recorder_lap_first_seen_mid_way_is_stored_as_recorded():
     """Whether a trace covers the whole lap is for the consumer to judge, from its distances."""
     recorder = _recorder()
@@ -413,6 +449,7 @@ def test_recorder_lap_first_seen_mid_way_is_stored_as_recorded():
     assert _distances(export.completed_laps[0]) == [3000.0, 4000.0]
 
 
+@allure.story("Laps that end without a lap change")
 def test_recorder_discard_in_progress_lap_keeps_completed_laps_and_restarts_cleanly():
     """A pause in updates must not splice two recording periods into one lap."""
     recorder = _recorder()
@@ -427,11 +464,12 @@ def test_recorder_discard_in_progress_lap_keeps_completed_laps_and_restarts_clea
 
     recorder.update(_FakeSnapshot(lap_distance=50.0, lap_time_ms=500, speed=9.0, gear=4), frame_id=100, lap_number=2)
     export = recorder.export()
-    assert export.in_progress_lap.telemetry == {
+    assert _lists(export.in_progress_lap.telemetry) == {
         "lap_distance": [50.0], "lap_time_ms": [500], "speed": [9.0], "gear": [4],
     }
     assert export.in_progress_lap.metadata.lap_number == 2
 
+@allure.story("Laps that end without a lap change")
 def test_recorder_discard_with_next_lap_number_carries_on_under_it():
     """A session skipped to its end: the lap number jumps 4 -> 10 mid-lap. The cut-off lap is
     dropped and what follows is recorded as lap 10."""
@@ -448,6 +486,7 @@ def test_recorder_discard_with_next_lap_number_carries_on_under_it():
     assert export.in_progress_lap.metadata.lap_number == 10
     assert _distances(export.in_progress_lap) == [3254.0]
 
+@allure.story("Laps that end without a lap change")
 def test_recorder_lap_resumed_after_discard_is_stored_from_the_resume_point():
     """Only the samples after a discard are stored for that lap -- never both recording periods."""
     recorder = _recorder()
@@ -462,6 +501,7 @@ def test_recorder_lap_resumed_after_discard_is_stored_from_the_resume_point():
     assert [_distances(lap) for lap in export.completed_laps] == [[50.0], [1.0]]
 
 
+@allure.story("Laps that end without a lap change")
 def test_recorder_lap_change_with_empty_buffers_still_advances_lap_number():
     """Recording paused across a lap boundary: the resumed lap must carry the sim's lap number."""
     recorder = _recorder()
@@ -472,3 +512,82 @@ def test_recorder_lap_change_with_empty_buffers_still_advances_lap_number():
     export = recorder.export()
     assert len(export.completed_laps) == 1
     assert export.in_progress_lap.metadata.lap_number == 3
+
+# ----------------------------------------------------------------------------------------------------------------------
+# DriverTelemetryRecorder -- lap buffer
+# ----------------------------------------------------------------------------------------------------------------------
+
+@allure.story("Lap buffer")
+@pytest.mark.parametrize("count", [_INITIAL_CAPACITY - 1, _INITIAL_CAPACITY, _INITIAL_CAPACITY + 1,
+                                   2 * _INITIAL_CAPACITY + 1],
+                         ids=["below", "exactly-full", "one-over", "two-growths"])
+@allure.title("A lap of {count} samples keeps every sample")
+def test_recorder_keeps_every_sample_around_the_initial_capacity(count):
+    """One lap of count samples around the initial buffer capacity: one short of it, exactly filling it, one over
+    (the first growth), and twice it plus one (two growths). Then the lap change.
+
+    Expected: the completed lap holds every sample, in order, distances and lap times both."""
+    recorder = _recorder()
+    _drive(recorder, [i * 0.5 for i in range(count)], lap=1, step_ms=16)
+    recorder.on_lap_change(sample_lap_metadata(lap_number=1))
+
+    telemetry = recorder.export().completed_laps[0].telemetry
+    assert telemetry["lap_distance"].tolist() == [i * 0.5 for i in range(count)]
+    assert telemetry["lap_time_ms"].tolist() == [i * 16 for i in range(count)]
+
+
+@allure.story("Lap buffer")
+@allure.title("A flashback into a lap longer than the initial buffer restores it whole")
+def test_recorder_flashback_restores_a_lap_longer_than_the_initial_capacity():
+    """A completed lap 1 of initial capacity + 1000 samples, one metre apart, then a few samples into lap 2. A
+    flashback lands in lap 1 at 5500.5 m, the car drives on to 5600 m, and lap 1 ends again.
+
+    Expected: lap 1 holds the samples up to 5500 m, the landing sample, then the ones after it."""
+    recorder = _recorder()
+    _drive(recorder, [float(i) for i in range(_INITIAL_CAPACITY + 1000)], lap=1)
+    recorder.on_lap_change(sample_lap_metadata(lap_number=1))
+    _drive(recorder, [1.0, 2.0], lap=2)
+
+    _land(recorder, 5500.5, lap=1, t=550_050)
+    _drive(recorder, [float(i) for i in range(5501, 5601)], lap=1, t0=550_100)
+    recorder.on_lap_change(sample_lap_metadata(lap_number=1))
+
+    distances = recorder.export().completed_laps[0].telemetry["lap_distance"].tolist()
+    assert distances == [float(i) for i in range(5501)] + [5500.5] + [float(i) for i in range(5501, 5601)]
+
+
+@allure.story("Lap buffer")
+@allure.title("Exported telemetry is read-only float32")
+def test_recorder_exports_read_only_float32_arrays():
+    """A completed lap and an in-progress lap, then an export.
+
+    Expected: every telemetry value of both laps is a float32 array that can't be written to, so a consumer can't
+    change what a later export returns."""
+    recorder = _recorder()
+    _drive(recorder, [0.0, 10.0], lap=1)
+    recorder.on_lap_change(sample_lap_metadata(lap_number=1))
+    _drive(recorder, [0.0], lap=2)
+
+    export = recorder.export()
+    for lap in (export.completed_laps[0], export.in_progress_lap):
+        for values in lap.telemetry.values():
+            assert values.dtype == np.float32
+            assert not values.flags.writeable
+    with pytest.raises(ValueError):
+        export.completed_laps[0].telemetry["speed"][0] = 0.0
+
+
+@allure.story("Lap buffer")
+@allure.title("A repeated distance is compared as the sim sent it, not as stored")
+def test_recorder_stationary_check_uses_the_distance_the_sim_sent():
+    """Two samples at 0.1 m, which float32 can't hold exactly: it stores 0.10000000149.
+
+    Expected: the second sample overwrites the first, as for any repeated distance. Compared against the stored
+    float32 value, 0.1 would read as the car going back and be dropped."""
+    recorder = _recorder()
+    recorder.update(_FakeSnapshot(lap_distance=0.1, lap_time_ms=0, speed=100.0, gear=3), frame_id=1, lap_number=1)
+    recorder.update(_FakeSnapshot(lap_distance=0.1, lap_time_ms=16, speed=105.0, gear=3), frame_id=2, lap_number=1)
+
+    assert _lists(recorder.export().in_progress_lap.telemetry) == {
+        "lap_distance": [0.1], "lap_time_ms": [16], "speed": [105.0], "gear": [3],
+    }
