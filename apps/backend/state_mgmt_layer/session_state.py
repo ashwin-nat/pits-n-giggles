@@ -47,7 +47,7 @@ from lib.f1_types import (MAX_DRIVERS, CarStatusData, F1Utils,
                           PacketLapPositionsData, PacketMotionData,
                           PacketParticipantsData, PacketSessionData,
                           PacketSessionHistoryData, PacketTimeTrialData,
-                          PacketTyreSetsData, ResultStatus)
+                          PacketTyreSetsData)
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
@@ -293,7 +293,7 @@ class SessionState:
 
             driver_obj = self._getObjectByIndex(index, reason="Lap data update")
             driver_obj.m_lap_info.m_result_status = lap_data.m_resultStatus
-            if lap_data.m_resultStatus in {ResultStatus.INVALID, ResultStatus.INACTIVE}:
+            if lap_data.m_resultStatus.isInactive():
                 continue
 
             num_active_cars += 1
@@ -441,12 +441,6 @@ class SessionState:
             lap_data: Lap data containing status information
             driver_index: Index of the driver in the race
         """
-        RESULT_STATUS_MAP = {
-            ResultStatus.DID_NOT_FINISH: "DNF",
-            ResultStatus.DISQUALIFIED: "DSQ",
-            ResultStatus.RETIRED: "DNF"
-        }
-
         # Update current lap number
         driver_obj.m_lap_info.m_current_lap = lap_data.m_currentLapNum
 
@@ -454,9 +448,7 @@ class SessionState:
         driver_obj.processPittingStatus(lap_data)
 
         # Update DNF status
-        driver_obj.m_driver_info.m_dnf_status_code = RESULT_STATUS_MAP.get(
-            lap_data.m_resultStatus, ""
-        )
+        driver_obj.m_driver_info.m_dnf_status_code = lap_data.m_resultStatus.dnfStatusCode()
 
         # Check if player is DNF
         if (driver_index == self.m_player_index and

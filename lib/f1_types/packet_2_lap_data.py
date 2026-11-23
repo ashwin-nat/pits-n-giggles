@@ -241,6 +241,15 @@ class LapData(F1SubPacketBase):
         PITTING = 1
         IN_PIT_AREA = 2
 
+        def isInPits(self) -> bool:
+            """
+            Check if the car is in the pits (PITTING or IN_PIT_AREA).
+
+            Returns:
+                bool: True if the status is PITTING or IN_PIT_AREA, False otherwise.
+            """
+            return self in _IN_PIT_STATUSES
+
     class Sector(F1CompareableEnum):  # pylint: disable=invalid-enum-extension
         """
         Enumeration representing the sector of a racing track.
@@ -698,6 +707,8 @@ class LapData(F1SubPacketBase):
             Total time in milliseconds
         """
         return (min_part * 60 * 1000) + ms_part
+
+_IN_PIT_STATUSES = frozenset({LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA})
 
 class PacketLapData(F1PacketBase):
     """Class representing the incoming PacketLapData.

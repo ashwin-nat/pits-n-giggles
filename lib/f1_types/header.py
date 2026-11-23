@@ -62,7 +62,7 @@ class F1PacketType(Enum):
 
         if isinstance(packet_type, F1PacketType):
             return True  # It's already an instance of F1PacketType
-        return any(packet_type == member.value for member in F1PacketType)
+        return packet_type in _F1_PACKET_TYPE_IDS
 
     def __str__(self) -> str:
         """to_string method
@@ -73,6 +73,8 @@ class F1PacketType(Enum):
         if F1PacketType.isValid(self.value):
             return self.name
         return f'packet type {str(self.value)}'
+
+_F1_PACKET_TYPE_IDS = frozenset(member.value for member in F1PacketType)
 
 class PacketHeader:
     """

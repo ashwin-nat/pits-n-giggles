@@ -89,6 +89,11 @@ class F1BaseEnum(Enum):
         Returns:
             Optional[F1BaseEnum]: The cast enum value.
         """
+        # cls(value) does this same lookup first, behind a much slower call path
+        try:
+            return cls._value2member_map_[value]
+        except (KeyError, TypeError):
+            pass
         try:
             return cls(value)
         except ValueError:
