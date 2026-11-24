@@ -31,7 +31,7 @@ from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.delta import LapDeltaManager
 from lib.f1_types import (CarDamageData, CarStatusData, F1Utils, LapData,
-                          PacketLapPositionsData, ResultStatus, SessionType,
+                          PacketLapPositionsData, SessionType,
                           TrackID)
 from lib.last_corner_stats import LastCornerTracker, TelemetrySample
 from lib.pngt import CompletedLap, DriverExportData, DriverTelemetryRecorder, LapMetadata
@@ -267,7 +267,7 @@ class DataPerDriver:
 
         # AI cars that have not been added to the race will have invalid/inactive result status
         result_status = self.m_lap_info.m_result_status
-        if result_status is not None and ResultStatus.isInactive(result_status):
+        if result_status is not None and result_status.isInactive():
             return False
 
         has_valid_position = (
@@ -1017,7 +1017,7 @@ class DataPerDriver:
             lap_data (LapData): The lap data
         """
 
-        curr_is_pitting = LapData.PitStatus.isInPits(lap_data.m_pitStatus)
+        curr_is_pitting = lap_data.m_pitStatus.isInPits()
         if not self.m_lap_info.m_is_pitting and curr_is_pitting:
             # entering pits
             self.m_logger.debug("Driver %s - entering pits.", str(self))

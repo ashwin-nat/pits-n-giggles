@@ -53,8 +53,10 @@ _JSON_CACHE_SIZE = 25
 
 # Known session type strings derived from the authoritative enums, sorted longest-first
 # so greedy prefix matching always picks the most specific match.
+# declared_members() drops UNDECLARED, our stand-in for values the enum lacks, and the name check drops the
+# game's own UNKNOWN: neither is a session type a save is named after
 _KNOWN_SESSION_TYPES: List[str] = sorted(
-    {str(s) for cls in (SessionType23, SessionType24) for s in cls if s.name != 'UNKNOWN'},
+    {str(s) for cls in (SessionType23, SessionType24) for s in cls.declared_members() if s.name != 'UNKNOWN'},
     key=lambda t: len(t.split()),
     reverse=True,
 )

@@ -2121,3 +2121,27 @@ def test_lap_data_sector_times(case, sector, lap_time_ms, status, expected):
     is ACTIVE with a running lap timer."""
     lap = _lap_in_sector(sector, lap_time_ms, status)
     assert lap.sectorTimesMS() == expected, case
+
+
+@allure.story("Undeclared values")
+@allure.title("Lap data with an undeclared result and pit status round-trips its wire bytes")
+def test_lap_data_with_undeclared_statuses_round_trips():
+    """A car's lap data with result status 8 and pit status 3, one past the last value each enum declares,
+    serialized and parsed back.
+
+    Expected: both are UNDECLARED members keeping their wire value, and the round trip keeps it too."""
+    lap = LapData.from_values(
+        last_lap_time_ms=0, current_lap_time_ms=30_000,
+        sector1_time_ms=0, sector1_time_minutes=0, sector2_time_ms=0, sector2_time_minutes=0,
+        delta_to_front_ms=0, delta_to_front_minutes=0, delta_to_leader_ms=0, delta_to_leader_minutes=0,
+        lap_distance=100.0, total_distance=100.0, safety_car_delta=0.0, car_position=1, current_lap_num=3,
+        pit_status=3, num_pit_stops=0, sector=0, current_lap_invalid=0, penalties=0, total_warnings=0,
+        corner_cutting_warnings=0, num_unserved_drive_through_pens=0, num_unserved_stop_go_pens=0, grid_position=1,
+        driver_status=4, result_status=8, pit_lane_timer_active=0, pit_lane_time_ms=0,
+        pit_stop_timer_ms=0, pit_stop_should_serve_pen=0, speed_trap_fastest_speed=0.0, speed_trap_fastest_lap=0,
+        packet_format=2025)
+    assert lap.m_resultStatus == ResultStatus.UNDECLARED
+    assert lap.m_pitStatus == LapData.PitStatus.UNDECLARED
+
+    parsed = LapData(lap.to_bytes(), 2025)
+    assert (parsed.m_resultStatus.raw_value, parsed.m_pitStatus.raw_value) == (8, 3)

@@ -25,14 +25,17 @@ import struct
 from typing import Any, Dict, List, Tuple, Union, final
 
 from .base_pkt import (F1BaseEnum, F1CompareableEnum, F1PacketBase,
-                       F1SubPacketBase)
+                       F1RawValueEnum, F1SubPacketBase)
 from .common import F1Utils, ResultStatus, get_num_cars
 from .header import F1PacketType, PacketHeader
 
 # --------------------- HELPERS ------------------------------------------------
 
 def _wire_value(field: Union[F1BaseEnum, int]) -> int:
-    """The wire value of a safeCast field: the member's value, or the raw int safeCast kept for an undeclared one."""
+    """The wire value of a safeCast field: the byte an undeclared value came in as, else the member's value."""
+    if isinstance(field, F1RawValueEnum):
+        return field.raw_value
+    # An unmigrated enum's safeCast keeps an undeclared value as the bare int
     return field.value if isinstance(field, F1BaseEnum) else field
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -122,10 +125,10 @@ class LapData(F1SubPacketBase):
         "B" # uint8    m_deltaToCarInFrontMinutesPart; // Time delta to car in front whole minute part
         "H" # uint16   m_deltaToRaceLeaderMSPart;      // Time delta to race leader milliseconds part
         "B" # uint8    m_deltaToRaceLeaderMinutesPart; // Time delta to race leader whole minute part
-        "f" # float    m_lapDistance;         // Distance vehicle is around current lap in metres â€“ could
-                      #  // be negative if line hasnâ€™t been crossed yet
-        "f" # float    m_totalDistance;         // Total distance travelled in session in metres â€“ could
-                      #  // be negative if line hasnâ€™t been crossed yet
+        "f" # float    m_lapDistance;         // Distance vehicle is around current lap in metres – could
+                      #  // be negative if line hasn't been crossed yet
+        "f" # float    m_totalDistance;         // Total distance travelled in session in metres – could
+                      #  // be negative if line hasn't been crossed yet
         "f" # float    m_safetyCarDelta;            // Delta in seconds for safety car
         "B" # uint8   # m_carPosition;                // Car race position
         "B" # uint8    m_currentLapNum;         // Current lap number
@@ -238,28 +241,24 @@ class LapData(F1SubPacketBase):
         OUT_LAP = 3
         ON_TRACK = 4
 
-    class PitStatus(F1BaseEnum):
+    class PitStatus(F1RawValueEnum):
         """
         Enumeration representing the pit status of a driver during a racing session.
         """
 
+        UNDECLARED = -1
         NONE = 0
         PITTING = 1
         IN_PIT_AREA = 2
 
-        # Static, taking the value: safeCast hands back the raw int for an undeclared value
-        @staticmethod
-        def isInPits(status: Union["LapData.PitStatus", int]) -> bool:
+        def isInPits(self) -> bool:
             """
             Check if the car is in the pits (PITTING or IN_PIT_AREA).
-
-            Args:
-                status (Union[LapData.PitStatus, int]): The status, or the raw int for an undeclared value
 
             Returns:
                 bool: True if the status is PITTING or IN_PIT_AREA, False otherwise (undeclared values included).
             """
-            return status in _IN_PIT_STATUSES
+            return self in _IN_PIT_STATUSES
 
     class Sector(F1CompareableEnum):  # pylint: disable=invalid-enum-extension
         """

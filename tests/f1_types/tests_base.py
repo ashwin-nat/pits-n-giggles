@@ -29,11 +29,16 @@ from lib.f1_types import (F1PacketBase, F1PacketType, PacketCarDamageData,
                           PacketMotionExData, PacketParticipantsData,
                           PacketSessionData, PacketSessionHistoryData,
                           PacketTimeTrialData, PacketTyreSetsData)
+import allure
 import pytest
 
+from lib.f1_types import (ActualTyreCompound, LapData, ResultStatus,
+                          SessionType23, SessionType24, VisualTyreCompound)
 from lib.f1_types.base_pkt import (F1BaseEnum, F1CompareableEnum,
                                    F1RawValueEnum, F1SubPacketBase)
 from .tests_parser_base import F1TypesTest
+
+pytestmark = [allure.epic("f1_types"), allure.feature("Base types")]
 
 
 # --- Helper classes for testing ---
@@ -72,6 +77,16 @@ class Code(F1RawValueEnum):
     LARGE = "LARG"
     UNKNOWN = "????"
 
+class Grade(F1RawValueEnum):
+    """Stand-in for an enum migrated with the UNDECLARED sentinel, next to a game-declared UNKNOWN."""
+    UNDECLARED = -1
+    LOW = 1
+    HIGH = 2
+    UNKNOWN = 255
+
+MIGRATED_ENUMS = [ResultStatus, LapData.PitStatus, ActualTyreCompound, VisualTyreCompound, SessionType23,
+                  SessionType24]
+
 class PacketWithoutToJSON(F1PacketBase):
     ABSTRACT = True
 
@@ -103,6 +118,7 @@ class OtherPacket(F1SubPacketBase):
 
 # --- Test cases ---
 
+@allure.story("Base enum")
 class TestF1BaseEnum(F1TypesTest):
     def test_from_value_valid(self):
         self.assertEqual(Color(1), Color.RED)
@@ -111,6 +127,7 @@ class TestF1BaseEnum(F1TypesTest):
     def test_from_value_invalid(self):
         self.assertFalse(Color.isValid(99))
 
+@allure.story("Comparable enum")
 class TestF1CompareableEnum(F1TypesTest):
     def test_comparison(self):
         self.assertTrue(Severity.LOW < Severity.MEDIUM)
@@ -124,6 +141,7 @@ class TestF1CompareableEnum(F1TypesTest):
         with self.assertRaises(TypeError):
             _ = Severity.LOW < "not-an-enum"
 
+@allure.story("Packet base")
 class TestF1PacketBase(F1TypesTest):
     def setUp(self):
         self.m_header = self.getRandomHeader(packet_type=F1PacketType.MOTION, game_year=25, num_players=22)
@@ -137,6 +155,7 @@ class TestF1PacketBase(F1TypesTest):
         with self.assertRaises(NotImplementedError):
             packet.toJSON()
 
+@allure.story("Sub-packet base")
 class TestF1SubPacketBase(F1TypesTest):
     def test_not_implemented(self):
         packet = SubPacketWithoutToJSON(1)
@@ -180,6 +199,7 @@ class TestF1SubPacketBase(F1TypesTest):
         self.assertEqual(mapping[Severity.MEDIUM], "medium")
         self.assertEqual(mapping[Severity.HIGH], "high")
 
+@allure.story("Raw value enum")
 class TestF1RawValueEnum:
     """Undeclared values must be indistinguishable from UNKNOWN, while still
     carrying the incoming raw value."""
@@ -284,6 +304,7 @@ class TestF1RawValueEnum:
         # safeCast is the path callers actually use
         assert Shape.safeCast(50, Shape.UNKNOWN).raw_value == 50
 
+@allure.story("Raw value enum: str values")
 class TestF1RawValueEnumStrValued:
     """The same contract on a str-valued enum, where the sentinel's type is str."""
 
@@ -330,6 +351,7 @@ class TestF1RawValueEnumStrValued:
         assert {Code.UNKNOWN: "unknown"}[Code("ZZZZ")] == "unknown"
 
 
+@allure.story("Raw value enum: isValid")
 class TestF1RawValueEnumIsValid:
     """isValid must keep meaning 'is a declared member' after an enum migrates onto
     F1RawValueEnum, since call sites guard on it."""
@@ -354,6 +376,72 @@ class TestF1RawValueEnumIsValid:
         # Call sites pass members as well as raw values
         assert Shape.isValid(Shape.CIRCLE)
 
+
+@allure.story("Raw value enum: UNDECLARED sentinel")
+class TestF1RawValueEnumUndeclaredSentinel:
+    """An enum declaring UNDECLARED takes it as the sentinel, leaving the game's own UNKNOWN a plain wire value.
+    One without it keeps UNKNOWN as the sentinel."""
+
+    def test_undeclared_value_aliases_undeclared_not_unknown(self):
+        assert Grade(50) == Grade.UNDECLARED
+        assert Grade(50) != Grade.UNKNOWN
+        assert Grade(50).raw_value == 50
+        assert Grade(50).is_unknown()
+
+    def test_game_unknown_is_still_its_declared_member(self):
+        assert Grade(255) is Grade.UNKNOWN
+        assert not Grade(255).is_unknown()
+
+    def test_undeclared_str_is_the_sentinel_name(self):
+        assert str(Grade(50)) == "UNDECLARED"
+
+    def test_safe_cast_keeps_the_raw_value(self):
+        assert Grade.safeCast(50).raw_value == 50
+
+    def test_without_undeclared_the_sentinel_is_unknown(self):
+        assert Shape(50) == Shape.UNKNOWN
+
+    def test_declared_members_leave_out_undeclared(self):
+        assert Grade.declared_members() == [Grade.LOW, Grade.HIGH, Grade.UNKNOWN]
+
+    def test_declared_members_of_an_enum_without_undeclared_is_every_member(self):
+        assert Shape.declared_members() == list(Shape)
+
+    def test_undeclared_is_not_valid(self):
+        # UNDECLARED is ours, not a value the game declares
+        assert not Grade.isValid(-1)
+        assert not Grade.isValid(Grade.UNDECLARED)
+
+    def test_game_unknown_stays_valid(self):
+        assert Grade.isValid(255)
+
+
+@allure.story("Raw value enum: migrated enums")
+@pytest.mark.parametrize("enum_cls", MIGRATED_ENUMS, ids=lambda cls: cls.__qualname__)
+class TestMigratedRawValueEnums:
+    """Enums moved onto F1RawValueEnum with UNDECLARED: an undeclared wire value is a member, not a bare int."""
+
+    def test_undeclared_value_is_a_member_keeping_its_raw_value(self, enum_cls):
+        member = enum_cls.safeCast(200)
+        assert member == enum_cls.UNDECLARED
+        assert member.raw_value == 200
+
+    def test_declared_members_leave_out_undeclared(self, enum_cls):
+        assert enum_cls.UNDECLARED not in enum_cls.declared_members()
+        assert len(enum_cls.declared_members()) == len(enum_cls) - 1
+
+    def test_undeclared_is_not_valid(self, enum_cls):
+        assert not enum_cls.isValid(enum_cls.UNDECLARED)
+        assert all(enum_cls.isValid(member) for member in enum_cls.declared_members())
+
+
+@allure.story("Raw value enum: migrated enums")
+@pytest.mark.parametrize("enum_cls", [ActualTyreCompound, VisualTyreCompound], ids=lambda cls: cls.__qualname__)
+def test_undeclared_tyre_compound_still_prints_unknown(enum_cls):
+    """HUD tyre icons are keyed by the compound's str, and had an 'Unknown' entry before the migration."""
+    assert str(enum_cls.safeCast(200)) == "Unknown"
+
+@allure.story("Slots")
 def test_subpacket_instances_are_fully_slotted():
     class TestSubPacket(F1SubPacketBase):
         __slots__ = ("value",)
@@ -371,6 +459,7 @@ def test_subpacket_instances_are_fully_slotted():
     with pytest.raises(AttributeError):
         packet.undeclared_attribute = 123
 
+@allure.story("Slots")
 def test_packet_instances_are_fully_slotted():
     class TestPacket(F1PacketBase):
         ABSTRACT = True
@@ -394,9 +483,11 @@ def test_packet_instances_are_fully_slotted():
 def _all_parsers():
     return {packet_type: F1PacketBase.parser_for(packet_type) for packet_type in F1PacketType}
 
+@allure.story("Packet registry")
 def test_every_packet_type_has_a_parser():
     assert [t for t, cls in _all_parsers().items() if cls is None] == []
 
+@allure.story("Packet registry")
 def test_parsers_match_the_packet_classes():
     assert _all_parsers() == {
         F1PacketType.MOTION: PacketMotionData,
@@ -418,16 +509,19 @@ def test_parsers_match_the_packet_classes():
         F1PacketType.CAR_TELEMETRY_2: PacketCarTelemetry2Data,
     }
 
+@allure.story("Packet registry")
 def test_missing_packet_id_is_rejected():
     with pytest.raises(TypeError, match="NoId must define: PACKET_ID"):
         class NoId(F1PacketBase):    # pylint: disable=unused-variable
             pass
 
+@allure.story("Packet registry")
 def test_non_enum_packet_id_is_rejected():
     with pytest.raises(TypeError, match="RawId must define: PACKET_ID"):
         class RawId(F1PacketBase):    # pylint: disable=unused-variable
             PACKET_ID = 2
 
+@allure.story("Packet registry")
 def test_duplicate_packet_id_is_rejected_and_keeps_the_original():
     before = _all_parsers()
     with pytest.raises(TypeError, match="SecondLapData claims LAP_DATA, already parsed by PacketLapData"):
@@ -436,6 +530,7 @@ def test_duplicate_packet_id_is_rejected_and_keeps_the_original():
 
     assert _all_parsers() == before
 
+@allure.story("Packet registry")
 def test_abstract_class_registers_nothing():
     before = _all_parsers()
 
@@ -444,6 +539,7 @@ def test_abstract_class_registers_nothing():
 
     assert _all_parsers() == before
 
+@allure.story("Packet registry")
 def test_abstract_is_not_inherited():
     class Abstract(F1PacketBase):
         ABSTRACT = True
@@ -452,6 +548,7 @@ def test_abstract_is_not_inherited():
         class Concrete(Abstract):    # pylint: disable=unused-variable
             pass
 
+@allure.story("Packet registry")
 def test_packet_id_is_not_inherited():
     with pytest.raises(TypeError, match="LapDataSubclass must define: PACKET_ID"):
         class LapDataSubclass(PacketLapData):    # pylint: disable=unused-variable

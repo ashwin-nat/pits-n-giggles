@@ -155,26 +155,41 @@ class F1RawValueEnum(F1BaseEnum):
     Base class for Enums whose wire values the game keeps extending without telling us.
 
     A value that isn't a declared member yields a pseudo-member that is
-    indistinguishable from the enum's own UNKNOWN sentinel - same value, equal to
-    it, same hash, same str() - while additionally remembering the value that
-    actually came off the wire, via `raw_value`.
+    indistinguishable from the enum's sentinel - same value, equal to it, same hash,
+    same str() - while additionally remembering the value that actually came off the
+    wire, via `raw_value`.
 
-    This keeps behaviour identical to a plain safeCast()-to-UNKNOWN, so all
-    unknown values still compare equal to each other and to UNKNOWN, while no
-    longer discarding the incoming value.
+    The sentinel is `UNDECLARED = -1`, kept apart from any UNKNOWN or INVALID the game
+    itself sends. Enums migrated before it existed use their `UNKNOWN` member instead,
+    until they move to `UNDECLARED`.
+
+    All unknown values compare equal to each other and to the sentinel, while no longer
+    discarding the incoming value.
 
     Works for both int-valued enums (most wire fields) and str-valued ones (e.g. the
     four-character event codes in packet 3).
 
-    Migrating an enum onto this class is just a base-class change plus an UNKNOWN member;
-    declared members behave exactly as they did before, so migrated and unmigrated enums
-    can be mixed freely.
+    Migrating an enum onto this class is a base-class change plus an `UNDECLARED = -1`
+    member; declared members behave exactly as they did before, so migrated and unmigrated
+    enums can be mixed freely. Iterate `declared_members()` rather than the enum to leave
+    the sentinel out.
 
     Note:
-        Derived Enums must declare an UNKNOWN member.
+        Derived Enums must declare UNDECLARED (or, for older ones, UNKNOWN).
         Compare members with `==`, never with `is`: two unknowns are equal but
         are not the same object.
     """
+
+    @classmethod
+    def _sentinel(cls) -> "F1RawValueEnum":
+        """The member an undeclared value aliases: UNDECLARED, else the older UNKNOWN."""
+        sentinel = cls.__members__.get("UNDECLARED")
+        return cls.UNKNOWN if sentinel is None else sentinel
+
+    @classmethod
+    def declared_members(cls) -> List["F1RawValueEnum"]:
+        """Every member except the UNDECLARED sentinel, e.g. to list or draw real values."""
+        return [member for member in cls if member.name != "UNDECLARED"]
 
     @classmethod
     def _missing_(cls, value: Any) -> Optional["F1RawValueEnum"]:
@@ -185,14 +200,15 @@ class F1RawValueEnum(F1BaseEnum):
             value (Any): The unrecognised value.
 
         Returns:
-            Optional[F1RawValueEnum]: A pseudo-member aliasing UNKNOWN, or None if the
+            Optional[F1RawValueEnum]: A pseudo-member aliasing the sentinel, or None if the
                 value is not of the sentinel's own type (letting the Enum machinery raise
                 as usual).
         """
+        sentinel = cls._sentinel()
         # Only a value of the sentinel's own type can be a wire value this enum simply
         # hasn't declared yet. On an int-valued enum a str is a type error, not a new
         # value, and must still raise
-        if isinstance(value, bool) or not isinstance(value, type(cls.UNKNOWN._value_)):
+        if isinstance(value, bool) or not isinstance(value, type(sentinel._value_)):
             return None
 
         # Pseudo-members are deliberately not interned into the enum's member table, so
@@ -201,8 +217,8 @@ class F1RawValueEnum(F1BaseEnum):
         # lookup is indistinguishable from a cached one
         pseudo = object.__new__(cls)
         # Indistinguishable from the sentinel...
-        pseudo._value_ = cls.UNKNOWN._value_
-        pseudo._name_ = cls.UNKNOWN._name_
+        pseudo._value_ = sentinel._value_
+        pseudo._name_ = sentinel._name_
         # ...except that it remembers what came off the wire
         pseudo._raw_value_ = value
         return pseudo
@@ -221,12 +237,14 @@ class F1RawValueEnum(F1BaseEnum):
             value (Any): The value to validate.
 
         Returns:
-            bool: True if the value maps to a declared member.
+            bool: True if the value maps to a declared member other than the UNDECLARED sentinel.
         """
         try:
-            return not cls(value).is_unknown()
+            member = cls(value)
         except (ValueError, TypeError):
             return False
+        # UNDECLARED is ours, not a value the game declares, so it has no wire byte either
+        return not member.is_unknown() and member.name != "UNDECLARED"
 
     @property
     def raw_value(self) -> Any:

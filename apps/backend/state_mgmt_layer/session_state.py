@@ -47,7 +47,7 @@ from lib.f1_types import (MAX_DRIVERS, CarStatusData, F1Utils,
                           PacketLapPositionsData, PacketMotionData,
                           PacketParticipantsData, PacketSessionData,
                           PacketSessionHistoryData, PacketTimeTrialData,
-                          PacketTyreSetsData, ResultStatus)
+                          PacketTyreSetsData)
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
@@ -304,7 +304,7 @@ class SessionState:
             # Before the inactive skip, so the filter still switches while the car's slot is empty
             driver_obj.updatePowerFilterState(ref_index)
             driver_obj.m_lap_info.m_result_status = lap_data.m_resultStatus
-            if ResultStatus.isInactive(lap_data.m_resultStatus):
+            if lap_data.m_resultStatus.isInactive():
                 continue
 
             num_active_cars += 1
@@ -459,7 +459,7 @@ class SessionState:
         driver_obj.processPittingStatus(lap_data)
 
         # Update DNF status
-        driver_obj.m_driver_info.m_dnf_status_code = ResultStatus.dnfStatusCode(lap_data.m_resultStatus)
+        driver_obj.m_driver_info.m_dnf_status_code = lap_data.m_resultStatus.dnfStatusCode()
 
         # Check if player is DNF
         if (driver_index == self.m_player_index and

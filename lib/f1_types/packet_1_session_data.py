@@ -22,12 +22,12 @@
 
 
 import struct
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List
 
 from .base_pkt import (F1BaseEnum, F1PacketBase, F1RawValueEnum,
                        F1SubPacketBase)
 from .common import (GameMode, GearboxAssistMode, RuleSet, SafetyCarType,
-                     SessionLength, SessionType23, SessionType24, TrackID)
+                     SessionLength, SessionType, SessionType23, SessionType24, TrackID)
 from .header import F1PacketType, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -307,7 +307,7 @@ class WeatherForecastSample(F1SubPacketBase):
         """
 
         # Declare the type hints
-        self.m_sessionType : int
+        self.m_sessionType : SessionType
         self.m_timeOffset : int
         self.m_weather : WeatherForecastSample.WeatherCondition
         self.m_trackTemperature : int
@@ -417,10 +417,8 @@ class WeatherForecastSample(F1SubPacketBase):
             bytes: A list of bytes representing the raw data.
         """
 
-        # safeCast leaves an undeclared session type as a bare int
-        session_type = self.m_sessionType.value if isinstance(self.m_sessionType, F1BaseEnum) else self.m_sessionType
         return self.COMPILED_PACKET_STRUCT.pack(
-            session_type,
+            self.m_sessionType.raw_value,     # same as .value unless the type is one the enum doesn't declare
             self.m_timeOffset,
             self.m_weather.value,
             self.m_trackTemperature,
@@ -433,7 +431,7 @@ class WeatherForecastSample(F1SubPacketBase):
     @classmethod
     def from_values(cls,
                     game_year: int,
-                    session_type: Union[SessionType23, SessionType24],
+                    session_type: SessionType,
                     time_offset: int,
                     weather: WeatherCondition,
                     track_temp: int,
@@ -446,7 +444,7 @@ class WeatherForecastSample(F1SubPacketBase):
 
         Args:
             game_year (int): Game year
-            session_type (Union[SessionType23, SessionType24]): Session type enum
+            session_type (SessionType): Session type enum
             time_offset (int): Time offset in minutes
             weather (WeaetherCondition): Weather enum
             track_temp (int): Track temp in celsius
@@ -461,7 +459,7 @@ class WeatherForecastSample(F1SubPacketBase):
 
         return cls(
             WeatherForecastSample.COMPILED_PACKET_STRUCT.pack(
-                session_type.value,
+                session_type.raw_value,
                 time_offset,
                 weather.value,
                 track_temp,
@@ -1014,7 +1012,7 @@ class PacketSessionData(F1PacketBase):
         self.m_airTemperature: int
         self.m_totalLaps: int
         self.m_trackLength: int
-        self.m_sessionType: Union[SessionType23, SessionType24]
+        self.m_sessionType: SessionType
         self.m_trackId: TrackID
         self.m_formula: PacketSessionData.FormulaType
         self.m_sessionTimeLeft: int
@@ -1740,7 +1738,7 @@ class PacketSessionData(F1PacketBase):
     @classmethod
     def from_values(cls,
                     header: PacketHeader,
-                    session_type: Union[SessionType23, SessionType24],
+                    session_type: SessionType,
                     track_id: TrackID,
                     total_laps: int,
                     track_length: int,
@@ -1753,7 +1751,7 @@ class PacketSessionData(F1PacketBase):
 
         Args:
             header (PacketHeader): Packet header. Its packet format decides which sections exist.
-            session_type (Union[SessionType23, SessionType24]): SessionType23 for format 2023, else SessionType24
+            session_type (SessionType): SessionType23 for format 2023, else SessionType24
             track_id (TrackID): Track
             total_laps (int): Total laps in the session
             track_length (int): Track length in metres
@@ -1781,7 +1779,7 @@ class PacketSessionData(F1PacketBase):
             0, 0, 0,        # weather, track temp, air temp
             total_laps,
             track_length,
-            session_type.value,
+            session_type.raw_value,
             track_id.raw_value,     # same as .value unless the ID is one TrackID doesn't declare
             formula.raw_value,
             # Non-zero: a zero duration is the game's menu packet, which the handler clears on

@@ -55,7 +55,7 @@ async def test_undeclared_lap_data_statuses_are_tolerated(manager: InjectingTele
     sequence is built.
 
     Expected: every frame is processed for both cars. Car 1 counts as active, is not in the pits and has no DNF code,
-    as before the enum helpers, and its lap distance follows the packets."""
+    as before the enum helpers, its lap distance follows the packets, and its result status keeps the wire value."""
     await manager.inject(packets.session(session_uid=UID, session_type="RACE", track=TRACK, total_laps=5,
                                          track_length=LAP_TRACK_LENGTHS[TRACK]))
     await manager.inject(packets.participants(player("Player"), ai("AI"), session_uid=UID))
@@ -72,3 +72,4 @@ async def test_undeclared_lap_data_statuses_are_tolerated(manager: InjectingTele
     assert ai_car.m_driver_info.m_dnf_status_code == ""
     assert ai_car.is_valid
     assert ai_car.m_packet_copies.m_packet_lap_data.m_lapDistance == 270.0
+    assert ai_car.m_lap_info.m_result_status.raw_value == UNDECLARED_RESULT_STATUS

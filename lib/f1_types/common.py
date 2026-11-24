@@ -31,7 +31,7 @@
 
 import math
 from abc import abstractmethod
-from typing import Any, Dict, List, Set, Union
+from typing import Any, Dict, List, Set
 
 from .base_pkt import F1BaseEnum, F1CompareableEnum, F1RawValueEnum
 
@@ -46,11 +46,12 @@ def get_num_cars(packet_format: int) -> int:
 
 # -------------------- COMMON CLASSES ----------------------------------------------------------------------------------
 
-class ResultStatus(F1BaseEnum):
+class ResultStatus(F1RawValueEnum):
     """
     Enumeration representing the result status of a driver after a racing session.
     """
 
+    UNDECLARED = -1
     INVALID = 0
     INACTIVE = 1
     ACTIVE = 2
@@ -60,32 +61,23 @@ class ResultStatus(F1BaseEnum):
     NOT_CLASSIFIED = 6
     RETIRED = 7
 
-    # Static, taking the value: safeCast hands back the raw int for an undeclared value
-    @staticmethod
-    def isInactive(status: Union["ResultStatus", int]) -> bool:
+    def isInactive(self) -> bool:
         """
-        Check if a car slot holds no car in the session (INVALID or INACTIVE).
-
-        Args:
-            status (Union[ResultStatus, int]): The status, or the raw int for an undeclared value
+        Check if this car slot holds no car in the session (INVALID or INACTIVE).
 
         Returns:
             bool: True if the status is INVALID or INACTIVE, False otherwise (undeclared values included).
         """
-        return status in _INACTIVE_RESULT_STATUSES
+        return self in _INACTIVE_RESULT_STATUSES
 
-    @staticmethod
-    def dnfStatusCode(status: Union["ResultStatus", int]) -> str:
+    def dnfStatusCode(self) -> str:
         """
         Get the short code for a car out of the race ("DNF" or "DSQ").
-
-        Args:
-            status (Union[ResultStatus, int]): The status, or the raw int for an undeclared value
 
         Returns:
             str: "DNF" for DID_NOT_FINISH or RETIRED, "DSQ" for DISQUALIFIED, else an empty string.
         """
-        return _DNF_STATUS_CODES.get(status, "")
+        return _DNF_STATUS_CODES.get(self, "")
 
 # Built once: a set literal of members in a method is rebuilt and re-hashed on every call
 _INACTIVE_RESULT_STATUSES = frozenset({ResultStatus.INVALID, ResultStatus.INACTIVE})
@@ -120,7 +112,7 @@ class ResultReason(F1BaseEnum):
         """
         return self.name.lower()
 
-class SessionType(F1BaseEnum):
+class SessionType(F1RawValueEnum):
 
     @abstractmethod
     def isFpTypeSession(self) -> bool:
@@ -178,6 +170,7 @@ class SessionType23(SessionType):
     """
     Enum class representing F1 session types.
     """
+    UNDECLARED = -1
     UNKNOWN = 0
     PRACTICE_1 = 1
     PRACTICE_2 = 2
@@ -249,6 +242,7 @@ _SESSION_TYPE_23_RACE = frozenset({
 })
 
 class SessionType24(SessionType):
+    UNDECLARED = -1
     UNKNOWN = 0
     PRACTICE_1 = 1
     PRACTICE_2 = 2
@@ -350,7 +344,7 @@ class SessionLength(F1BaseEnum):
         """
         return self.name.replace('_', ' ').title()
 
-class ActualTyreCompound(F1BaseEnum):
+class ActualTyreCompound(F1RawValueEnum):
     """
     Enumeration representing different tyre compounds used in Formula 1 and Formula 2.
 
@@ -393,6 +387,7 @@ class ActualTyreCompound(F1BaseEnum):
     HARD = 14
     WET_F2 = 15
     UNKNOWN = 255
+    UNDECLARED = -1
 
     def __str__(self) -> str:
         """
@@ -403,10 +398,6 @@ class ActualTyreCompound(F1BaseEnum):
         """
         return _ACTUAL_TYRE_COMPOUND_STR[self]
 
-    @classmethod
-    def safeCast(cls, value: int) -> "ActualTyreCompound":
-        return super().safeCast(value, ActualTyreCompound.UNKNOWN)
-
 # Title-cased names, except where the display string differs
 _ACTUAL_TYRE_COMPOUND_STR = {
     member: member.name.replace("_", " ").title() for member in ActualTyreCompound
@@ -415,9 +406,10 @@ _ACTUAL_TYRE_COMPOUND_STR = {
     ActualTyreCompound.INTER: "Inters",
     ActualTyreCompound.WET_CLASSIC: "Wet (Classic)",
     ActualTyreCompound.WET_F2: "Wet (F2)",
+    ActualTyreCompound.UNDECLARED: "Unknown",  # as before migrating, when safeCast gave UNKNOWN
 }
 
-class VisualTyreCompound(F1BaseEnum):
+class VisualTyreCompound(F1RawValueEnum):
     """
     Enumeration representing different visual tyre compounds used in Formula 1 and Formula 2.
 
@@ -450,6 +442,7 @@ class VisualTyreCompound(F1BaseEnum):
     HARD_F2 = 22
     WET_F2 = 15
     UNKNOWN = 255
+    UNDECLARED = -1
 
     def __str__(self) -> str:
         """
@@ -459,10 +452,6 @@ class VisualTyreCompound(F1BaseEnum):
             str: String representation of the visual tyre compound.
         """
         return _VISUAL_TYRE_COMPOUND_STR[self]
-
-    @classmethod
-    def safeCast(cls, value: int) -> "VisualTyreCompound":
-        return super().safeCast(value, VisualTyreCompound.UNKNOWN)
 
     def isSlicks(self) -> bool:
         """
@@ -500,6 +489,7 @@ _VISUAL_TYRE_COMPOUND_STR = {
     VisualTyreCompound.MEDIUM_F2: "Medium",
     VisualTyreCompound.HARD_F2: "Hard",
     VisualTyreCompound.WET_F2: "Wet",
+    VisualTyreCompound.UNDECLARED: "Unknown",  # as before migrating, when safeCast gave UNKNOWN
 }
 _VISUAL_TYRE_COMPOUND_SLICKS = frozenset({
     VisualTyreCompound.SOFT,
