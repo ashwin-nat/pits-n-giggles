@@ -22,6 +22,9 @@
 
 import random
 
+import allure
+import pytest
+
 from lib.f1_types import (ActualTyreCompound, F1PacketType,
                           FinalClassificationData,
                           PacketFinalClassificationData, PacketHeader,
@@ -29,7 +32,10 @@ from lib.f1_types import (ActualTyreCompound, F1PacketType,
 
 from .tests_parser_base import F1TypesTest
 
+pytestmark = [allure.epic("f1_types"), allure.feature("Final classification")]
 
+
+@allure.story("Parse and serialize")
 class TestPacketFinalClassificationData(F1TypesTest):
     """
     Tests for TestPacketFinalClassificationData
@@ -763,7 +769,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
                 grid_position=random.randrange(1,22),
                 points=random.randrange(0,30),
                 num_pit_stops=random.randrange(0,4),
-                result_status=random.choice(list(ResultStatus)),
+                result_status=random.choice(ResultStatus.declared_members()),
                 result_reason=random.choice(list(ResultReason)), # unused field
                 best_lap_time_in_ms=random.getrandbits(24),
                 total_race_time=F1TypesTest.getRandomFloat(),
@@ -771,23 +777,23 @@ class TestPacketFinalClassificationData(F1TypesTest):
                 num_penalties=random.randrange(0,20),
                 num_tyre_stints=random.randrange(0,8),
                 # tyre_stints_actual,  # array of 8
-                tyre_stints_actual_0=random.choice(list(ActualTyreCompound)),
-                tyre_stints_actual_1=random.choice(list(ActualTyreCompound)),
-                tyre_stints_actual_2=random.choice(list(ActualTyreCompound)),
-                tyre_stints_actual_3=random.choice(list(ActualTyreCompound)),
-                tyre_stints_actual_4=random.choice(list(ActualTyreCompound)),
-                tyre_stints_actual_5=random.choice(list(ActualTyreCompound)),
-                tyre_stints_actual_6=random.choice(list(ActualTyreCompound)),
-                tyre_stints_actual_7=random.choice(list(ActualTyreCompound)),
+                tyre_stints_actual_0=random.choice(ActualTyreCompound.declared_members()),
+                tyre_stints_actual_1=random.choice(ActualTyreCompound.declared_members()),
+                tyre_stints_actual_2=random.choice(ActualTyreCompound.declared_members()),
+                tyre_stints_actual_3=random.choice(ActualTyreCompound.declared_members()),
+                tyre_stints_actual_4=random.choice(ActualTyreCompound.declared_members()),
+                tyre_stints_actual_5=random.choice(ActualTyreCompound.declared_members()),
+                tyre_stints_actual_6=random.choice(ActualTyreCompound.declared_members()),
+                tyre_stints_actual_7=random.choice(ActualTyreCompound.declared_members()),
                 # tyre_stints_visual,  # array of 8
-                tyre_stints_visual_0=random.choice(list(VisualTyreCompound)),
-                tyre_stints_visual_1=random.choice(list(VisualTyreCompound)),
-                tyre_stints_visual_2=random.choice(list(VisualTyreCompound)),
-                tyre_stints_visual_3=random.choice(list(VisualTyreCompound)),
-                tyre_stints_visual_4=random.choice(list(VisualTyreCompound)),
-                tyre_stints_visual_5=random.choice(list(VisualTyreCompound)),
-                tyre_stints_visual_6=random.choice(list(VisualTyreCompound)),
-                tyre_stints_visual_7=random.choice(list(VisualTyreCompound)),
+                tyre_stints_visual_0=random.choice(VisualTyreCompound.declared_members()),
+                tyre_stints_visual_1=random.choice(VisualTyreCompound.declared_members()),
+                tyre_stints_visual_2=random.choice(VisualTyreCompound.declared_members()),
+                tyre_stints_visual_3=random.choice(VisualTyreCompound.declared_members()),
+                tyre_stints_visual_4=random.choice(VisualTyreCompound.declared_members()),
+                tyre_stints_visual_5=random.choice(VisualTyreCompound.declared_members()),
+                tyre_stints_visual_6=random.choice(VisualTyreCompound.declared_members()),
+                tyre_stints_visual_7=random.choice(VisualTyreCompound.declared_members()),
                 # tyre_stints_end_laps,  # array of 8
                 tyre_stints_end_laps_0=random.randrange(0,22),
                 tyre_stints_end_laps_1=random.randrange(0,22),
@@ -806,7 +812,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
                 grid_position=random.randrange(1,22),
                 points=random.randrange(0,30),
                 num_pit_stops=random.randrange(0,4),
-                result_status=random.choice(list(ResultStatus)),
+                result_status=random.choice(ResultStatus.declared_members()),
                 result_reason=random.choice(list(ResultReason)),
                 best_lap_time_in_ms=random.getrandbits(24),
                 total_race_time=F1TypesTest.getRandomFloat(),
@@ -814,23 +820,23 @@ class TestPacketFinalClassificationData(F1TypesTest):
                 num_penalties=random.randrange(0,20),
                 num_tyre_stints=random.randrange(0,8),
                 # tyre_stints_actual,  # array of 8
-                tyre_stints_actual_0=random.choice(list(ActualTyreCompound)),
-                tyre_stints_actual_1=random.choice(list(ActualTyreCompound)),
-                tyre_stints_actual_2=random.choice(list(ActualTyreCompound)),
-                tyre_stints_actual_3=random.choice(list(ActualTyreCompound)),
-                tyre_stints_actual_4=random.choice(list(ActualTyreCompound)),
-                tyre_stints_actual_5=random.choice(list(ActualTyreCompound)),
-                tyre_stints_actual_6=random.choice(list(ActualTyreCompound)),
-                tyre_stints_actual_7=random.choice(list(ActualTyreCompound)),
+                tyre_stints_actual_0=random.choice(ActualTyreCompound.declared_members()),
+                tyre_stints_actual_1=random.choice(ActualTyreCompound.declared_members()),
+                tyre_stints_actual_2=random.choice(ActualTyreCompound.declared_members()),
+                tyre_stints_actual_3=random.choice(ActualTyreCompound.declared_members()),
+                tyre_stints_actual_4=random.choice(ActualTyreCompound.declared_members()),
+                tyre_stints_actual_5=random.choice(ActualTyreCompound.declared_members()),
+                tyre_stints_actual_6=random.choice(ActualTyreCompound.declared_members()),
+                tyre_stints_actual_7=random.choice(ActualTyreCompound.declared_members()),
                 # tyre_stints_visual,  # array of 8
-                tyre_stints_visual_0=random.choice(list(VisualTyreCompound)),
-                tyre_stints_visual_1=random.choice(list(VisualTyreCompound)),
-                tyre_stints_visual_2=random.choice(list(VisualTyreCompound)),
-                tyre_stints_visual_3=random.choice(list(VisualTyreCompound)),
-                tyre_stints_visual_4=random.choice(list(VisualTyreCompound)),
-                tyre_stints_visual_5=random.choice(list(VisualTyreCompound)),
-                tyre_stints_visual_6=random.choice(list(VisualTyreCompound)),
-                tyre_stints_visual_7=random.choice(list(VisualTyreCompound)),
+                tyre_stints_visual_0=random.choice(VisualTyreCompound.declared_members()),
+                tyre_stints_visual_1=random.choice(VisualTyreCompound.declared_members()),
+                tyre_stints_visual_2=random.choice(VisualTyreCompound.declared_members()),
+                tyre_stints_visual_3=random.choice(VisualTyreCompound.declared_members()),
+                tyre_stints_visual_4=random.choice(VisualTyreCompound.declared_members()),
+                tyre_stints_visual_5=random.choice(VisualTyreCompound.declared_members()),
+                tyre_stints_visual_6=random.choice(VisualTyreCompound.declared_members()),
+                tyre_stints_visual_7=random.choice(VisualTyreCompound.declared_members()),
                 # tyre_stints_end_laps,  # array of 8
                 tyre_stints_end_laps_0=random.randrange(0,22),
                 tyre_stints_end_laps_1=random.randrange(0,22),
@@ -843,3 +849,22 @@ class TestPacketFinalClassificationData(F1TypesTest):
             )
 
         raise NotImplementedError(f"Unsupported game year: {packet_format}")
+
+
+@allure.story("Undeclared values")
+@pytest.mark.parametrize("packet_format", [2024, 2025])
+@allure.title("Undeclared tyre-stint compounds round-trip their wire bytes ({packet_format})")
+def test_undeclared_tyre_stint_compounds_round_trip(packet_format):
+    """A classification entry with two stints: the first on actual compound 30 and visual compound 31, which the
+    enums don't declare, the second on C3 / Medium. Built with from_values, then serialized and parsed back.
+
+    Expected: the first stint keeps 30 and 31 both times, and the second stays C3 / Medium."""
+    entry = FinalClassificationData.from_values(
+        packet_format=packet_format, result_status=ResultStatus.FINISHED, num_tyre_stints=2,
+        tyre_stints_actual_0=ActualTyreCompound.safeCast(30), tyre_stints_visual_0=VisualTyreCompound.safeCast(31),
+        tyre_stints_actual_1=ActualTyreCompound.C3, tyre_stints_visual_1=VisualTyreCompound.MEDIUM)
+    parsed = FinalClassificationData(entry.to_bytes(), packet_format)
+
+    for stints in (entry, parsed):
+        assert [c.raw_value for c in stints.m_tyreStintsActual] == [30, ActualTyreCompound.C3.value]
+        assert [c.raw_value for c in stints.m_tyreStintsVisual] == [31, VisualTyreCompound.MEDIUM.value]

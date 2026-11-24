@@ -51,7 +51,7 @@ missing value.
 | `writer.py` | `write_session()` — validates, derives `laps_count`/`session_best`/`is_telemetry_public`/`num_points`/`is_good`, then writes the ZIP |
 | `reader.py` | `read_contents()` (which sections a file holds) / `read_session_data()` (parsed) / `read_session()` / `read_driver_laps()` / `read_lap_telemetry()`. Lap reads and `mutate.py` raise `SectionNotPresentError` on a file with no lap telemetry |
 | `mutate.py` | `delete_laps()` / `mark_lap_good()` / `rename_session()` — in-place archive rebuilds |
-| `recorder.py` | `BaseTelemetrySnapshot` (mandatory `lap_distance`/`lap_time_ms`), `RecordedSensor` (a sensor's manifest entry + how to read its value off a snapshot), `DriverTelemetryRecorder` (accumulation, lap rollover, flashback rollback, export; lap events are reported by the caller) |
+| `recorder.py` | `BaseTelemetrySnapshot` (mandatory `lap_distance`/`lap_time_ms`), `RecordedSensor` (a sensor's manifest entry + the snapshot field it reads), `DriverTelemetryRecorder` (accumulation, lap rollover, flashback rollback, export; lap events are reported by the caller) |
 | `exceptions.py` | `PngtError` base and its subclasses — one per failure mode |
 
 ## Usage
@@ -97,7 +97,6 @@ produces a `DriverExportData` ready for `write_session()`. It never names a real
 sensor — that comes entirely from the `RecordedSensor` list it's constructed with:
 
 ```python
-from operator import attrgetter
 from lib.pngt import BaseTelemetrySnapshot, RecordedSensor, DriverTelemetryRecorder
 
 @dataclass(slots=True)
@@ -106,8 +105,8 @@ class TelemetrySnapshot(BaseTelemetrySnapshot):
     gear: int | None = None
 
 SENSORS = (
-    RecordedSensor(SensorConfig("speed", "Speed", "km/h", SensorType.CONTINUOUS), attrgetter("speed")),
-    RecordedSensor(SensorConfig("gear", "Gear", "", SensorType.DISCRETE), attrgetter("gear")),
+    RecordedSensor(SensorConfig("speed", "Speed", "km/h", SensorType.CONTINUOUS), field="speed"),
+    RecordedSensor(SensorConfig("gear", "Gear", "", SensorType.DISCRETE), field="gear"),
 )
 
 recorder = DriverTelemetryRecorder(driver_index=0, sensors=SENSORS)
@@ -118,9 +117,13 @@ recorder.on_lap_change(LapMetadata(lap_number=1, lap_time_ms=None, valid=False,
 export = recorder.export()  # -> DriverExportData
 ```
 
-`RecordedSensor.get` returning `None` means "unavailable this packet" — stored as
-`NaN`, never raised. The real F1 catalog (`F1_SENSORS`) lives next to the real
+A sensor's `field` holding `None` means "unavailable this packet" — stored as
+`NaN`, never raised. Samples are stored as float32. The real F1 catalog (`F1_SENSORS`) lives next to the real
 `TelemetrySnapshot` in `apps/backend/state_mgmt_layer/data_per_driver`, not here.
+
+`export()` hands out each telemetry column as a read-only float32 array, without copying. numpy refuses to make
+one writeable again, so a consumer can't change what a later export returns. `CompletedLap` compares by value,
+column by column, with `NaN` equal to `NaN`.
 
 ## Notes
 

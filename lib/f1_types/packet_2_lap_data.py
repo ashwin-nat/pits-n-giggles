@@ -22,12 +22,21 @@
 
 
 import struct
-from typing import Any, Dict, List, final
+from typing import Any, Dict, List, Tuple, Union, final
 
 from .base_pkt import (F1BaseEnum, F1CompareableEnum, F1PacketBase,
-                       F1SubPacketBase)
+                       F1RawValueEnum, F1SubPacketBase)
 from .common import F1Utils, ResultStatus, get_num_cars
 from .header import F1PacketType, PacketHeader
+
+# --------------------- HELPERS ------------------------------------------------
+
+def _wire_value(field: Union[F1BaseEnum, int]) -> int:
+    """The wire value of a safeCast field: the byte an undeclared value came in as, else the member's value."""
+    if isinstance(field, F1RawValueEnum):
+        return field.raw_value
+    # An unmigrated enum's safeCast keeps an undeclared value as the bare int
+    return field.value if isinstance(field, F1BaseEnum) else field
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -117,9 +126,9 @@ class LapData(F1SubPacketBase):
         "H" # uint16   m_deltaToRaceLeaderMSPart;      // Time delta to race leader milliseconds part
         "B" # uint8    m_deltaToRaceLeaderMinutesPart; // Time delta to race leader whole minute part
         "f" # float    m_lapDistance;         // Distance vehicle is around current lap in metres – could
-                      #  // be negative if line hasn’t been crossed yet
+                      #  // be negative if line hasn't been crossed yet
         "f" # float    m_totalDistance;         // Total distance travelled in session in metres – could
-                      #  // be negative if line hasn’t been crossed yet
+                      #  // be negative if line hasn't been crossed yet
         "f" # float    m_safetyCarDelta;            // Delta in seconds for safety car
         "B" # uint8   # m_carPosition;                // Car race position
         "B" # uint8    m_currentLapNum;         // Current lap number
@@ -232,14 +241,24 @@ class LapData(F1SubPacketBase):
         OUT_LAP = 3
         ON_TRACK = 4
 
-    class PitStatus(F1BaseEnum):
+    class PitStatus(F1RawValueEnum):
         """
         Enumeration representing the pit status of a driver during a racing session.
         """
 
+        UNDECLARED = -1
         NONE = 0
         PITTING = 1
         IN_PIT_AREA = 2
+
+        def isInPits(self) -> bool:
+            """
+            Check if the car is in the pits (PITTING or IN_PIT_AREA).
+
+            Returns:
+                bool: True if the status is PITTING or IN_PIT_AREA, False otherwise (undeclared values included).
+            """
+            return self in _IN_PIT_STATUSES
 
     class Sector(F1CompareableEnum):  # pylint: disable=invalid-enum-extension
         """
@@ -552,9 +571,9 @@ class LapData(F1SubPacketBase):
             self.m_safetyCarDelta,
             self.m_carPosition,
             self.m_currentLapNum,
-            self.m_pitStatus.value,
+            _wire_value(self.m_pitStatus),
             self.m_numPitStops,
-            self.m_sector.value,
+            _wire_value(self.m_sector),
             int(self.m_currentLapInvalid),
             self.m_penalties,
             self.m_totalWarnings,
@@ -562,8 +581,8 @@ class LapData(F1SubPacketBase):
             self.m_numUnservedDriveThroughPens,
             self.m_numUnservedStopGoPens,
             self.m_gridPosition,
-            self.m_driverStatus.value,
-            self.m_resultStatus.value,
+            _wire_value(self.m_driverStatus),
+            _wire_value(self.m_resultStatus),
             int(self.m_pitLaneTimerActive),
             self.m_pitLaneTimeInLaneInMS,
             self.m_pitStopTimerInMS,
@@ -631,45 +650,24 @@ class LapData(F1SubPacketBase):
         ))
         return cls(data, packet_format)
 
-    @property
-    def s1TimeMS(self) -> int:
-        """Return the total S1 time in ms."""
+    def sectorTimesMS(self) -> Tuple[int, int, int]:
+        """Return the S1, S2 and S3 times in ms. The ongoing sector counts up from the current lap time, a finished
+        one is read from the packet, and one not reached yet is 0. All 0 unless the car is ACTIVE with a running
+        lap timer."""
         if not self._is_active_with_valid_time():
-            return 0
+            return 0, 0, 0
 
-        if self.m_sector == LapData.Sector.SECTOR1:
-            # S1 is ongoing, use current lap time
-            return self.m_currentLapTimeInMS
+        lap_ms = self.m_currentLapTimeInMS
+        sector = self.m_sector
+        if sector == LapData.Sector.SECTOR1:
+            return lap_ms, 0, 0
 
-        return self._get_combined_time_ms(self.m_sector1TimeInMS, self.m_sector1TimeMinutes)
+        s1_ms = self._get_combined_time_ms(self.m_sector1TimeInMS, self.m_sector1TimeMinutes)
+        if sector == LapData.Sector.SECTOR2:
+            return s1_ms, lap_ms - s1_ms, 0
 
-    @property
-    def s2TimeMS(self) -> int:
-        """Return the total S2 time in ms."""
-        if not self._is_active_with_valid_time():
-            return 0
-
-        if self.m_sector == LapData.Sector.SECTOR1:
-            return 0
-
-        if self.m_sector == LapData.Sector.SECTOR2:
-            # S2 is ongoing, calculate as current lap time minus S1
-            return self.m_currentLapTimeInMS - self.s1TimeMS
-
-        # S2 is completed, read from packet
-        return self._get_combined_time_ms(self.m_sector2TimeInMS, self.m_sector2TimeMinutes)
-
-    @property
-    def s3TimeMS(self) -> int:
-        """Return the total S3 time in ms."""
-        if not self._is_active_with_valid_time():
-            return 0
-
-        if self.m_sector < LapData.Sector.SECTOR3:
-            return 0
-
-        # Calculate S3 as remaining time after S1 and S2
-        return self.m_currentLapTimeInMS - (self.s1TimeMS + self.s2TimeMS)
+        s2_ms = self._get_combined_time_ms(self.m_sector2TimeInMS, self.m_sector2TimeMinutes)
+        return s1_ms, s2_ms, lap_ms - (s1_ms + s2_ms)
 
     @property
     def deltaToFrontTotalMs(self) -> int:
@@ -698,6 +696,8 @@ class LapData(F1SubPacketBase):
             Total time in milliseconds
         """
         return (min_part * 60 * 1000) + ms_part
+
+_IN_PIT_STATUSES = frozenset({LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA})
 
 class PacketLapData(F1PacketBase):
     """Class representing the incoming PacketLapData.

@@ -22,11 +22,14 @@
 
 import random
 
+import allure
 import pytest
 
-from lib.f1_types import F1PacketType, PacketHeader, PacketLapData
+from lib.f1_types import F1PacketType, PacketHeader, PacketLapData, ResultStatus
 from lib.f1_types.packet_2_lap_data import LapData
 from .tests_parser_base import F1TypesTest
+
+pytestmark = [allure.epic("f1_types"), allure.feature("Lap data")]
 
 class TestPacketLapData(F1TypesTest):
     """
@@ -2084,3 +2087,61 @@ def test_packet_lap_data_2023_round_trips():
     parsed = PacketLapData(PacketHeader(serialised[:PacketHeader.PACKET_LEN]), serialised[PacketHeader.PACKET_LEN:])
 
     assert parsed == generated
+
+
+def _lap_in_sector(sector: int, current_lap_time_ms: int, result_status: ResultStatus) -> LapData:
+    """A car on lap 3 whose S1 took 1:02.500 and S2 0:20.000, now in sector (0-based)."""
+    return LapData.from_values(
+        last_lap_time_ms=0, current_lap_time_ms=current_lap_time_ms,
+        sector1_time_ms=2_500, sector1_time_minutes=1, sector2_time_ms=20_000, sector2_time_minutes=0,
+        delta_to_front_ms=0, delta_to_front_minutes=0, delta_to_leader_ms=0, delta_to_leader_minutes=0,
+        lap_distance=100.0, total_distance=100.0, safety_car_delta=0.0, car_position=1, current_lap_num=3,
+        pit_status=0, num_pit_stops=0, sector=sector, current_lap_invalid=0, penalties=0, total_warnings=0,
+        corner_cutting_warnings=0, num_unserved_drive_through_pens=0, num_unserved_stop_go_pens=0, grid_position=1,
+        driver_status=4, result_status=result_status.value, pit_lane_timer_active=0, pit_lane_time_ms=0,
+        pit_stop_timer_ms=0, pit_stop_should_serve_pen=0, speed_trap_fastest_speed=0.0, speed_trap_fastest_lap=0,
+        packet_format=2025)
+
+
+@allure.story("Sector times")
+@pytest.mark.parametrize("case, sector, lap_time_ms, status, expected", [
+    ("in-s1", 0, 30_000, ResultStatus.ACTIVE, (30_000, 0, 0)),
+    ("in-s2", 1, 70_000, ResultStatus.ACTIVE, (62_500, 7_500, 0)),
+    ("in-s3", 2, 95_000, ResultStatus.ACTIVE, (62_500, 20_000, 12_500)),
+    ("finished", 2, 95_000, ResultStatus.FINISHED, (0, 0, 0)),
+    ("timer-not-started", 0, 0, ResultStatus.ACTIVE, (0, 0, 0)),
+], ids=lambda value: value if isinstance(value, str) else None)
+@allure.title("Sector times: {case}")
+def test_lap_data_sector_times(case, sector, lap_time_ms, status, expected):
+    """A car with S1 1:02.500 and S2 0:20.000 in the packet, in each sector of an active lap, then finished, then
+    with the lap timer at 0.
+
+    Expected: the ongoing sector counts up from the lap timer, a finished sector is read from the packet (minutes
+    included), S3 is what is left of the lap time, sectors not reached yet are 0, and everything is 0 unless the car
+    is ACTIVE with a running lap timer."""
+    lap = _lap_in_sector(sector, lap_time_ms, status)
+    assert lap.sectorTimesMS() == expected, case
+
+
+@allure.story("Undeclared values")
+@allure.title("Lap data with an undeclared result and pit status round-trips its wire bytes")
+def test_lap_data_with_undeclared_statuses_round_trips():
+    """A car's lap data with result status 8 and pit status 3, one past the last value each enum declares,
+    serialized and parsed back.
+
+    Expected: both are UNDECLARED members keeping their wire value, and the round trip keeps it too."""
+    lap = LapData.from_values(
+        last_lap_time_ms=0, current_lap_time_ms=30_000,
+        sector1_time_ms=0, sector1_time_minutes=0, sector2_time_ms=0, sector2_time_minutes=0,
+        delta_to_front_ms=0, delta_to_front_minutes=0, delta_to_leader_ms=0, delta_to_leader_minutes=0,
+        lap_distance=100.0, total_distance=100.0, safety_car_delta=0.0, car_position=1, current_lap_num=3,
+        pit_status=3, num_pit_stops=0, sector=0, current_lap_invalid=0, penalties=0, total_warnings=0,
+        corner_cutting_warnings=0, num_unserved_drive_through_pens=0, num_unserved_stop_go_pens=0, grid_position=1,
+        driver_status=4, result_status=8, pit_lane_timer_active=0, pit_lane_time_ms=0,
+        pit_stop_timer_ms=0, pit_stop_should_serve_pen=0, speed_trap_fastest_speed=0.0, speed_trap_fastest_lap=0,
+        packet_format=2025)
+    assert lap.m_resultStatus == ResultStatus.UNDECLARED
+    assert lap.m_pitStatus == LapData.PitStatus.UNDECLARED
+
+    parsed = LapData(lap.to_bytes(), 2025)
+    assert (parsed.m_resultStatus.raw_value, parsed.m_pitStatus.raw_value) == (8, 3)

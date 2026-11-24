@@ -69,16 +69,21 @@ class CarSpec:
     position: int
     status: LapData.DriverStatus
     lap_time_ms: int
+    result_status: int
+    pit_status: int
 
 
 def car(index: int, lap: int, lap_distance: float, *,
         position: Optional[int] = None,
         status: LapData.DriverStatus = LapData.DriverStatus.ON_TRACK,
-        lap_time_ms: int = 0) -> CarSpec:
-    """A car on track. Position defaults to index + 1."""
+        lap_time_ms: int = 0,
+        result_status: int = ResultStatus.ACTIVE.value,
+        pit_status: int = LapData.PitStatus.NONE.value) -> CarSpec:
+    """A car on track. Position defaults to index + 1. result_status and pit_status are wire values, so a test can
+    send one the enums don't declare."""
     return CarSpec(index=index, lap=lap, lap_distance=lap_distance,
                    position=index + 1 if position is None else position,
-                   status=status, lap_time_ms=lap_time_ms)
+                   status=status, lap_time_ms=lap_time_ms, result_status=result_status, pit_status=pit_status)
 
 
 @dataclass(frozen=True)
@@ -215,12 +220,12 @@ class Packets:
                 track_length: int,
                 weather: WeatherForecastSample.WeatherCondition = WeatherForecastSample.WeatherCondition.CLEAR,
                 formula: PacketSessionData.FormulaType = PacketSessionData.FormulaType.F1_MODERN,
-                is_spectating: bool = False,
+                is_spectating: bool = False, spectator_car_index: int = 255,
                 **header_kwargs: Optional[int]) -> PacketSessionData:
         """A SESSION packet. session_type is the enum member name (e.g. "RACE", "SHORT_QUALIFYING",
         "TIME_TRIAL"), resolved per format, since the numeric values differ between SessionType23 and
         SessionType24. weather is the single forecast sample's weather, which the state layer reads as the
-        current weather."""
+        current weather. spectator_car_index is 255, the game's "none", unless set."""
         session_type_enum = self._session_type(session_type)
         forecast = WeatherForecastSample.from_values(
             self.packet_format, session_type_enum, time_offset=0, weather=weather,
@@ -229,7 +234,8 @@ class Packets:
         return PacketSessionData.from_values(
             self.header(F1PacketType.SESSION, session_uid, **header_kwargs),
             session_type_enum, track, total_laps=total_laps, track_length=track_length,
-            weather_forecast_samples=[forecast], formula=formula, is_spectating=is_spectating)
+            weather_forecast_samples=[forecast], formula=formula, is_spectating=is_spectating,
+            spectator_car_index=spectator_car_index)
 
     def participants(self, *drivers: DriverSpec, session_uid: int, **header_kwargs: Optional[int]) -> PacketParticipantsData:
         """A PARTICIPANTS packet. drivers fill car indices 0.. in order. The rest of the grid is
@@ -378,12 +384,12 @@ class Packets:
             safety_car_delta=0.0,
             car_position=spec.position if active else 0,
             current_lap_num=spec.lap if active else 0,
-            pit_status=0, num_pit_stops=0, sector=0, current_lap_invalid=0, penalties=0,
+            pit_status=spec.pit_status if active else 0, num_pit_stops=0, sector=0, current_lap_invalid=0, penalties=0,
             total_warnings=0, corner_cutting_warnings=0,
             num_unserved_drive_through_pens=0, num_unserved_stop_go_pens=0,
             grid_position=spec.position if active else 0,
             driver_status=spec.status.value if active else 0,
-            result_status=ResultStatus.ACTIVE.value if active else ResultStatus.INVALID.value,
+            result_status=spec.result_status if active else ResultStatus.INVALID.value,
             pit_lane_timer_active=0, pit_lane_time_ms=0, pit_stop_timer_ms=0, pit_stop_should_serve_pen=0,
             speed_trap_fastest_speed=0.0, speed_trap_fastest_lap=0,
             packet_format=self.packet_format,

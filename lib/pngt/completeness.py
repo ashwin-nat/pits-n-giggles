@@ -24,6 +24,8 @@ import math
 from dataclasses import dataclass
 from typing import Optional, Sequence
 
+import numpy as np
+
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 COMPLETE_LAP_TOLERANCE_M = 30.0
@@ -49,22 +51,14 @@ class LapVerdict:
 def measure_lap_coverage(lap_distance: Sequence[float]) -> LapCoverage:
     """Start, end and largest sample gap of a lap's `lap_distance` array. Samples before
     the line (negative) and non-finite samples are ignored."""
-    start: Optional[float] = None
-    end: Optional[float] = None
-    previous: Optional[float] = None
-    max_gap = 0.0
-    for raw in lap_distance:
-        value = float(raw)
-        if not math.isfinite(value) or value < 0:
-            continue
-        if start is None:
-            start = value
-        if previous is not None and value > previous:
-            max_gap = max(max_gap, value - previous)
-        if previous is None or value > previous:
-            previous = value
-        end = value if end is None else max(end, value)
-    return LapCoverage(start, end, None if start is None else max_gap)
+    # float64, so the gaps are the same differences a Python float loop takes
+    values = np.asarray(lap_distance, dtype=np.float64)
+    values = values[np.isfinite(values) & (values >= 0)]
+    if values.size == 0:
+        return LapCoverage(None, None, None)
+    # Each gap is from the furthest distance reached so far, so a rewind adds none
+    gaps = values[1:] - np.maximum.accumulate(values)[:-1]
+    return LapCoverage(float(values[0]), float(values.max()), max(0.0, float(gaps.max(initial=0.0))))
 
 
 def judge_lap_coverage(

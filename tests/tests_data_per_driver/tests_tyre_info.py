@@ -25,6 +25,8 @@
 import logging
 import random
 
+import allure
+
 from apps.backend.state_mgmt_layer.data_per_driver import (
     TyreSetHistoryEntry, TyreSetHistoryManager, TyreSetInfo)
 from lib.f1_types import ActualTyreCompound, VisualTyreCompound
@@ -32,15 +34,18 @@ from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 from .tests_data_per_driver_base import F1DataPerDriverTest
 
+pytestmark = allure.feature("Tyre info")
+
 
 class TestTyreSets(F1DataPerDriverTest):
     pass
 
+@allure.story("Tyre set info")
 class TestTyreSetInfo(TestTyreSets):
 
     def test_initialization(self):
-        actual_tyre_compound = random.choice(list(ActualTyreCompound))
-        visual_tyre_compound = random.choice(list(VisualTyreCompound))
+        actual_tyre_compound = random.choice(ActualTyreCompound.declared_members())
+        visual_tyre_compound = random.choice(VisualTyreCompound.declared_members())
         tyre_set_id = 1
         tyre_age_laps = 10
 
@@ -52,8 +57,8 @@ class TestTyreSetInfo(TestTyreSets):
         self.assertEqual(tyre_set.m_tyre_age_laps, tyre_age_laps)
 
     def test_toJSON(self):
-        actual_tyre_compound = random.choice(list(ActualTyreCompound))
-        visual_tyre_compound = random.choice(list(VisualTyreCompound))
+        actual_tyre_compound = random.choice(ActualTyreCompound.declared_members())
+        visual_tyre_compound = random.choice(VisualTyreCompound.declared_members())
         tyre_set_id = 1
         tyre_age_laps = 10
 
@@ -69,8 +74,8 @@ class TestTyreSetInfo(TestTyreSets):
         self.assertEqual(tyre_set.toJSON(), expected_json)
 
     def test_repr(self):
-        actual_tyre_compound = random.choice(list(ActualTyreCompound))
-        visual_tyre_compound = random.choice(list(VisualTyreCompound))
+        actual_tyre_compound = random.choice(ActualTyreCompound.declared_members())
+        visual_tyre_compound = random.choice(VisualTyreCompound.declared_members())
         tyre_set_id = 1
         tyre_age_laps = 10
 
@@ -81,8 +86,8 @@ class TestTyreSetInfo(TestTyreSets):
         self.assertEqual(repr(tyre_set), expected_repr)
 
     def test_str(self):
-        actual_tyre_compound = random.choice(list(ActualTyreCompound))
-        visual_tyre_compound = random.choice(list(VisualTyreCompound))
+        actual_tyre_compound = random.choice(ActualTyreCompound.declared_members())
+        visual_tyre_compound = random.choice(VisualTyreCompound.declared_members())
         tyre_set_id = 1
         tyre_age_laps = 10
 
@@ -93,6 +98,7 @@ class TestTyreSetInfo(TestTyreSets):
         self.assertEqual(str(tyre_set), expected_str)
 
 
+@allure.story("Tyre set history")
 class TestTyreSetHistoryEntry(TestTyreSets):
 
     def test_initialization(self):

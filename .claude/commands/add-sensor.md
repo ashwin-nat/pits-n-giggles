@@ -86,10 +86,10 @@ Use `Optional[int]` for discrete/ordered values (store `.value` of an enum, neve
             label=_label("oil_temp"),
             unit="°C",
             type=SensorType.CONTINUOUS),
-        get=attrgetter("oil_temp")),
+        field="oil_temp"),
 ```
 
-Always use `_label(field)`; never hardcode the label. Pass `should_display=False` only for a sensor the user wants hidden from the UI.
+Always use `_label(field)`; never hardcode the label. Pass `should_display=False` only for a sensor the user wants hidden from the UI. `field` names the `TelemetrySnapshot` attribute from 3b; the recorder reads it directly, so a derived value (a unit conversion, a percentage) gets its own snapshot field, computed in 3d.
 
 ### 3d. (Optional) Wire the source — `CarData.addTelemetrySnapshot` in `apps/backend/state_mgmt_layer/data_per_driver/data_per_driver.py`
 

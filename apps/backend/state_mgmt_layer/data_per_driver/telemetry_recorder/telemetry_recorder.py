@@ -24,7 +24,6 @@
 
 import math
 from dataclasses import dataclass
-from operator import attrgetter
 from typing import Optional
 
 from lib.config import LapAnalyzerSensorSettings
@@ -104,8 +103,8 @@ def _label(field: str) -> str:
     """Manifest label for a LapAnalyzerSensorSettings field. A typo raises at import."""
     return LapAnalyzerSensorSettings.model_fields[field].description  # pylint: disable=unsubscriptable-object
 
-# LapAnalyzerSensorSettings field name -> how to record it: manifest description plus how to
-# read its value off a TelemetrySnapshot.
+# LapAnalyzerSensorSettings field name -> how to record it: manifest description plus the
+# TelemetrySnapshot field it is read from.
 F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
 
     # ------- INPUTS -----------
@@ -116,7 +115,7 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             unit="%",
             type=SensorType.CONTINUOUS,
             range=(0, 100)),
-        get=attrgetter("throttle")),
+        field="throttle"),
     "brake": RecordedSensor(
         config=SensorConfig(
             key="brake",
@@ -124,7 +123,7 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             unit="%",
             type=SensorType.CONTINUOUS,
             range=(0, 100)),
-        get=attrgetter("brake")),
+        field="brake"),
     "steering": RecordedSensor(
         config=SensorConfig(
             key="steering",
@@ -132,7 +131,7 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             unit="%",
             type=SensorType.CONTINUOUS,
             range=(-100, 100)),
-        get=attrgetter("steering")),
+        field="steering"),
 
     # ---- CAR STATE -----
     "gear": RecordedSensor(
@@ -141,21 +140,21 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             label=_label("gear"),
             unit="",
             type=SensorType.DISCRETE), # -1 for reverse
-        get=attrgetter("gear")),
+        field="gear"),
     "speed": RecordedSensor(
         config=SensorConfig(
             key="speed",
             label=_label("speed"),
             unit="kmph",
             type=SensorType.CONTINUOUS),
-        get=attrgetter("speed")),
+        field="speed"),
     "engine_rpm": RecordedSensor(
         config=SensorConfig(
             key="engine_rpm",
             label=_label("engine_rpm"),
             unit="rpm",
             type=SensorType.CONTINUOUS),
-        get=attrgetter("engine_rpm")),
+        field="engine_rpm"),
 
     # ------ ERS --------
     "ers_deploy_mode": RecordedSensor(
@@ -165,7 +164,7 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             unit="",
             type=SensorType.DISCRETE,
             range=(0, 3)),
-        get=attrgetter("ers_deploy_mode")),
+        field="ers_deploy_mode"),
     "ers_store_energy_j": RecordedSensor(
         config=SensorConfig(
             key="ers.store_energy_j",
@@ -173,7 +172,7 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             unit="J",
             type=SensorType.CONTINUOUS,
             range=(0, CarStatusData.MAX_ERS_STORE_ENERGY)),
-        get=attrgetter("ers_store_energy_j")),
+        field="ers_store_energy_j"),
     "ers_store_energy_perc": RecordedSensor(
         config=SensorConfig(
             key="ers.store_energy",
@@ -181,7 +180,7 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             unit="%",
             type=SensorType.CONTINUOUS,
             range=(0, 100)),
-        get=attrgetter("ers_store_energy_perc")),
+        field="ers_store_energy_perc"),
 
     # ------ TYRE WEAR -------
     "tyre_wear_fl": RecordedSensor(
@@ -190,28 +189,28 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             label=_label("tyre_wear_fl"),
             unit="%",
             type=SensorType.CONTINUOUS),
-        get=attrgetter("tyre_wear_fl")),
+        field="tyre_wear_fl"),
     "tyre_wear_fr": RecordedSensor(
         config=SensorConfig(
             key="tyre_wear.fr",
             label=_label("tyre_wear_fr"),
             unit="%",
             type=SensorType.CONTINUOUS),
-        get=attrgetter("tyre_wear_fr")),
+        field="tyre_wear_fr"),
     "tyre_wear_rl": RecordedSensor(
         config=SensorConfig(
             key="tyre_wear.rl",
             label=_label("tyre_wear_rl"),
             unit="%",
             type=SensorType.CONTINUOUS),
-        get=attrgetter("tyre_wear_rl")),
+        field="tyre_wear_rl"),
     "tyre_wear_rr": RecordedSensor(
         config=SensorConfig(
             key="tyre_wear.rr",
             label=_label("tyre_wear_rr"),
             unit="%",
             type=SensorType.CONTINUOUS),
-        get=attrgetter("tyre_wear_rr")),
+        field="tyre_wear_rr"),
 
     # ------ TYRE STATUS -------
     "tyre_surface_temp_fl": RecordedSensor(
@@ -220,84 +219,84 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             label=_label("tyre_surface_temp_fl"),
             unit="°C",
             type=SensorType.CONTINUOUS),
-        get=attrgetter("tyre_surface_temp_fl")),
+        field="tyre_surface_temp_fl"),
     "tyre_surface_temp_fr": RecordedSensor(
         config=SensorConfig(
             key="tyre_temp.surface.fr",
             label=_label("tyre_surface_temp_fr"),
             unit="°C",
             type=SensorType.CONTINUOUS),
-        get=attrgetter("tyre_surface_temp_fr")),
+        field="tyre_surface_temp_fr"),
     "tyre_surface_temp_rl": RecordedSensor(
         config=SensorConfig(
             key="tyre_temp.surface.rl",
             label=_label("tyre_surface_temp_rl"),
             unit="°C",
             type=SensorType.CONTINUOUS),
-        get=attrgetter("tyre_surface_temp_rl")),
+        field="tyre_surface_temp_rl"),
     "tyre_surface_temp_rr": RecordedSensor(
         config=SensorConfig(
             key="tyre_temp.surface.rr",
             label=_label("tyre_surface_temp_rr"),
             unit="°C",
             type=SensorType.CONTINUOUS),
-        get=attrgetter("tyre_surface_temp_rr")),
+        field="tyre_surface_temp_rr"),
     "tyre_inner_temp_fl": RecordedSensor(
         config=SensorConfig(
             key="tyre_temp.inner.fl",
             label=_label("tyre_inner_temp_fl"),
             unit="°C",
             type=SensorType.CONTINUOUS),
-        get=attrgetter("tyre_inner_temp_fl")),
+        field="tyre_inner_temp_fl"),
     "tyre_inner_temp_fr": RecordedSensor(
         config=SensorConfig(
             key="tyre_temp.inner.fr",
             label=_label("tyre_inner_temp_fr"),
             unit="°C",
             type=SensorType.CONTINUOUS),
-        get=attrgetter("tyre_inner_temp_fr")),
+        field="tyre_inner_temp_fr"),
     "tyre_inner_temp_rl": RecordedSensor(
         config=SensorConfig(
             key="tyre_temp.inner.rl",
             label=_label("tyre_inner_temp_rl"),
             unit="°C",
             type=SensorType.CONTINUOUS),
-        get=attrgetter("tyre_inner_temp_rl")),
+        field="tyre_inner_temp_rl"),
     "tyre_inner_temp_rr": RecordedSensor(
         config=SensorConfig(
             key="tyre_temp.inner.rr",
             label=_label("tyre_inner_temp_rr"),
             unit="°C",
             type=SensorType.CONTINUOUS),
-        get=attrgetter("tyre_inner_temp_rr")),
+        field="tyre_inner_temp_rr"),
     "tyre_pressure_fl": RecordedSensor(
         config=SensorConfig(
             key="tyre_pressure.fl",
             label=_label("tyre_pressure_fl"),
             unit="psi",
             type=SensorType.CONTINUOUS),
-        get=attrgetter("tyre_pressure_fl")),
+        field="tyre_pressure_fl"),
     "tyre_pressure_fr": RecordedSensor(
         config=SensorConfig(
             key="tyre_pressure.fr",
             label=_label("tyre_pressure_fr"),
             unit="psi",
             type=SensorType.CONTINUOUS),
-        get=attrgetter("tyre_pressure_fr")),
+        field="tyre_pressure_fr"),
     "tyre_pressure_rl": RecordedSensor(
         config=SensorConfig(
             key="tyre_pressure.rl",
             label=_label("tyre_pressure_rl"),
             unit="psi",
             type=SensorType.CONTINUOUS),
-        get=attrgetter("tyre_pressure_rl")),
+        field="tyre_pressure_rl"),
     "tyre_pressure_rr": RecordedSensor(
         config=SensorConfig(
             key="tyre_pressure.rr",
             label=_label("tyre_pressure_rr"),
             unit="psi",
             type=SensorType.CONTINUOUS),
-        get=attrgetter("tyre_pressure_rr")),
+        field="tyre_pressure_rr"),
     "surface_type_fl": RecordedSensor(
         config=SensorConfig(
             key="surface_type.fl",
@@ -305,7 +304,7 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             unit="",
             type=SensorType.DISCRETE,
             range=(0, 11)),
-        get=attrgetter("surface_type_fl")),
+        field="surface_type_fl"),
     "surface_type_fr": RecordedSensor(
         config=SensorConfig(
             key="surface_type.fr",
@@ -313,7 +312,7 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             unit="",
             type=SensorType.DISCRETE,
             range=(0, 11)),
-        get=attrgetter("surface_type_fr")),
+        field="surface_type_fr"),
     "surface_type_rl": RecordedSensor(
         config=SensorConfig(
             key="surface_type.rl",
@@ -321,7 +320,7 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             unit="",
             type=SensorType.DISCRETE,
             range=(0, 11)),
-        get=attrgetter("surface_type_rl")),
+        field="surface_type_rl"),
     "surface_type_rr": RecordedSensor(
         config=SensorConfig(
             key="surface_type.rr",
@@ -329,7 +328,7 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             unit="",
             type=SensorType.DISCRETE,
             range=(0, 11)),
-        get=attrgetter("surface_type_rr")),
+        field="surface_type_rr"),
 
     # ------ MOTION -------
     "motion_pos_x": RecordedSensor(
@@ -339,7 +338,7 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             unit="m",
             type=SensorType.CONTINUOUS,
             should_display=False),
-        get=attrgetter("motion_pos_x")),
+        field="motion_pos_x"),
     "motion_pos_y": RecordedSensor(
         config=SensorConfig(
             key="motion.position.y",
@@ -347,7 +346,7 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             unit="m",
             type=SensorType.CONTINUOUS,
             should_display=False),
-        get=attrgetter("motion_pos_y")),
+        field="motion_pos_y"),
     "motion_pos_z": RecordedSensor(
         config=SensorConfig(
             key="motion.position.z",
@@ -355,7 +354,7 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             unit="m",
             type=SensorType.CONTINUOUS,
             should_display=False),
-        get=attrgetter("motion_pos_z")),
+        field="motion_pos_z"),
     "motion_yaw": RecordedSensor(
         config=SensorConfig(
             key="motion.yaw",
@@ -364,5 +363,5 @@ F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
             type=SensorType.CONTINUOUS,
             should_display=False,
             range=(-math.pi, math.pi)),
-        get=attrgetter("motion_yaw")),
+        field="motion_yaw"),
 }

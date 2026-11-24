@@ -22,11 +22,11 @@
 
 
 import struct
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from .base_pkt import F1PacketBase, F1SubPacketBase
-from .common import (ActualTyreCompound, SessionType23, SessionType24,
-                     VisualTyreCompound)
+from .common import (ActualTyreCompound, SessionType, SessionType23,
+                     SessionType24, VisualTyreCompound)
 from .header import F1PacketType, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -36,11 +36,11 @@ class TyreSetData(F1SubPacketBase):
     Represents information about a specific tyre set, including its compound, wear, availability, and other details.
 
     Attributes:
-        m_actualTyreCompound (int): Actual tyre compound used.
-        m_visualTyreCompound (int): Visual tyre compound used.
+        m_actualTyreCompound (ActualTyreCompound): Actual tyre compound used.
+        m_visualTyreCompound (VisualTyreCompound): Visual tyre compound used.
         m_wear (int): Tyre wear percentage.
         m_available (int): Whether this set is currently available.
-        m_recommendedSession (int): Recommended session for the tyre set.
+        m_recommendedSession (SessionType): Recommended session for the tyre set.
         m_lifeSpan (int): Laps left in this tyre set.
         m_usableLife (int): Max number of laps recommended for this compound.
         m_lapDeltaTime (int): Lap delta time in milliseconds compared to the fitted set.
@@ -195,11 +195,11 @@ class TyreSetData(F1SubPacketBase):
         """
 
         return self.COMPILED_PACKET_STRUCT.pack(
-            self.m_actualTyreCompound.value,
-            self.m_visualTyreCompound.value,
+            self.m_actualTyreCompound.raw_value,
+            self.m_visualTyreCompound.raw_value,
             self.m_wear,
             self.m_available,
-            self.m_recommendedSession.value,
+            self.m_recommendedSession.raw_value,
             self.m_lifeSpan,
             self.m_usableLife,
             self.m_lapDeltaTime,
@@ -213,7 +213,7 @@ class TyreSetData(F1SubPacketBase):
                 visual_tyre_compound: VisualTyreCompound,
                 wear: int,
                 available: bool,
-                recommended_session: Union[SessionType23, SessionType24],
+                recommended_session: SessionType,
                 life_span: int,
                 usable_life: int,
                 lap_delta_time: int,
@@ -227,7 +227,7 @@ class TyreSetData(F1SubPacketBase):
             visual_tyre_compound (VisualTyreCompound): Visual tyre compound
             wear (int): Wear percentage
             available (bool): Available
-            recommended_session (Union[SessionType23, SessionType24]): Recommended session
+            recommended_session (SessionType): Recommended session
             life_span (int): Life span
             usable_life (int): Usable life
             lap_delta_time (int): Lap delta time
@@ -237,11 +237,11 @@ class TyreSetData(F1SubPacketBase):
             TyreSetData: New TyreSetData object
         """
         return cls(cls.COMPILED_PACKET_STRUCT.pack(
-            actual_tyre_compound.value,
-            visual_tyre_compound.value,
+            actual_tyre_compound.raw_value,
+            visual_tyre_compound.raw_value,
             wear,
             available,
-            recommended_session.value,
+            recommended_session.raw_value,
             life_span,
             usable_life,
             lap_delta_time,

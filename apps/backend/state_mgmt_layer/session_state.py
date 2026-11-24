@@ -47,7 +47,7 @@ from lib.f1_types import (MAX_DRIVERS, CarStatusData, F1Utils,
                           PacketLapPositionsData, PacketMotionData,
                           PacketParticipantsData, PacketSessionData,
                           PacketSessionHistoryData, PacketTimeTrialData,
-                          PacketTyreSetsData, ResultStatus)
+                          PacketTyreSetsData)
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
@@ -199,6 +199,14 @@ class SessionState:
         self.m_logger.info("Clearing all internals. Reason: %s", reason)
 
     @property
+    def ref_index(self) -> Optional[int]:
+        """Index of the car the overlays follow: the spectated car while spectating, else the player's.
+        None when the game hasn't named one."""
+        if self.m_session_info.m_is_spectating:
+            return self.m_session_info.m_spectator_car_index
+        return self.m_player_index
+
+    @property
     def is_data_available(self) -> bool:
         """Checks if data is available for at least one driver
         """
@@ -289,11 +297,14 @@ class SessionState:
         num_active_cars = 0
         should_recompute_fastest_lap = False
         record_laps = self.m_lap_analyzer_settings.enable
+        ref_index = self.ref_index
         for index, lap_data in enumerate(packet.m_lapData):
 
             driver_obj = self._getObjectByIndex(index, reason="Lap data update")
+            # Before the inactive skip, so the filter still switches while the car's slot is empty
+            driver_obj.updatePowerFilterState(ref_index)
             driver_obj.m_lap_info.m_result_status = lap_data.m_resultStatus
-            if lap_data.m_resultStatus in {ResultStatus.INVALID, ResultStatus.INACTIVE}:
+            if lap_data.m_resultStatus.isInactive():
                 continue
 
             num_active_cars += 1
@@ -319,9 +330,9 @@ class SessionState:
 
             # Update packet copy and check for fastest lap recomputation
             driver_obj.updateLapDataPacketCopy(lap_data, self.m_session_info.m_track_len)
-            # Only feed the power estimators while the car is on a running timed lap; a lap
-            # timer of 0 (stationary/garage/not started) would reset the filter's rolling window.
-            if lap_data.m_currentLapTimeInMS > 0:
+            # Only the PU overlay reads these, for its reference car.
+            # A lap timer of 0 (stationary/garage/not started) would reset the filter's rolling window
+            if driver_obj.m_power_filter_enabled and lap_data.m_currentLapTimeInMS > 0:
                 driver_obj.m_car_info.updatePowerEstimators(lap_data.m_currentLapTimeInMS)
 
             if not should_recompute_fastest_lap:
@@ -441,12 +452,6 @@ class SessionState:
             lap_data: Lap data containing status information
             driver_index: Index of the driver in the race
         """
-        RESULT_STATUS_MAP = {
-            ResultStatus.DID_NOT_FINISH: "DNF",
-            ResultStatus.DISQUALIFIED: "DSQ",
-            ResultStatus.RETIRED: "DNF"
-        }
-
         # Update current lap number
         driver_obj.m_lap_info.m_current_lap = lap_data.m_currentLapNum
 
@@ -454,9 +459,7 @@ class SessionState:
         driver_obj.processPittingStatus(lap_data)
 
         # Update DNF status
-        driver_obj.m_driver_info.m_dnf_status_code = RESULT_STATUS_MAP.get(
-            lap_data.m_resultStatus, ""
-        )
+        driver_obj.m_driver_info.m_dnf_status_code = lap_data.m_resultStatus.dnfStatusCode()
 
         # Check if player is DNF
         if (driver_index == self.m_player_index and

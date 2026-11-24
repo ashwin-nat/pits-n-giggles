@@ -46,11 +46,12 @@ def get_num_cars(packet_format: int) -> int:
 
 # -------------------- COMMON CLASSES ----------------------------------------------------------------------------------
 
-class ResultStatus(F1BaseEnum):
+class ResultStatus(F1RawValueEnum):
     """
     Enumeration representing the result status of a driver after a racing session.
     """
 
+    UNDECLARED = -1
     INVALID = 0
     INACTIVE = 1
     ACTIVE = 2
@@ -59,6 +60,32 @@ class ResultStatus(F1BaseEnum):
     DISQUALIFIED = 5
     NOT_CLASSIFIED = 6
     RETIRED = 7
+
+    def isInactive(self) -> bool:
+        """
+        Check if this car slot holds no car in the session (INVALID or INACTIVE).
+
+        Returns:
+            bool: True if the status is INVALID or INACTIVE, False otherwise (undeclared values included).
+        """
+        return self in _INACTIVE_RESULT_STATUSES
+
+    def dnfStatusCode(self) -> str:
+        """
+        Get the short code for a car out of the race ("DNF" or "DSQ").
+
+        Returns:
+            str: "DNF" for DID_NOT_FINISH or RETIRED, "DSQ" for DISQUALIFIED, else an empty string.
+        """
+        return _DNF_STATUS_CODES.get(self, "")
+
+# Built once: a set literal of members in a method is rebuilt and re-hashed on every call
+_INACTIVE_RESULT_STATUSES = frozenset({ResultStatus.INVALID, ResultStatus.INACTIVE})
+_DNF_STATUS_CODES = {
+    ResultStatus.DID_NOT_FINISH: "DNF",
+    ResultStatus.DISQUALIFIED: "DSQ",
+    ResultStatus.RETIRED: "DNF",
+}
 
 class ResultReason(F1BaseEnum):
     """
@@ -85,7 +112,7 @@ class ResultReason(F1BaseEnum):
         """
         return self.name.lower()
 
-class SessionType(F1BaseEnum):
+class SessionType(F1RawValueEnum):
 
     @abstractmethod
     def isFpTypeSession(self) -> bool:
@@ -143,6 +170,7 @@ class SessionType23(SessionType):
     """
     Enum class representing F1 session types.
     """
+    UNDECLARED = -1
     UNKNOWN = 0
     PRACTICE_1 = 1
     PRACTICE_2 = 2
@@ -165,12 +193,7 @@ class SessionType23(SessionType):
         Returns:
             bool: True if the session type is a free practice session, False otherwise.
         """
-        return self in {
-            SessionType23.PRACTICE_1,
-            SessionType23.PRACTICE_2,
-            SessionType23.PRACTICE_3,
-            SessionType23.SHORT_PRACTICE,
-        }
+        return self in _SESSION_TYPE_23_FP
 
     def isQualiTypeSession(self) -> bool:
         """
@@ -179,13 +202,7 @@ class SessionType23(SessionType):
         Returns:
             bool: True if the session type is a qualifying session, False otherwise.
         """
-        return self in {
-            SessionType23.QUALIFYING_1,
-            SessionType23.QUALIFYING_2,
-            SessionType23.QUALIFYING_3,
-            SessionType23.SHORT_QUALIFYING,
-            SessionType23.ONE_SHOT_QUALIFYING,
-        }
+        return self in _SESSION_TYPE_23_QUALI
 
     def isRaceTypeSession(self) -> bool:
         """
@@ -194,11 +211,7 @@ class SessionType23(SessionType):
         Returns:
             bool: True if the session type is a race session, False otherwise.
         """
-        return self in {
-            SessionType23.RACE,
-            SessionType23.RACE_2,
-            SessionType23.RACE_3,
-        }
+        return self in _SESSION_TYPE_23_RACE
 
     def isTimeTrialTypeSession(self) -> bool:
         """
@@ -209,7 +222,27 @@ class SessionType23(SessionType):
         """
         return self == SessionType23.TIME_TRIAL
 
+_SESSION_TYPE_23_FP = frozenset({
+    SessionType23.PRACTICE_1,
+    SessionType23.PRACTICE_2,
+    SessionType23.PRACTICE_3,
+    SessionType23.SHORT_PRACTICE,
+})
+_SESSION_TYPE_23_QUALI = frozenset({
+    SessionType23.QUALIFYING_1,
+    SessionType23.QUALIFYING_2,
+    SessionType23.QUALIFYING_3,
+    SessionType23.SHORT_QUALIFYING,
+    SessionType23.ONE_SHOT_QUALIFYING,
+})
+_SESSION_TYPE_23_RACE = frozenset({
+    SessionType23.RACE,
+    SessionType23.RACE_2,
+    SessionType23.RACE_3,
+})
+
 class SessionType24(SessionType):
+    UNDECLARED = -1
     UNKNOWN = 0
     PRACTICE_1 = 1
     PRACTICE_2 = 2
@@ -237,12 +270,7 @@ class SessionType24(SessionType):
         Returns:
             bool: True if the session type is a free practice session, False otherwise.
         """
-        return self in {
-            SessionType24.PRACTICE_1,
-            SessionType24.PRACTICE_2,
-            SessionType24.PRACTICE_3,
-            SessionType24.SHORT_PRACTICE,
-        }
+        return self in _SESSION_TYPE_24_FP
 
     def isQualiTypeSession(self) -> bool:
         """
@@ -251,18 +279,7 @@ class SessionType24(SessionType):
         Returns:
             bool: True if the session type is a qualifying session, False otherwise.
         """
-        return self in {
-            SessionType24.QUALIFYING_1,
-            SessionType24.QUALIFYING_2,
-            SessionType24.QUALIFYING_3,
-            SessionType24.SHORT_QUALIFYING,
-            SessionType24.ONE_SHOT_QUALIFYING,
-            SessionType24.SPRINT_SHOOTOUT_1,
-            SessionType24.SPRINT_SHOOTOUT_2,
-            SessionType24.SPRINT_SHOOTOUT_3,
-            SessionType24.SHORT_SPRINT_SHOOTOUT,
-            SessionType24.ONE_SHOT_SPRINT_SHOOTOUT,
-        }
+        return self in _SESSION_TYPE_24_QUALI
 
     def isRaceTypeSession(self) -> bool:
         """
@@ -271,11 +288,7 @@ class SessionType24(SessionType):
         Returns:
             bool: True if the session type is a race session, False otherwise.
         """
-        return self in {
-            SessionType24.RACE,
-            SessionType24.RACE_2,
-            SessionType24.RACE_3,
-        }
+        return self in _SESSION_TYPE_24_RACE
 
     def isTimeTrialTypeSession(self) -> bool:
         """
@@ -285,6 +298,30 @@ class SessionType24(SessionType):
             bool: True if the session type is a time trial session, False otherwise.
         """
         return self == SessionType24.TIME_TRIAL
+
+_SESSION_TYPE_24_FP = frozenset({
+    SessionType24.PRACTICE_1,
+    SessionType24.PRACTICE_2,
+    SessionType24.PRACTICE_3,
+    SessionType24.SHORT_PRACTICE,
+})
+_SESSION_TYPE_24_QUALI = frozenset({
+    SessionType24.QUALIFYING_1,
+    SessionType24.QUALIFYING_2,
+    SessionType24.QUALIFYING_3,
+    SessionType24.SHORT_QUALIFYING,
+    SessionType24.ONE_SHOT_QUALIFYING,
+    SessionType24.SPRINT_SHOOTOUT_1,
+    SessionType24.SPRINT_SHOOTOUT_2,
+    SessionType24.SPRINT_SHOOTOUT_3,
+    SessionType24.SHORT_SPRINT_SHOOTOUT,
+    SessionType24.ONE_SHOT_SPRINT_SHOOTOUT,
+})
+_SESSION_TYPE_24_RACE = frozenset({
+    SessionType24.RACE,
+    SessionType24.RACE_2,
+    SessionType24.RACE_3,
+})
 
 class SessionLength(F1BaseEnum):
     """
@@ -307,7 +344,7 @@ class SessionLength(F1BaseEnum):
         """
         return self.name.replace('_', ' ').title()
 
-class ActualTyreCompound(F1BaseEnum):
+class ActualTyreCompound(F1RawValueEnum):
     """
     Enumeration representing different tyre compounds used in Formula 1 and Formula 2.
 
@@ -350,6 +387,7 @@ class ActualTyreCompound(F1BaseEnum):
     HARD = 14
     WET_F2 = 15
     UNKNOWN = 255
+    UNDECLARED = -1
 
     def __str__(self) -> str:
         """
@@ -358,31 +396,20 @@ class ActualTyreCompound(F1BaseEnum):
         Returns:
             str: String representation of the tyre compound.
         """
-        return {
-            ActualTyreCompound.C6: "C6",
-            ActualTyreCompound.C5: "C5",
-            ActualTyreCompound.C4: "C4",
-            ActualTyreCompound.C3: "C3",
-            ActualTyreCompound.C2: "C2",
-            ActualTyreCompound.C1: "C1",
-            ActualTyreCompound.C0: "C0",
-            ActualTyreCompound.INTER: "Inters",
-            ActualTyreCompound.WET: "Wet",
-            ActualTyreCompound.DRY: "Dry",
-            ActualTyreCompound.WET_CLASSIC: "Wet (Classic)",
-            ActualTyreCompound.SUPER_SOFT: "Super Soft",
-            ActualTyreCompound.SOFT: "Soft",
-            ActualTyreCompound.MEDIUM: "Medium",
-            ActualTyreCompound.HARD: "Hard",
-            ActualTyreCompound.WET_F2: "Wet (F2)",
-            ActualTyreCompound.UNKNOWN: "Unknown",
-        }[self]
+        return _ACTUAL_TYRE_COMPOUND_STR[self]
 
-    @classmethod
-    def safeCast(cls, value: int) -> "ActualTyreCompound":
-        return super().safeCast(value, ActualTyreCompound.UNKNOWN)
+# Title-cased names, except where the display string differs
+_ACTUAL_TYRE_COMPOUND_STR = {
+    member: member.name.replace("_", " ").title() for member in ActualTyreCompound
+} | {
+    # Override the default title-cased names here
+    ActualTyreCompound.INTER: "Inters",
+    ActualTyreCompound.WET_CLASSIC: "Wet (Classic)",
+    ActualTyreCompound.WET_F2: "Wet (F2)",
+    ActualTyreCompound.UNDECLARED: "Unknown",  # as before migrating, when safeCast gave UNKNOWN
+}
 
-class VisualTyreCompound(F1BaseEnum):
+class VisualTyreCompound(F1RawValueEnum):
     """
     Enumeration representing different visual tyre compounds used in Formula 1 and Formula 2.
 
@@ -415,6 +442,7 @@ class VisualTyreCompound(F1BaseEnum):
     HARD_F2 = 22
     WET_F2 = 15
     UNKNOWN = 255
+    UNDECLARED = -1
 
     def __str__(self) -> str:
         """
@@ -423,24 +451,7 @@ class VisualTyreCompound(F1BaseEnum):
         Returns:
             str: String representation of the visual tyre compound.
         """
-        return {
-            VisualTyreCompound.SOFT: "Soft",
-            VisualTyreCompound.MEDIUM: "Medium",
-            VisualTyreCompound.HARD: "Hard",
-            VisualTyreCompound.INTER: "Inters",
-            VisualTyreCompound.WET: "Wet",
-            VisualTyreCompound.WET_CLASSIC: "Wet",
-            VisualTyreCompound.SUPER_SOFT: "Super Soft",
-            VisualTyreCompound.SOFT_F2: "Soft",
-            VisualTyreCompound.MEDIUM_F2: "Medium",
-            VisualTyreCompound.HARD_F2: "Hard",
-            VisualTyreCompound.WET_F2: "Wet",
-            VisualTyreCompound.UNKNOWN: "Unknown",
-        }[self]
-
-    @classmethod
-    def safeCast(cls, value: int) -> "VisualTyreCompound":
-        return super().safeCast(value, VisualTyreCompound.UNKNOWN)
+        return _VISUAL_TYRE_COMPOUND_STR[self]
 
     def isSlicks(self) -> bool:
         """
@@ -449,15 +460,7 @@ class VisualTyreCompound(F1BaseEnum):
         Returns:
             bool: True if the visual tyre compound is slicks, False otherwise.
         """
-        return self in {
-            VisualTyreCompound.SOFT,
-            VisualTyreCompound.MEDIUM,
-            VisualTyreCompound.HARD,
-            VisualTyreCompound.SUPER_SOFT,
-            VisualTyreCompound.SOFT_F2,
-            VisualTyreCompound.MEDIUM_F2,
-            VisualTyreCompound.HARD_F2
-        }
+        return self in _VISUAL_TYRE_COMPOUND_SLICKS
 
     def isWets(self) -> bool:
         """
@@ -466,11 +469,7 @@ class VisualTyreCompound(F1BaseEnum):
         Returns:
             bool: True if the visual tyre compound is wet, False otherwise.
         """
-        return self in {
-            VisualTyreCompound.WET,
-            VisualTyreCompound.WET_CLASSIC,
-            VisualTyreCompound.WET_F2
-        }
+        return self in _VISUAL_TYRE_COMPOUND_WETS
 
     def isInters(self) -> bool:
         """
@@ -480,6 +479,32 @@ class VisualTyreCompound(F1BaseEnum):
             bool: True if the visual tyre compound is inters, False otherwise.
         """
         return self == VisualTyreCompound.INTER
+
+# Title-cased names, except where the display string differs. WET_CLASSIC is an alias of WET
+_VISUAL_TYRE_COMPOUND_STR = {
+    member: member.name.replace("_", " ").title() for member in VisualTyreCompound
+} | {
+    VisualTyreCompound.INTER: "Inters",
+    VisualTyreCompound.SOFT_F2: "Soft",
+    VisualTyreCompound.MEDIUM_F2: "Medium",
+    VisualTyreCompound.HARD_F2: "Hard",
+    VisualTyreCompound.WET_F2: "Wet",
+    VisualTyreCompound.UNDECLARED: "Unknown",  # as before migrating, when safeCast gave UNKNOWN
+}
+_VISUAL_TYRE_COMPOUND_SLICKS = frozenset({
+    VisualTyreCompound.SOFT,
+    VisualTyreCompound.MEDIUM,
+    VisualTyreCompound.HARD,
+    VisualTyreCompound.SUPER_SOFT,
+    VisualTyreCompound.SOFT_F2,
+    VisualTyreCompound.MEDIUM_F2,
+    VisualTyreCompound.HARD_F2,
+})
+_VISUAL_TYRE_COMPOUND_WETS = frozenset({
+    VisualTyreCompound.WET,
+    VisualTyreCompound.WET_CLASSIC,
+    VisualTyreCompound.WET_F2,
+})
 
 class SafetyCarType(F1CompareableEnum):  # pylint: disable=invalid-enum-extension
     """

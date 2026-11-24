@@ -21,10 +21,16 @@
 # SOFTWARE.
 
 import random
+
+import allure
+
 from lib.f1_types import TyreSetData, PacketTyreSetsData, F1PacketType, PacketHeader, \
     ActualTyreCompound, VisualTyreCompound, SessionType23, SessionType24
 from .tests_parser_base import F1TypesTest
 
+pytestmark = [allure.epic("f1_types"), allure.feature("Tyre sets")]
+
+@allure.story("Parse and serialize")
 class TestPacketTyreSetsData(F1TypesTest):
     """
     Tests for TestPacketTyreSetsData
@@ -613,11 +619,11 @@ class TestPacketTyreSetsData(F1TypesTest):
         session_obj_type = SessionType23 if header.m_packetFormat == 2023 else SessionType24
         return TyreSetData.from_values(
             packet_format=header.m_packetFormat,
-            actual_tyre_compound=random.choice(list(ActualTyreCompound)),
-            visual_tyre_compound=random.choice(list(VisualTyreCompound)),
+            actual_tyre_compound=random.choice(ActualTyreCompound.declared_members()),
+            visual_tyre_compound=random.choice(VisualTyreCompound.declared_members()),
             wear=random.randint(0, 100),
             available=F1TypesTest.getRandomBool(),
-            recommended_session=random.choice(list(session_obj_type)),
+            recommended_session=random.choice(session_obj_type.declared_members()),
             life_span=random.randint(0, 30),
             usable_life=random.randint(0, 20),
             lap_delta_time=random.randrange(0, 10000),
@@ -637,3 +643,24 @@ class TestPacketTyreSetsData(F1TypesTest):
         )
 
 
+
+@allure.story("Undeclared values")
+@allure.title("A tyre set with undeclared compounds and session round-trips its wire bytes")
+def test_tyre_set_with_undeclared_values_round_trips():
+    """A tyre set whose actual and visual compounds and recommended session are values the enums don't declare,
+    serialized and parsed back.
+
+    Expected: each field keeps the byte it came in as. The compounds print as "Unknown", as before the migration."""
+    tyre_set = TyreSetData.from_values(
+        packet_format=2025,
+        actual_tyre_compound=ActualTyreCompound.safeCast(30),
+        visual_tyre_compound=VisualTyreCompound.safeCast(31),
+        wear=10, available=True,
+        recommended_session=SessionType24.safeCast(40),
+        life_span=20, usable_life=15, lap_delta_time=0, fitted=False,
+    )
+    parsed = TyreSetData(tyre_set.to_bytes(), 2025)
+
+    assert (parsed.m_actualTyreCompound.raw_value, parsed.m_visualTyreCompound.raw_value,
+            parsed.m_recommendedSession.raw_value) == (30, 31, 40)
+    assert (str(parsed.m_actualTyreCompound), str(parsed.m_visualTyreCompound)) == ("Unknown", "Unknown")

@@ -21,10 +21,15 @@
 # SOFTWARE.
 
 import random
+
+import allure
 from lib.f1_types import CarStatusData, PacketCarStatusData, F1PacketType, PacketHeader, \
     TractionControlAssistMode, VisualTyreCompound, ActualTyreCompound
 from .tests_parser_base import F1TypesTest
 
+pytestmark = [allure.epic("f1_types"), allure.feature("Car status")]
+
+@allure.story("Parse and serialize")
 class TestPacketCarStatusData(F1TypesTest):
     """
     Tests for TestPacketCarStatusData
@@ -1453,8 +1458,8 @@ class TestPacketCarStatusData(F1TypesTest):
             max_gears=random.randrange(7,8),
             drs_allowed=F1TypesTest.getRandomBool(),
             drs_activation_distance=random.randrange(0,500),
-            actual_tyre_compound=random.choice(list(ActualTyreCompound)),
-            visual_tyre_compound=random.choice(list(VisualTyreCompound)),
+            actual_tyre_compound=random.choice(ActualTyreCompound.declared_members()),
+            visual_tyre_compound=random.choice(VisualTyreCompound.declared_members()),
             tyres_age_laps=random.randrange(1,40),
             m_vehicle_fia_flags=random.choice(list(CarStatusData.VehicleFIAFlags)),
             engine_power_ice=F1TypesTest.getRandomFloat(),
