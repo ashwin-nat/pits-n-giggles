@@ -105,7 +105,8 @@ class _LapBuffer:
         for col, key in enumerate(self._keys):
             values = self._data[:self.n, col].copy()
             values.flags.writeable = False
-            out[key] = values
+            # A view: numpy won't make it writeable again while its base is read-only, an owning array it would
+            out[key] = values[:]
         return out
 
     def load(self, columns: dict[str, np.ndarray], n: int) -> None:

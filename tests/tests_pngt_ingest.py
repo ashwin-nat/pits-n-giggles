@@ -33,7 +33,7 @@ import pytest
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.pngt import (BaseTelemetrySnapshot, DriverTelemetryRecorder,
+from lib.pngt import (BaseTelemetrySnapshot, CompletedLap, DriverTelemetryRecorder,
                       LapMetadata, RecordedSensor, SensorConfig, SensorType)
 from lib.pngt.recorder import _INITIAL_CAPACITY
 
@@ -580,8 +580,8 @@ def test_recorder_flashback_onto_a_rounded_down_distance_drops_it(lap_landed_in)
 def test_recorder_exports_read_only_float32_arrays():
     """A completed lap and an in-progress lap, then an export.
 
-    Expected: every telemetry value of both laps is a float32 array that can't be written to, so a consumer can't
-    change what a later export returns."""
+    Expected: every telemetry value of both laps is a float32 array that can't be written to, or be made writeable
+    again, so a consumer can't change what a later export returns."""
     recorder = _recorder()
     _drive(recorder, [0.0, 10.0], lap=1)
     recorder.on_lap_change(sample_lap_metadata(lap_number=1))
@@ -592,8 +592,76 @@ def test_recorder_exports_read_only_float32_arrays():
         for values in lap.telemetry.values():
             assert values.dtype == np.float32
             assert not values.flags.writeable
+            with pytest.raises(ValueError):
+                values.flags.writeable = True
     with pytest.raises(ValueError):
         export.completed_laps[0].telemetry["speed"][0] = 0.0
+
+
+@allure.story("Lap buffer")
+@allure.title("Two exports of the same laps compare equal, a changed sample makes them unequal")
+def test_recorder_exports_compare_by_value():
+    """A completed lap with a sample whose speed is unavailable (stored as NaN), then two exports.
+
+    Expected: the exports are equal, the NaNs included. The same lap with one speed changed is not equal."""
+    recorder = _recorder()
+    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=100.0, gear=3), frame_id=1, lap_number=1)
+    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=100, speed=None, gear=3), frame_id=2, lap_number=1)
+    recorder.on_lap_change(sample_lap_metadata(lap_number=1))
+
+    first, second = recorder.export(), recorder.export()
+    assert first == second
+
+    lap = first.completed_laps[0]
+    changed = CompletedLap(metadata=lap.metadata,
+                           telemetry={**lap.telemetry, "speed": np.array([101.0, np.nan], dtype=np.float32)})
+    assert changed != lap
+
+
+@allure.story("Lap buffer")
+@pytest.mark.parametrize("lap_landed_in", ["in-progress", "completed"])
+@allure.title("After a flashback, samples follow kept distances that float32 rounds up ({lap_landed_in} lap)")
+def test_recorder_flashback_after_rounded_up_distances_keeps_what_follows(lap_landed_in):
+    """Lap 1 samples at 0.1, 0.3, 0.7 and 0.9 m. float32 stores 0.1 and 0.3 above what was sent. For the completed
+    case, lap 1 ends and lap 2 starts. A flashback lands in lap 1 at 0.6 m, which also rounds up, and the car
+    drives on to 0.65 and 0.8 m.
+
+    Expected: lap 1 is 0.1, 0.3, then the landing sample and the two after it. None is dropped as going back
+    against the rounded-up distance the rollback leaves as the last sample."""
+    recorder = _recorder()
+    _drive(recorder, [0.1, 0.3, 0.7, 0.9], lap=1)
+    if lap_landed_in == "completed":
+        recorder.on_lap_change(sample_lap_metadata(lap_number=1))
+        _drive(recorder, [1.0], lap=2)
+
+    _land(recorder, 0.6, lap=1, t=150)
+    _drive(recorder, [0.65, 0.8], lap=1, t0=200)
+    assert _distances(recorder.export().in_progress_lap) == [0.1, 0.3, 0.6, 0.65, 0.8]
+
+
+@allure.story("Lap buffer")
+@pytest.mark.parametrize("lap_landed_in", ["in-progress", "completed"])
+@allure.title("A flashback landing just past a kept rounded-up distance is recorded ({lap_landed_in} lap)")
+def test_recorder_flashback_landing_just_past_a_rounded_up_distance_is_kept(lap_landed_in):
+    """Lap 1 samples at 0.05, 0.1 and 0.5 m; float32 stores 0.1 above what was sent. A flashback lands in lap 1 the
+    least distance past 0.1 m that still keeps the 0.1 m sample: just above halfway from its float32 value to the
+    next float32 value. Then the car drives on to 0.6 m.
+
+    Expected: the landing sample is recorded after the 0.1 m sample. It is above the float32 value the rollback
+    leaves as the last distance, by just under half a float32 step, the closest the two can get."""
+    stored = np.float32(0.1)
+    next_up = np.nextafter(stored, np.float32(1.0))
+    landing = float(np.nextafter((float(stored) + float(next_up)) / 2, 1.0))  # rounds to next_up in float32
+    recorder = _recorder()
+    _drive(recorder, [0.05, 0.1, 0.5], lap=1)
+    if lap_landed_in == "completed":
+        recorder.on_lap_change(sample_lap_metadata(lap_number=1))
+        _drive(recorder, [1.0], lap=2)
+
+    _land(recorder, landing, lap=1, t=150)
+    _drive(recorder, [0.6], lap=1, t0=200)
+    distances = recorder.export().in_progress_lap.telemetry["lap_distance"].tolist()
+    assert distances == [float(np.float32(d)) for d in (0.05, 0.1, landing, 0.6)]
 
 
 @allure.story("Lap buffer")

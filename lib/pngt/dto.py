@@ -26,6 +26,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional, Sequence
 
+import numpy as np
+
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 MANDATORY_TELEMETRY_KEYS = ("lap_distance", "lap_time_ms")
@@ -178,6 +180,17 @@ class CompletedLap:
         lengths = {key: len(values) for key, values in self.telemetry.items()}
         if len(set(lengths.values())) > 1:
             raise ValueError(f"Mismatched telemetry array lengths for lap {self.metadata.lap_number}: {lengths}")
+
+    def __eq__(self, other: object) -> bool:
+        """Same metadata and the same telemetry, value by value. NaN (unavailable) equals NaN."""
+        if not isinstance(other, CompletedLap):
+            return NotImplemented
+        # The generated __eq__ would compare the arrays with ==, which raises for more than one sample
+        return (self.metadata == other.metadata
+                and self.telemetry.keys() == other.telemetry.keys()
+                and all(np.array_equal(np.asarray(values, dtype=np.float64),
+                                       np.asarray(other.telemetry[key], dtype=np.float64), equal_nan=True)
+                        for key, values in self.telemetry.items()))
 
 @dataclass(frozen=True)
 class DriverExportData:
