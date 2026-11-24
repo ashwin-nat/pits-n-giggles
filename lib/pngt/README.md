@@ -121,6 +121,10 @@ A sensor's `field` holding `None` means "unavailable this packet" — stored as
 `NaN`, never raised. Samples are stored as float32. The real F1 catalog (`F1_SENSORS`) lives next to the real
 `TelemetrySnapshot` in `apps/backend/state_mgmt_layer/data_per_driver`, not here.
 
+`export()` hands out each telemetry column as a read-only float32 array, without copying. numpy refuses to make
+one writeable again, so a consumer can't change what a later export returns. `CompletedLap` compares by value,
+column by column, with `NaN` equal to `NaN`.
+
 ## Notes
 
 - **`sensors` is a top-level parameter, not nested in `SessionMetadata`.** It maps
