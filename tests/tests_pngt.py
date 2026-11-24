@@ -29,6 +29,7 @@ import zipfile
 from io import BytesIO
 from pathlib import Path
 
+import allure
 import numpy as np
 import pytest
 
@@ -48,6 +49,8 @@ from lib.pngt import (CompletedLap, CorruptedTelemetryError,
                       read_lap_telemetry, read_session, read_session_data,
                       rename_session, write_container, write_session,
                       write_session_data_only)
+
+pytestmark = [allure.epic("Lap telemetry recording"), allure.feature(".pngt file format")]
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Fixtures
@@ -1171,11 +1174,24 @@ def test_rename_session_keeps_session_data(tmp_path):
 # Lap coverage, completeness verdict, raw npz bytes
 # ----------------------------------------------------------------------------------------------------------------------
 
+@allure.story("Lap coverage")
 def test_measure_lap_coverage_ignores_pre_line_and_non_finite():
     cov = measure_lap_coverage([-20.0, float("nan"), 2.0, 10.0, 25.0, 25.0, 60.0])
     assert (cov.start_distance_m, cov.end_distance_m, cov.max_gap_m) == (2.0, 60.0, 35.0)
 
 
+@allure.story("Lap coverage")
+@allure.title("A gap after a rewind is measured from the furthest point reached")
+def test_measure_lap_coverage_measures_gaps_from_the_furthest_point_reached():
+    """A float32 lap, as the recorder exports it: 0, 10 and 20 m, a rewind to 5 m, then 60 m.
+
+    Expected: the largest gap is 40 m, from 20 m (the furthest point reached) to 60 m, not 55 m from the 5 m
+    sample."""
+    cov = measure_lap_coverage(np.array([0.0, 10.0, 20.0, 5.0, 60.0], dtype=np.float32))
+    assert (cov.start_distance_m, cov.end_distance_m, cov.max_gap_m) == (0.0, 60.0, 40.0)
+
+
+@allure.story("Lap coverage")
 def test_measure_lap_coverage_nothing_past_the_line():
     assert measure_lap_coverage([-5.0, -1.0]) == LapCoverage(None, None, None)
     assert measure_lap_coverage([]) == LapCoverage(None, None, None)
