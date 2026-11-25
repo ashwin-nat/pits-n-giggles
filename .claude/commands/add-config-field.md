@@ -60,13 +60,13 @@ Subsystem manager files:
 
 ## Step 3 — Tests
 
-Read `tests/README.md` for instructions on how to run
-Read `tests/tests_config/` to find the right test file for the section. If one exists, add to it. Otherwise create `tests/tests_config/tests_<section>_settings.py` following the base class pattern from `tests/tests_config/tests_config_base.py`.
+Read `tests/README.md` for how to run tests, and its "Config Field Constraints" section.
 
-Write tests covering:
-- Default value is correct
-- Valid boundary values accepted
-- Invalid values raise `ValidationError`
+**Field constraints:** add the field to `FIELDS` in `tests/tests_config/tests_config_properties.py`, one entry with the bounds from the approved plan (e.g. `IntRange(1, 120)`, `Choice(MyEnum, ("A", "B"))`). This covers valid values, invalid values, and the boundaries. Do not write per-field boundary tests. If no spec kind fits (custom string validator, `FilePathStr`, id-keyed dict), add the field to `EXAMPLE_ONLY` and write example tests for it instead. A required field with no default also needs a `REQUIRED` entry.
+
+**Section test file:** find the section's file in `tests/tests_config/`. If one exists, add to it. Otherwise create `tests/tests_config/tests_<section>_settings.py` in native pytest style (see `tests/README.md`). Cover:
+- Default value is correct (in `test_default_values`)
+- Example tests for `EXAMPLE_ONLY` fields
 - Cross-section constraint raises `ValidationError` (if applicable)
 
 ---
@@ -91,4 +91,5 @@ Present a short summary covering all fields added:
 
 | Test name | Description |
 |---|---|
+| `FIELDS[...]["field_name"]` | spec, e.g. `IntRange(1, 120)` |
 | `test_...` | one line |
