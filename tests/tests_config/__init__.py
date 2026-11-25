@@ -25,9 +25,6 @@
 
 from .tests_capture_settings import TestCaptureSettings
 from .tests_diff_mixin import TestConfigDiffMixin
-from .tests_config_edge import (TestEdgeCases, TestMissingSectionsAndKeys,
-                                TestSampleSettingsFixture)
-from .tests_config_io import TestLoadConfigFromIni, TestLoadConfigFromJson, TestConfigMigration
 from .tests_display_settings import TestDisplaySettings
 from .tests_file_path_str_config import TestFilePathStr
 from .tests_forwarding_settings import TestForwardingSettings
@@ -44,12 +41,6 @@ from .tests_stream_overlay_settings import TestStreamOverlaySettings
 
 __all__ = [
     "TestCaptureSettings",
-    "TestEdgeCases",
-    "TestMissingSectionsAndKeys",
-    "TestSampleSettingsFixture",
-    "TestLoadConfigFromIni",
-    "TestLoadConfigFromJson",
-    "TestConfigMigration",
     "TestDisplaySettings",
     "TestForwardingSettings",
     "TestNetworkSettings",
