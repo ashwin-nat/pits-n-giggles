@@ -84,29 +84,22 @@ class OverlayPosition(ConfigDiffMixin, BaseModel):
     """
     Screen position and scale for a single overlay.
 
-    No validation is intentionally performed here.
+    x and y are not bounded. scale_factor must be positive and finite; it has no upper bound.
     """
     x: int = Field(description="X position in pixels")
     y: int = Field(description="Y position in pixels")
-    scale_factor: float = Field(default=1.0, description="UI scale factor (multiplier)")
+    # Set by resizing the overlay; the max depends on the user's screen, so only the lower side is bounded
+    scale_factor: float = Field(default=1.0, gt=0, allow_inf_nan=False, description="UI scale factor (multiplier)")
 
 
     def toJSON(self) -> Dict:
         """Used for Qt signal/slot transport."""
-        return {
-            "x": self.x,
-            "y": self.y,
-            "scale_factor": self.scale_factor,
-        }
+        return self.model_dump()
 
     @classmethod
     def fromJSON(cls, json_dict: Dict) -> "OverlayPosition":
         """Used for Qt signal/slot transport."""
-        return cls(
-            x=json_dict["x"],
-            y=json_dict["y"],
-            scale_factor=json_dict.get("scale_factor", 1.0),
-        )
+        return cls.model_validate(json_dict)
 
 # -------------------------------------- DEFAULTS ----------------------------------------------------------------------
 

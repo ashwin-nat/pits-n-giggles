@@ -232,6 +232,8 @@ PORT = IntRange(1, 65535)
 UDP_ACTION_CODE = IntRange(1, 12, nullable=True)
 PERCENT = IntRange(0, 100)
 PIT_TIME_LOSS = FloatRange(lo=0.0, nullable=True, finite=True)   # None = cleared by the user
+# lo for a gt=0 float: the edges then check this value is accepted and 0.0 rejected
+_SMALLEST_POSITIVE = math.nextafter(0.0, 1.0)
 
 
 def _flags(*names: str) -> Dict[str, FieldSpec]:
@@ -261,7 +263,7 @@ FIELDS: Dict[Type[BaseModel], Dict[str, FieldSpec]] = {
         "realtime_overlay_fps": IntRange(lo=1),
         "use_cpu_acceleration": FLAG,
         "save_viewer_poll_interval_secs": IntRange(1, 30, nullable=True),
-        "wdt_timeout": FloatRange(lo=2.0, nullable=True),
+        "wdt_timeout": FloatRange(lo=2.0, nullable=True, finite=True),   # None = overlays never hide
     },
     PrivacySettings: _flags("process_car_setup"),
     StreamOverlaySettings: {
@@ -327,7 +329,7 @@ FIELDS: Dict[Type[BaseModel], Dict[str, FieldSpec]] = {
     OverlayPosition: {
         "x": IntRange(),
         "y": IntRange(),
-        "scale_factor": FloatRange(),
+        "scale_factor": FloatRange(lo=_SMALLEST_POSITIVE, finite=True),
     },
 }
 
