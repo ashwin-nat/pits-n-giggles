@@ -63,7 +63,8 @@ See `tests/README.md` for full details. Key conventions:
 - Test files must be named `tests_*.py` to be collected; the default run is parallel (`-n auto --dist=loadgroup`) with `openf1`-marked tests excluded.
 - Tests that bind real sockets/ports or spawn processes must be marked serial via module-level `pytestmark = pytest.mark.serial` so xdist funnels them to one worker.
 - Write **new** tests in native pytest style: plain `assert`, `@pytest.mark.parametrize`, and bare `async def test_*` (asyncio_mode is `auto` — no decorator or base class needed).
-- Existing tests are `unittest.TestCase`-style and run under pytest as-is; do not rewrite them.
+- Most existing tests are `unittest.TestCase`-style and run under pytest as-is. Leave untouched tests alone, but upgrade the ones a change touches to native pytest style. If a change touches most of a file, upgrade the whole file.
+- Every new or upgraded test gets Allure enrichment: an `@allure.title` (with `{param}` placeholders for what varies), a docstring describing what it does and what is expected (shown as the report description), and an `allure.feature` (module `pytestmark`) plus `allure.story` labels. Parametrize over plain values so the displayed parameters stay stable; see `tests/README.md`.
 - `tests/integration_test/` is the full-app integration runner and is not collected by pytest.
 
 ## Running Apps
@@ -108,7 +109,7 @@ Reusable modules consumed by multiple apps:
 - **`f1_types/`** — Packet dataclass definitions for F1 2023–2025 seasons (16 packet types)
 - **`telemetry_manager/`** — Async UDP/TCP receiver manager and packet parser factory
 - **`socket_receiver/`** — Base, UDP, TCP receiver implementations
-- **`config/`** — Config loading from `png_config.json`/`app_settings.ini`; Pydantic validation models
+- **`config/`** — Config loading from `png_config.json`; Pydantic validation models
 - **`ipc/`** — ZeroMQ-based IPC with three patterns: pub/sub (`IpcPubSubBroker`, `IpcPublisherAsync`, `IpcSubscriber*`), req/rep (`IpcServer*`, `IpcClientSync`), and router/dealer (`IpcRouter`, `IpcDealerClient`, `IpcDealerAsync`); also provides `PngSubsysId` for app identity
 - **`subsystem/`** — Child-side lifecycle base for launcher-managed subsystems (`PngSubsystem`, `AsyncSubsystem`, `SyncSubsystem`) — see "Subsystem Lifecycle" below
 - **`race_ctrl/`** — Race control event tracking: pit stops, car damage, tyre/wing changes; per-driver and per-session managers

@@ -38,8 +38,6 @@ def load_config_from_json(path: str, logger: Optional[Logger] = None, fail_if_mi
     """
     Load and validate configuration from JSON.
 
-    Behavior matches the INI version:
-
     - If file missing --> write defaults
     - If section invalid --> restore only that section
     - If new fields added --> merge them in
@@ -68,6 +66,8 @@ def load_config_from_json(path: str, logger: Optional[Logger] = None, fail_if_mi
         raise FileNotFoundError(f"Config file not found: {path}")
 
     # No config file --> create full defaults
+    if logger:
+        logger.info("No config at %s, writing defaults", path)
     model = PngSettings()
     save_config_to_json(model, path)
     return model
@@ -88,7 +88,10 @@ def _load_raw_json(path: str, logger: Optional[Logger]) -> Dict[str, Any]:
     """Read JSON safely and provide empty dict on catastrophic failure."""
     try:
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f) or {}
+            raw = json.load(f)
+        if not isinstance(raw, dict):
+            raise ValueError(f"top level is {type(raw).__name__}, expected an object")
+        return raw
     except Exception as e: # pylint: disable=broad-exception-caught
         if logger:
             logger.error("Could not parse JSON config: %s", e)
@@ -145,10 +148,8 @@ def _log_invalid_keys(
             continue
 
         if section not in restored_sections:
-            valid_keys = {k.lower(): k for k in default_dict[section].keys()}
-
             for key in items.keys():
-                if key.lower() not in valid_keys:
+                if key not in default_dict[section]:
                     logger.debug("Ignored unknown key [%s].[%s]", section, key)
 
 
@@ -161,11 +162,7 @@ def _maybe_update_config(
     restored_sections: Set[str],
 ) -> None:
     """
-    Same semantics as the INI version:
-    - If invalid sections restored
-    - Or if new fields appear
-    - Or mismatches exist
-    --> rewrite
+    Rewrite the file if any section was restored, new fields appeared, or the on-disk content differs.
     """
     model_dict = model.model_dump()
 
