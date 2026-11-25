@@ -265,7 +265,8 @@ When you add or change a config field:
 - Add or update its `FIELDS` entry. `test_every_field_is_covered` fails for any field of any model reachable from
   `PngSettings` that has no entry.
 - A field no spec can express (a custom string validator, `FilePathStr`, an id-keyed dict) goes in `EXAMPLE_ONLY`
-  instead, and keeps hand-written tests in its section's file.
+  instead, and keeps hand-written tests in its section's file. Give it a value strategy in `EXAMPLE_ONLY_VALUES`
+  too, or the save-and-load property (`test_any_settings_roundtrip`) only ever sees its default.
 - A new required field (no default) needs a value in `REQUIRED`, so the other fields' cases can build the model.
 - Cross-field rules (port conflicts, distinct UDP action codes) are not covered here. Write example tests for them.
 

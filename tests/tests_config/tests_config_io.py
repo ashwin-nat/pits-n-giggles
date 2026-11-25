@@ -23,14 +23,21 @@
 
 import json
 import logging
+import tempfile
+from pathlib import Path
 
 import allure
 import pytest
+from hypothesis import given, reject
+from hypothesis import strategies as st
+from pydantic import ValidationError
 
 from lib.config import (CaptureSettings, DisplaySettings, ForwardingSettings,
-                        NetworkSettings, PngSettings, PrivacySettings,
-                        StreamOverlaySettings, load_config_from_json,
-                        save_config_to_json)
+                        HttpsSettings, NetworkSettings, PngSettings,
+                        PrivacySettings, StreamOverlaySettings,
+                        load_config_from_json, save_config_to_json)
+
+from .tests_config_properties import png_settings_dicts
 
 pytestmark = allure.feature("Config file I/O")
 
@@ -94,6 +101,38 @@ def test_roundtrip(config_path):
     save_config_to_json(original, str(config_path))
 
     assert load_config_from_json(str(config_path)) == original
+
+@allure.story("JSON load and save")
+@allure.title("Any valid settings, HTTPS included, save and load back unchanged")
+@given(data=st.data())
+def test_any_settings_roundtrip(data):
+    """
+    Generates a whole PngSettings from the field spec table: every section, nested models, forwarding targets,
+    overlay layout entries, and HTTPS off, on with real key/cert files, or off with paths set. Saves it to JSON and
+    loads it back, in a fresh temp dir per example.
+
+    Expected: the loaded settings equal the saved ones, and no section was restored (no .invalid backup).
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_dir = Path(tmp)
+        key_path, cert_path = tmp_dir / "temp.key", tmp_dir / "temp.crt"
+        key_path.touch()
+        cert_path.touch()
+        paths = {"key_file_path": str(key_path), "cert_file_path": str(cert_path)}
+        https = st.sampled_from([{"enabled": False}, {"enabled": True, **paths}, {"enabled": False, **paths}])
+
+        raw = data.draw(png_settings_dicts(extra={HttpsSettings: https}))
+        try:
+            original = PngSettings.model_validate(raw)
+        except ValidationError:
+            reject()  # a cross-field rule the strategy does not build in (e.g. every overlay disabled)
+        config_path = tmp_dir / "config.json"
+
+        save_config_to_json(original, str(config_path))
+        loaded = load_config_from_json(str(config_path))
+
+        assert loaded == original
+        assert not _backup_exists(config_path)
 
 @allure.story("JSON load and save")
 @allure.title("A missing config file is created with defaults")

@@ -40,7 +40,7 @@ from pydantic import BaseModel, ValidationError
 
 from lib.config import (AutoOpenDashboardMode, CaptureSettings, DisplaySettings, ForwardingSettings,
                         HarvestPowerSmoothing, HttpsSettings, HudSettings, MfdPageSettings, MfdSettings,
-                        MfdTyreWearRateType, NetworkSettings, OverlayPosition, OverlaysFuelEstimationMode,
+                        MfdTyreWearRateType, NetworkSettings, OverlayId, OverlayPosition, OverlaysFuelEstimationMode,
                         OverlaysSpeedUnit, PitTimeLossF1, PitTimeLossF2, PngSettings, PredictionSettings,
                         PrivacySettings, StreamOverlaySettings, TimingTowerColOptions, TimingTowerColSettings,
                         TimingTowerTyreInfoMode, WeatherMFDUIType)
@@ -412,6 +412,79 @@ class Case:
 
 CASES = [pytest.param(Case(model, field, spec), id=f"{model.__name__}.{field}")
          for model, specs in FIELDS.items() for field, spec in specs.items()]
+
+# ------------------------- WHOLE-SETTINGS STRATEGY --------------------------------------------------------------------
+
+_FORWARDING_TARGETS = ["host1.example.com:8000", "192.168.1.10:20777", "10.0.0.5:5000"]
+
+# Values for EXAMPLE_ONLY fields, so whole-settings strategies cover them too. Dict containers are left at defaults
+EXAMPLE_ONLY_VALUES: Dict[Type[BaseModel], st.SearchStrategy] = {
+    NetworkSettings: st.fixed_dictionaries({"bind_address": st.ip_addresses(v=4).map(str)}),
+    CaptureSettings: st.fixed_dictionaries({
+        "session_dir": st.text(alphabet=string.ascii_letters + string.digits + "_-/", min_size=1)}),
+    # Enabling HTTPS needs real key/cert files; a test that makes them passes its own via extra
+    HttpsSettings: st.just({"enabled": False}),
+    ForwardingSettings: st.lists(st.sampled_from(_FORWARDING_TARGETS), unique=True, max_size=3).map(
+        lambda targets: {f"target_{i + 1}": t for i, t in enumerate(targets + [""] * (3 - len(targets)))}),
+    HudSettings: st.fixed_dictionaries({"layout": st.dictionaries(
+        st.sampled_from([o.value for o in OverlayId]),
+        st.fixed_dictionaries({name: spec.valid() for name, spec in FIELDS[OverlayPosition].items()}),
+        max_size=4)}),
+}
+
+
+def _is_udp_action_code(field: Any) -> bool:
+    return bool((field.json_schema_extra or {}).get("udp_action_code"))
+
+
+def _port_type(field: Any) -> Optional[str]:
+    return (field.json_schema_extra or {}).get("port_type")
+
+
+@st.composite
+def png_settings_dicts(draw: st.DrawFn,
+                       extra: Optional[Dict[Type[BaseModel], st.SearchStrategy]] = None) -> Dict[str, Any]:
+    """A PngSettings input dict with every FIELDS and EXAMPLE_ONLY_VALUES field drawn from its valid values.
+
+    Cross-field rules are satisfied by construction: UDP action codes distinct, ports distinct per protocol, radar
+    idle opacity below overlays opacity. Validate the result anyway and reject() the draw if a rule still fails.
+    extra adds or replaces a model's EXAMPLE_ONLY_VALUES entry (e.g. HTTPS paths that need real files).
+    """
+    example_values = {**EXAMPLE_ONLY_VALUES, **(extra or {})}
+    all_fields = [(m, n, f) for m in FIELDS for n, f in m.model_fields.items() if n in FIELDS[m]]
+    num_codes = sum(_is_udp_action_code(f) for _, _, f in all_fields)
+    codes = iter(draw(st.permutations(list(range(1, 13)) + [None] * num_codes)))
+    ports: Dict[str, Any] = {}
+    for port_type in {_port_type(f) for _, _, f in all_fields} - {None}:
+        specs = [FIELDS[m][n] for m, n, f in all_fields if _port_type(f) == port_type]
+        assert all(s == specs[0] for s in specs), f"{port_type} port fields have different specs"
+        ports[port_type] = iter(draw(st.lists(specs[0].valid(), min_size=len(specs), max_size=len(specs),
+                                              unique=True), label=f"{port_type} ports"))
+
+    def build(model: Type[BaseModel]) -> Dict[str, Any]:
+        values: Dict[str, Any] = {}
+        for name, spec in FIELDS.get(model, {}).items():
+            field = model.model_fields[name]
+            if _is_udp_action_code(field):
+                values[name] = next(codes)
+            elif _port_type(field):
+                values[name] = next(ports[_port_type(field)])
+            else:
+                values[name] = draw(spec.valid(), label=f"{model.__name__}.{name}")
+        if model in example_values:
+            values.update(draw(example_values[model], label=model.__name__))
+        for name in _nested_model_fields(model):
+            values[name] = build(model.model_fields[name].annotation)
+        return values
+
+    values = build(PngSettings)
+    # Idle opacity must be strictly below overlays opacity; sort, and split a tie by one step inside 0..100
+    hud = values["HUD"]
+    idle, overlays = sorted((hud["track_radar_idle_opacity"], hud["overlays_opacity"]))
+    if idle == overlays:
+        idle, overlays = (idle, overlays + 1) if overlays < 100 else (idle - 1, overlays)
+    hud["track_radar_idle_opacity"], hud["overlays_opacity"] = idle, overlays
+    return values
 
 # ------------------------- TESTS --------------------------------------------------------------------------------------
 
