@@ -5,8 +5,13 @@ from pathlib import Path
 import allure
 import pytest
 from allure_commons.types import LabelType
+from hypothesis import settings as hypothesis_settings
 
 _GLOBAL_SEED = 42
+
+# Seed derived from each test and no example database, so a failure reproduces on every run and machine
+hypothesis_settings.register_profile("png", max_examples=50, deadline=None, database=None, derandomize=True)
+hypothesis_settings.load_profile("png")
 
 
 @pytest.fixture(autouse=True)
