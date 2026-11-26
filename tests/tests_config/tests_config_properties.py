@@ -222,7 +222,8 @@ class Text:
         return st.text() | st.none() if self.nullable else st.text()
 
     def invalid(self) -> st.SearchStrategy:
-        return st.integers() if self.nullable else st.integers() | st.none()
+        non_str = st.integers() | st.floats() | st.booleans()
+        return non_str if self.nullable else non_str | st.none()
 
     def edges_in(self) -> List[Any]:
         return [""] + ([None] if self.nullable else [])
@@ -393,7 +394,8 @@ FIELDS: Dict[Type[BaseModel], Dict[str, FieldSpec]] = {
         "show_sample_data_at_start": FLAG,
         "stream_overlay_update_interval_ms": IntRange(lo=50),
     },
-    HttpsSettings: _flags("enabled"),
+    # With HTTPS off (the default) the paths are plain optional strings; existence is checked only when enabled
+    HttpsSettings: {"enabled": FLAG, "key_file_path": Text(nullable=True), "cert_file_path": Text(nullable=True)},
     PredictionSettings: {
         "weather_aware_prediction": FLAG,
         "tyre_wear_window_size": IntRange(lo=2, nullable=True),
@@ -459,7 +461,6 @@ FIELDS: Dict[Type[BaseModel], Dict[str, FieldSpec]] = {
 # Fields no spec above can express; their example tests stay the only coverage
 EXAMPLE_ONLY: Dict[Type[BaseModel], Set[str]] = {
     CaptureSettings: {"session_dir"},           # non-empty validator
-    HttpsSettings: {"key_file_path", "cert_file_path"},       # FilePathStr
     HudSettings: {"layout"},                    # dict keyed by overlay id
     TimingTowerColOptions: {"cols"},            # dict keyed by column id
     MfdSettings: {"pages"},                     # dict keyed by page id

@@ -24,17 +24,12 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .tests_diff_mixin import TestConfigDiffMixin
-from .tests_file_path_str_config import TestFilePathStr
-from .tests_https_settings import TestHttpsSettings
 from .tests_hud_settings import TestHudSettings, TestTimingTowerColConfig
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "TestHttpsSettings",
     "TestHudSettings",
     "TestTimingTowerColConfig",
-
-    "TestFilePathStr",
     "TestConfigDiffMixin",
 ]

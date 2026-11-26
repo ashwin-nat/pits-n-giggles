@@ -61,8 +61,9 @@ class FilePathStr(str):
             str: The validated file path.
 
         Raises:
-            TypeError: If the input is not a string.
+            ValueError: If the input is neither a string nor None.
         """
+        # ValueError, not TypeError: pydantic only turns ValueError into a ValidationError the config loader handles
         if value is not None and not isinstance(value, str):
-            raise TypeError("Expected a string for file path")
+            raise ValueError("Expected a string for file path")
         return value
