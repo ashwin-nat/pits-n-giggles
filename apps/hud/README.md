@@ -81,6 +81,30 @@ for typing convenience):
 Concrete overlays subclass `BaseOverlay` directly (e.g. `TimingTowerOverlay`, `TrackRadarOverlay`,
 `HudOverlay`, `MfdOverlay`, `StandalonePageHost`).
 
+### Overlay window and opacity
+
+Every overlay's root QML is `OverlayWindow` (`overlays/base/OverlayWindow.qml`), never a bare
+`Window`. Children declared in it go into its `contentLayer`.
+
+- **Content opacity** (`contentOpacity`) is the overlay's opacity level. It is group opacity on
+  `contentLayer`; the layer is only enabled below 100%.
+- **Window opacity** is only the fade in/out, between 0 and 1.
+- The unlock border (`OverlayBorder.qml`) is a sibling of `contentLayer`, so the border, corner
+  handles and hover name always draw at full alpha.
+- A background colour goes in `backgroundColor`, not the window `color`, which content opacity
+  does not reach.
+
+`BaseOverlay.opacity` is read-only and resolves to the overlay's `opacity_override.value` when the
+override is enabled, otherwise the global value (`_global_opacity`, set by
+`__set_global_opacity__`). Every apply site reads it, so `set_opacity()` only writes a number.
+
+- While unlocked, right-click opens `OpacityPopover` (one instance, owned by `WindowManager`),
+  which calls `set_opacity_override()` on every change. The override lives on `self.config` and is
+  saved on lock through `get_window_info()`; reset sends the default override via `__set_config__`.
+- `min_override_opacity()` is the popover's lower bound: 0, or idle + 1 for the track radar.
+- Track radar: content opacity stays at 1 and the resolved value goes to the QML `baseOpacity`,
+  because its QML already picks between base and idle opacity.
+
 ---
 
 ## L4 — Overlay Implementations
