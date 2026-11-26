@@ -22,179 +22,105 @@
 # SOFTWARE.
 # pylint: skip-file
 
-import os
-import sys
+"""PngSettings rules that span sections. Each section's own fields are in tests_config_properties.py, and diff
+behaviour is in tests_diff_mixin.py."""
 
+import allure
+import pytest
 from pydantic import ValidationError
-# Add the parent directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.config import (CaptureSettings, DisplaySettings, ForwardingSettings,
-                        NetworkSettings, PngSettings, HttpsSettings, HudSettings,
-                        PrivacySettings, StreamOverlaySettings)
+from lib.config import ForwardingSettings, HudSettings, NetworkSettings, PngSettings
+from lib.config.schema.mcp_cfg import McpSettings
 
-from .tests_config_base import TestF1ConfigBase
+pytestmark = allure.feature("PngSettings")
 
-# ----------------------------------------------------------------------------------------------------------------------
+# -------------------------------------- UDP ACTION CODES --------------------------------------------------------------
 
-class TestPngSettings(TestF1ConfigBase):
-    """Test the main PngSettings model"""
+@allure.story("Cross-section rules")
+@allure.title("A UDP action code cannot be used in both Network and HUD")
+def test_udp_action_code_shared_across_sections_rejected():
+    """
+    Sets Network.udp_custom_action_code and HUD.mfd_toggle_udp_action_code to 3. Each section is valid on its own.
 
-    def test_complete_model_creation(self):
-        """Test creating a complete PngSettings model"""
-        settings = PngSettings(
-            Network=NetworkSettings(),
-            Capture=CaptureSettings(),
-            Display=DisplaySettings(),
-            Privacy=PrivacySettings(),
-            Forwarding=ForwardingSettings(),
-            StreamOverlay=StreamOverlaySettings(),
-            HTTPS=HttpsSettings(),
-            HUD=HudSettings(),
-        )
+    Expected: PngSettings raises a ValidationError naming the duplicate code.
+    """
+    with pytest.raises(ValidationError, match="Duplicate UDP action code 3"):
+        PngSettings(Network=NetworkSettings(udp_custom_action_code=3),
+                    HUD=HudSettings(mfd_toggle_udp_action_code=3))
 
-        self.assertIsInstance(settings.Network, NetworkSettings)
-        self.assertIsInstance(settings.Capture, CaptureSettings)
-        self.assertIsInstance(settings.Display, DisplaySettings)
-        self.assertIsInstance(settings.Privacy, PrivacySettings)
-        self.assertIsInstance(settings.Forwarding, ForwardingSettings)
 
-    def test_nested_validation(self):
-        """Test that nested model validation works"""
-        with self.assertRaises(ValidationError):
-            PngSettings(
-                Network=NetworkSettings(telemetry_port=-1),  # Invalid
-                Capture=CaptureSettings(),
-                Display=DisplaySettings(),
-                Privacy=PrivacySettings(),
-                Forwarding=ForwardingSettings()
-            )
+@allure.story("Cross-section rules")
+@allure.title("Distinct UDP action codes in Network and HUD are accepted")
+def test_udp_action_codes_distinct_across_sections_accepted():
+    """
+    Sets Network.udp_custom_action_code to 3 and HUD.mfd_toggle_udp_action_code to 4.
 
-    def test_udp_action_code(self):
-        """Test UDP action code validation across areas of the model"""
+    Expected: PngSettings builds and keeps both codes.
+    """
+    settings = PngSettings(Network=NetworkSettings(udp_custom_action_code=3),
+                           HUD=HudSettings(mfd_toggle_udp_action_code=4))
 
-        with self.assertRaises(ValidationError):
-            PngSettings(
-                Network=NetworkSettings(udp_tyre_delta_action_code=0),
-                HUD=HudSettings(toggle_overlays_udp_action_code=0)
-            )
+    assert (settings.Network.udp_custom_action_code, settings.HUD.mfd_toggle_udp_action_code) == (3, 4)
 
-        with self.assertRaises(ValidationError):
-            PngSettings(
-                Network=NetworkSettings(udp_custom_action_code=0),
-                HUD=HudSettings(toggle_overlays_udp_action_code=0)
-            )
-    def test_diff_top_level(self):
-        """Test the diff method"""
-        settings1 = PngSettings(
-            Network=NetworkSettings(),
-            Capture=CaptureSettings(),
-            Display=DisplaySettings(),
-            Privacy=PrivacySettings(),
-            Forwarding=ForwardingSettings(),
-            StreamOverlay=StreamOverlaySettings(),
-        )
+# -------------------------------------- PORTS -------------------------------------------------------------------------
 
-        settings2 = PngSettings(
-            Network=NetworkSettings(),
-            Capture=CaptureSettings(),
-            Display=DisplaySettings(),
-            Privacy=PrivacySettings(),
-            Forwarding=ForwardingSettings(),
-            StreamOverlay=StreamOverlaySettings(),
-        )
+@allure.story("Cross-section rules")
+@allure.title("A TCP port cannot be used in both Network and MCP")
+def test_tcp_port_shared_across_sections_rejected():
+    """
+    Sets Network.server_port and MCP.mcp_http_port to 4770. Each section is valid on its own.
 
-        settings3 = PngSettings(
-            Network=NetworkSettings(server_port=12345),
-            Capture=CaptureSettings(),
-            Display=DisplaySettings(refresh_interval=1000),
-            Privacy=PrivacySettings(),
-            Forwarding=ForwardingSettings(),
-            StreamOverlay=StreamOverlaySettings(),
-        )
+    Expected: PngSettings raises a ValidationError naming the duplicate TCP port.
+    """
+    with pytest.raises(ValidationError, match="Duplicate TCP port 4770"):
+        PngSettings(Network=NetworkSettings(server_port=4770), MCP=McpSettings(mcp_http_port=4770))
 
-        self.assertFalse(settings1.has_changed(settings2))
-        self.assertEqual(settings1.diff(settings2), {})
-        self.assertTrue(settings1.has_changed(settings3))
-        self.assertEqual(settings1.diff(settings3),
-            {
-                "Network" : {
-                    "server_port" : {
-                        "old_value" : 4768,
-                        "new_value" : 12345
-                    }
-                },
-                "Display" : {
-                    "refresh_interval" : {
-                        "old_value" : 200,
-                        "new_value" : 1000
-                    }
-                }
-            })
 
-        # Interested in a full container diff
-        self.assertEqual(settings1.diff(settings3, {"Network": [], "Display": []}),
-            {
-                "Network" : {
-                    "server_port" : {
-                        "old_value" : 4768,
-                        "new_value" : 12345
-                    }
-                },
-                "Display" : {
-                    "refresh_interval" : {
-                        "old_value" : 200,
-                        "new_value" : 1000
-                    }
-                }
-            })
+@allure.story("Cross-section rules")
+@allure.title("A UDP port in Network and a TCP port in MCP may share a number")
+def test_udp_and_tcp_port_shared_across_sections_accepted():
+    """
+    Sets the UDP Network.telemetry_port and the TCP MCP.mcp_http_port both to 5000.
 
-    def test_diff_container_level(self):
-        """Test the diff method"""
-        settings1 = CaptureSettings()
-        settings2 = CaptureSettings()
-        settings3 = CaptureSettings(save_race_ctrl_msg=True)
+    Expected: PngSettings builds, since ports only clash within one protocol.
+    """
+    settings = PngSettings(Network=NetworkSettings(telemetry_port=5000), MCP=McpSettings(mcp_http_port=5000))
 
-        self.assertFalse(settings1.has_changed(settings2))
-        self.assertEqual(settings1.diff(settings2), {})
-        self.assertTrue(settings1.has_changed(settings3))
-        self.assertEqual(settings1.diff(settings3), {"save_race_ctrl_msg" : {"old_value" : False, "new_value" : True}})
+    assert settings.Network.telemetry_port == settings.MCP.mcp_http_port == 5000
 
-    def test_no_localhost_udp_loop(self):
-        # valid: different port on localhost
-        PngSettings(
-            Network=NetworkSettings(telemetry_port=20777),
-            Forwarding=ForwardingSettings(target_1="localhost:20778"),
-        )
+# -------------------------------------- FORWARDING LOOP ---------------------------------------------------------------
 
-        # valid: same port, remote host
-        PngSettings(
-            Network=NetworkSettings(telemetry_port=20777),
-            Forwarding=ForwardingSettings(target_1="192.168.1.50:20777"),
-        )
+_NO_LOOP = {
+    "localhost, other port": {"target_1": "localhost:20778"},
+    "remote host, same port": {"target_1": "192.168.1.50:20777"},
+    "several targets, none looping": {"target_1": "localhost:3000", "target_2": "example.com:20777"},
+}
 
-        # valid: multiple targets, none looping
-        PngSettings(
-            Network=NetworkSettings(telemetry_port=20777),
-            Forwarding=ForwardingSettings(
-                target_1="localhost:3000",
-                target_2="example.com:20777",
-            ),
-        )
+_LOOP = {
+    "localhost, same port": {"target_1": "localhost:20777"},
+    "127.0.0.1 among several targets": {"target_1": "example.com:3000", "target_2": "127.0.0.1:20777"},
+}
 
-        # invalid: localhost loop
-        with self.assertRaises(ValueError):
-            PngSettings(
-                Network=NetworkSettings(telemetry_port=20777),
-                Forwarding=ForwardingSettings(target_1="localhost:20777"),
-            )
+@allure.story("Cross-section rules")
+@allure.title("Forwarding that does not loop back to the telemetry port is accepted ({case})")
+@pytest.mark.parametrize("case", list(_NO_LOOP))
+def test_forwarding_without_loop_accepted(case):
+    """
+    Sets Network.telemetry_port to 20777 and forwards to targets that are remote or on another port.
 
-        # invalid: 127.0.0.1 loop among multiple targets
-        with self.assertRaises(ValueError):
-            PngSettings(
-                Network=NetworkSettings(telemetry_port=20777),
-                Forwarding=ForwardingSettings(
-                    target_1="example.com:3000",
-                    target_2="127.0.0.1:20777",
-                ),
-            )
+    Expected: PngSettings builds.
+    """
+    PngSettings(Network=NetworkSettings(telemetry_port=20777), Forwarding=ForwardingSettings(**_NO_LOOP[case]))
+
+
+@allure.story("Cross-section rules")
+@allure.title("Forwarding back to the local telemetry port is rejected ({case})")
+@pytest.mark.parametrize("case", list(_LOOP))
+def test_forwarding_loop_rejected(case):
+    """
+    Sets Network.telemetry_port to 20777 and forwards to localhost or 127.0.0.1 on that same port.
+
+    Expected: a ValidationError reporting the localhost loop.
+    """
+    with pytest.raises(ValidationError, match="localhost loop"):
+        PngSettings(Network=NetworkSettings(telemetry_port=20777), Forwarding=ForwardingSettings(**_LOOP[case]))

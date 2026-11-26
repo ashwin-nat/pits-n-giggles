@@ -28,17 +28,12 @@ from .tests_file_path_str_config import TestFilePathStr
 from .tests_forwarding_settings import TestForwardingSettings
 from .tests_https_settings import TestHttpsSettings
 from .tests_hud_settings import TestHudSettings, TestTimingTowerColConfig
-from .tests_pit_time_loss import TestPitTimeLossF1, TestPitTimeLossF2
-from .tests_png_settings import TestPngSettings
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     "TestForwardingSettings",
-    "TestPngSettings",
     "TestHttpsSettings",
-    "TestPitTimeLossF1",
-    "TestPitTimeLossF2",
     "TestHudSettings",
     "TestTimingTowerColConfig",
 
