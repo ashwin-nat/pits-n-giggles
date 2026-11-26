@@ -249,31 +249,36 @@ class HudAppMgr(PngAppMgrBase):
             new_value=requested_state,
         )
 
-        self.locked = requested_state
         self.set_button_state(self.buttons["lock"], True)
 
         if success:
-            # Update lock button icon and tooltip based on new state
-            if self.locked:
-                self.set_button_icon(self.buttons["lock"], self.get_icon("unlock"))
-                self.set_button_tooltip(self.buttons["lock"], "Edit Overlays")
-            else:
-                self.set_button_icon(self.buttons["lock"], self.get_icon("lock"))
-                self.set_button_tooltip(self.buttons["lock"], "Lock Overlays")
-
+            self.locked = requested_state
             if self.locked:
                 try:
                     self._save_layout_if_changed(rsp)
                 except Exception as e:  # pylint: disable=broad-except
                     self.error_log(f"Failed to persist HUD layout: {e}")
-
         else:
+            # The HUD did not change state, so neither does the launcher's view of it
             self.error_log("Failed to toggle lock state.")
 
+        self._show_lock_state()
+
+    def _show_lock_state(self) -> None:
+        """Set the lock button and the overlays adjust popup to match self.locked."""
         if self.locked:
+            self.set_button_icon(self.buttons["lock"], self.get_icon("unlock"))
+            self.set_button_tooltip(self.buttons["lock"], "Edit Overlays")
             self.overlays_adj_popup.hide()
         else:
+            self.set_button_icon(self.buttons["lock"], self.get_icon("lock"))
+            self.set_button_tooltip(self.buttons["lock"], "Lock Overlays")
             self.show_overlays_adj_popup()
+
+    def _reset_to_locked(self) -> None:
+        """A HUD process starts locked, and a stopped one cannot be edited: match the launcher to that."""
+        self.locked = True
+        self._show_lock_state()
 
     def reset_callback(self):
         """Reset all HUD overlays to their default layout (left-click), after confirmation."""
@@ -376,6 +381,7 @@ class HudAppMgr(PngAppMgrBase):
     def post_start(self):
         """Update buttons after app start"""
         self._update_all_button_states(running=True)
+        self._reset_to_locked()
 
         # Update start/stop button to show stop state
         self.set_button_icon(self.buttons["start_stop"], self.get_icon("stop"))
@@ -392,6 +398,7 @@ class HudAppMgr(PngAppMgrBase):
             self._stop_integration_test_thread()
 
         self._update_all_button_states(running=False)
+        self._reset_to_locked()
 
         # Update start/stop button to show start state
         self.set_button_icon(self.buttons["start_stop"], self.get_icon("start"))
