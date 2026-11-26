@@ -51,6 +51,8 @@ pytestmark = allure.feature("Field constraints")
 # ------------------------- SPECS --------------------------------------------------------------------------------------
 
 _LETTERS = st.text(alphabet=string.ascii_letters, min_size=1)
+# No field takes a container, so every field must reject these
+_CONTAINERS = st.lists(st.integers(), max_size=3) | st.dictionaries(st.text(max_size=2), st.integers(), max_size=2)
 # Strings pydantic's lax bool parses, case-insensitively
 # Same as pydantic.v1.validators.BOOL_TRUE/BOOL_FALSE; v2 parses in pydantic-core and exposes no constant
 _TRUE_WORDS = {"1", "on", "t", "true", "y", "yes"}
@@ -581,11 +583,11 @@ def test_accepts_in_range(case: Case, data: st.DataObject) -> None:
 @given(data=st.data())
 def test_rejects_out_of_range(case: Case, data: st.DataObject) -> None:
     """Builds the model with this one field set to a generated value outside its spec: out of bounds, the wrong
-    type, or None for a non-nullable field.
+    type (a list or dict included), or None for a non-nullable field.
 
     Expected: a ValidationError located at this field.
     """
-    case.assert_rejects(data.draw(case.spec.invalid(), label=case.field))
+    case.assert_rejects(data.draw(case.spec.invalid() | _CONTAINERS, label=case.field))
 
 
 @allure.story("Edges")
@@ -599,5 +601,5 @@ def test_edges(case: Case) -> None:
     """
     for value in case.spec.edges_in():
         case.assert_accepts(value)
-    for value in case.spec.edges_out():
+    for value in case.spec.edges_out() + [[1, 2, 3], {}]:
         case.assert_rejects(value)

@@ -24,30 +24,21 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .tests_diff_mixin import TestConfigDiffMixin
-from .tests_display_settings import TestDisplaySettings
 from .tests_file_path_str_config import TestFilePathStr
 from .tests_forwarding_settings import TestForwardingSettings
 from .tests_https_settings import TestHttpsSettings
 from .tests_hud_settings import TestHudSettings, TestTimingTowerColConfig
 from .tests_pit_time_loss import TestPitTimeLossF1, TestPitTimeLossF2
 from .tests_png_settings import TestPngSettings
-from .tests_prediction_settings import TestPredictionSettings, TestPngSettingsPrediction
-from .tests_privacy_settings import TestPrivacySettings
-from .tests_stream_overlay_settings import TestStreamOverlaySettings
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "TestDisplaySettings",
     "TestForwardingSettings",
     "TestPngSettings",
-    "TestPrivacySettings",
     "TestHttpsSettings",
-    "TestStreamOverlaySettings",
     "TestPitTimeLossF1",
     "TestPitTimeLossF2",
-    "TestPredictionSettings",
-    "TestPngSettingsPrediction",
     "TestHudSettings",
     "TestTimingTowerColConfig",
 

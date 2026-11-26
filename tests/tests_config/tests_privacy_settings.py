@@ -21,46 +21,21 @@
 # SOFTWARE.
 # pylint: skip-file
 
-import os
-import sys
+"""PrivacySettings defaults. The process_car_setup flag is in tests_config_properties.py."""
 
-from pydantic import ValidationError
-
-# Add the parent directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-import os
-import sys
-
-from pydantic import ValidationError
+import allure
 
 from lib.config import PrivacySettings
 
-from .tests_config_base import TestF1ConfigBase
-
-# ----------------------------------------------------------------------------------------------------------------------
+pytestmark = allure.feature("Privacy settings")
 
 
-class TestPrivacySettings(TestF1ConfigBase):
-    """Test PrivacySettings model"""
+@allure.story("Defaults")
+@allure.title("Default PrivacySettings do not process car setups")
+def test_default_values():
+    """
+    Builds PrivacySettings with no arguments.
 
-    def test_default_values(self):
-        """Test default values"""
-        settings = PrivacySettings()
-        self.assertFalse(settings.process_car_setup)
-
-    def test_process_car_setup_boolean_validation(self):
-        # Accept explicit True
-        privacy_settings = PrivacySettings(process_car_setup=True)
-        self.assertTrue(privacy_settings.process_car_setup)
-
-        # Accept explicit False
-        privacy_settings = PrivacySettings(process_car_setup=False)
-        self.assertFalse(privacy_settings.process_car_setup)
-
-        # Invalid types should raise validation errors
-        with self.assertRaises(ValidationError):
-            PrivacySettings(process_car_setup="notabool")
-
-        with self.assertRaises(ValidationError):
-            PrivacySettings(process_car_setup=123)
+    Expected: process_car_setup is off.
+    """
+    assert PrivacySettings().process_car_setup is False
