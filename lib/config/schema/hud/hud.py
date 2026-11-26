@@ -664,6 +664,15 @@ class HudSettings(ConfigDiffMixin, BaseModel):
                 ["track_radar_idle_opacity", "overlays_opacity"],
             )
 
+        # Layout is merged with the defaults in model_post_init, so the key is always present
+        radar_ovr = self.layout[OverlayId.TRACK_RADAR].opacity_override
+        if radar_ovr.enabled and radar_ovr.value <= self.track_radar_idle_opacity:
+            # Resetting the override falls back to global, which the rule above keeps above idle
+            raise ConflictError(
+                "Track radar idle opacity must be below the track radar's opacity override",
+                [f"layout.{OverlayId.TRACK_RADAR.value}.opacity_override"],
+            )
+
         return self
 
     @field_validator("timing_tower_max_rows")

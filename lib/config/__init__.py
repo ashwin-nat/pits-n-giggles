@@ -30,7 +30,7 @@ from .schema.https import HttpsSettings
 from .schema.hud.hud import (HudSettings, MfdTyreWearRateType,
                              OverlaysFuelEstimationMode, OverlaysSpeedUnit,
                              TimingTowerTyreInfoMode, WeatherMFDUIType)
-from .schema.hud.layout import OverlayId, OverlayPosition
+from .schema.hud.layout import OpacityOverride, OverlayId, OverlayPosition
 from .schema.hud.mfd import MfdPageId, MfdPageSettings, MfdSettings
 from .schema.hud.timing_tower import (TimingTowerColId, TimingTowerColOptions,
                                       TimingTowerColSettings)
@@ -77,6 +77,7 @@ __all__ = [
     'save_config_to_json',
 
     'OverlayPosition',
+    'OpacityOverride',
 
     'OverlayId',
 ]
