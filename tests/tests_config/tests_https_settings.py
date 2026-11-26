@@ -21,8 +21,9 @@
 # SOFTWARE.
 # pylint: skip-file
 
-"""HttpsSettings rules the field spec table does not cover: defaults, the key/cert file checks when enabled, and
-the proto/key_path/cert_path values. Each field's type is in tests_config_properties.py."""
+"""HttpsSettings rules the field spec table does not cover: defaults, the key/cert file checks when enabled, the
+proto/key_path/cert_path values, and paths kept while HTTPS is toggled. Each field's type is in
+tests_config_properties.py."""
 
 import allure
 import pytest
@@ -127,3 +128,41 @@ def test_key_and_cert_path_follow_enabled(key_and_cert):
 
     settings.enabled = False
     assert (settings.key_path, settings.cert_path) == (None, None)
+    assert (settings.key_file_path, settings.cert_file_path) == (key, cert)
+
+# -------------------------------------- TOGGLING ----------------------------------------------------------------------
+
+@allure.story("Toggling")
+@allure.title("Turning HTTPS off keeps the key and cert paths through a save and reload ({files})")
+@pytest.mark.parametrize("files", ["existing", "missing"])
+def test_disabled_keeps_paths_through_reload(key_and_cert, files):
+    """
+    Builds HttpsSettings with HTTPS off and key/cert paths set (existing files, or paths to no file as a repair
+    leaves them), then dumps it and validates the dump, as a save and reload would.
+
+    Expected: both builds succeed, HTTPS stays off, and both paths are kept unchanged.
+    """
+    key, cert = key_and_cert if files == "existing" else ("/non/existent/key.pem", "/non/existent/cert.pem")
+    settings = HttpsSettings(enabled=False, key_file_path=key, cert_file_path=cert)
+
+    reloaded = HttpsSettings.model_validate(settings.model_dump())
+
+    assert reloaded.proto == "http"
+    assert (reloaded.key_file_path, reloaded.cert_file_path) == (key, cert)
+
+
+@allure.story("Toggling")
+@allure.title("Turning HTTPS back on after a reload serves HTTPS with the kept files")
+def test_reenabled_after_reload_uses_kept_files(key_and_cert):
+    """
+    Saves HttpsSettings with HTTPS off and existing key/cert files, reloads the dump with enabled set to True.
+
+    Expected: the model builds, proto is "https", and key_path/cert_path are the original files.
+    """
+    key, cert = key_and_cert
+    saved = HttpsSettings(enabled=False, key_file_path=key, cert_file_path=cert).model_dump()
+
+    settings = HttpsSettings.model_validate({**saved, "enabled": True})
+
+    assert settings.proto == "https"
+    assert (settings.key_path, settings.cert_path) == (key, cert)
