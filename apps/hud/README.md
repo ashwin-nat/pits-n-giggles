@@ -75,7 +75,7 @@ for typing convenience):
   shared mailbox (no per-sample cross-thread signal; seq/loss accounting lives at the write site)
 - Frame timer (`refresh_interval_ms`, `render_frame()`) — event-driven vs frame-driven is a
   **constructor parameter**, never a base-class choice
-- Default handlers: `__set_opacity__`, `get_window_stats`, `__set_visibility__`, etc.
+- Default handlers: `__set_global_opacity__`, `get_window_stats`, `__set_visibility__`, etc.
 - `_qml_target` → `self._root` (the `QQuickWindow`)
 
 Concrete overlays subclass `BaseOverlay` directly (e.g. `TimingTowerOverlay`, `TrackRadarOverlay`,

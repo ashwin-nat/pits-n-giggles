@@ -36,7 +36,7 @@ from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent
 from PySide6.QtQuick import QQuickItem, QQuickWindow
 
 from lib.assets_loader import load_icon
-from lib.config import OverlayPosition, PngSettings
+from lib.config import OpacityOverride, OverlayPosition, PngSettings
 from lib.logger import PngLogger
 from meta.meta import APP_NAME_SNAKE
 
@@ -171,7 +171,7 @@ class BaseOverlay(QmlBridge, QObject):
         self.config = cfg
         self.locked = True
         self.logger = logger
-        self.opacity = settings.HUD.overlays_opacity
+        self._global_opacity: int = settings.HUD.overlays_opacity
         self.scale_factor = cfg.scale_factor
         self.telemetry_active = True
 
@@ -194,6 +194,23 @@ class BaseOverlay(QmlBridge, QObject):
         logger.silent("%s | Initialized overlay. ", self.OVERLAY_ID)
         logger.debug("%s initialized. Path=%s. "
                      "exists=%s", self.OVERLAY_ID, self.QML_FILE, self.QML_FILE.is_file())
+
+    @property
+    def opacity(self) -> int:
+        """The opacity this overlay shows at (0-100): its override if enabled, else the global value."""
+        # No setter: a write meant for the global value goes to _global_opacity
+        ovr = self.config.opacity_override
+        return ovr.value if ovr.enabled else self._global_opacity
+
+    def min_override_opacity(self) -> int:
+        """Lowest value the opacity override may take."""
+        return 0
+
+    def set_opacity_override(self, enabled: bool, value: int):
+        """Set this overlay's opacity override and apply the resulting opacity."""
+        override = OpacityOverride(enabled=enabled, value=value)
+        self.config = self.config.model_copy(update={"opacity_override": override})
+        self.set_opacity(self.opacity)
 
     @property
     def is_animation_overlay(self) -> bool:
@@ -478,7 +495,8 @@ class BaseOverlay(QmlBridge, QObject):
 
     def get_window_info(self) -> OverlayPosition:
         pos = self._root.position()
-        return OverlayPosition(x=pos.x(), y=pos.y(), scale_factor=self.scale_factor)
+        return OverlayPosition(x=pos.x(), y=pos.y(), scale_factor=self.scale_factor,
+                               opacity_override=self.config.opacity_override)
 
     def set_window_position(self, config: OverlayPosition):
         self.config = config
@@ -769,11 +787,10 @@ class BaseOverlay(QmlBridge, QObject):
             visible = data["visible"]
             self.set_visibility(visible)
 
-        @self.on_event("__set_opacity__")
-        def _handle_set_opacity(data: Dict[str, Any]):
-            opacity = data["opacity"]
-            self.opacity = opacity
-            self.set_opacity(opacity)
+        @self.on_event("__set_global_opacity__")
+        def _handle_set_global_opacity(data: Dict[str, Any]):
+            self._global_opacity = data["opacity"]
+            self.set_opacity(self.opacity)
 
         @self.on_event("__set_config__")
         def _handle_set_window_config(data: Dict[str, Any]) -> None:
@@ -781,6 +798,8 @@ class BaseOverlay(QmlBridge, QObject):
             self.logger.debug("%s | Setting window config to %s", self.OVERLAY_ID, config)
             self.set_window_position(config)
             self.set_ui_scale(config.scale_factor)
+            # The new config carries its own override (the default, on reset)
+            self.set_opacity(self.opacity)
 
         @self.on_event("__set_telemetry_active__")
         def _handle_set_telemetry_active(data: Dict[str, Any]) -> None:

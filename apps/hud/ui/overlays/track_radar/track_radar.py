@@ -78,6 +78,11 @@ class TrackRadarOverlay(BaseOverlay):
         self._set_base_opacity_property(opacity)
 
     @final
+    def min_override_opacity(self) -> int:
+        """The override must stay above idle opacity, as the config rule requires."""
+        return self.idle_opacity + 1
+
+    @final
     def set_locked_state(self, locked: bool):
         """Set locked state."""
         self.logger.debug('%s | [OVERRIDDEN HANDLER] Setting locked state to %s', self.OVERLAY_ID, locked)

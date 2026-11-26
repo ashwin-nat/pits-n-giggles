@@ -433,21 +433,21 @@ class HudAppMgr(PngAppMgrBase):
             self.stop("Disabling HUD")
             self._update_all_button_states(running=False)
 
-    def _send_overlays_opacity_change(self, opacity: int) -> None:
-        """Send overlays opacity change to HUD app
+    def _send_global_opacity_change(self, opacity: int) -> None:
+        """Send global opacity change to HUD app
 
         Args:
-            opacity (int): New overlays opacity
+            opacity (int): New global opacity
         """
-        self.debug_log("Sending set-overlays-opacity command to HUD...")
-        rsp = IpcClientSync(self.ipc_port).request(command="set-overlays-opacity", args={
+        self.debug_log("Sending set-global-opacity command to HUD...")
+        rsp = IpcClientSync(self.ipc_port).request(command="set-global-opacity", args={
             "opacity": opacity,
         })
         status = rsp.get("status")
         if status != "success":
-            self.error_log(f"Failed to set overlays opacity: {rsp}")
+            self.error_log(f"Failed to set global opacity: {rsp}")
         else:
-            self.debug_log("Set overlays opacity command was successful")
+            self.debug_log("Set global opacity command was successful")
 
     def _send_circuit_info_length_change(self, length: int) -> None:
         """Send circuit info length change to HUD app
@@ -720,7 +720,7 @@ class HudAppMgr(PngAppMgrBase):
 
         # ---- Apply runtime effects ----
         if global_opacity_changed:
-            self._send_overlays_opacity_change(
+            self._send_global_opacity_change(
                 validated_settings.HUD.overlays_opacity
             )
 

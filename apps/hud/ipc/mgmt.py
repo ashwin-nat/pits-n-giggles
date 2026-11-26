@@ -59,15 +59,16 @@ def register_mgmt_routes(
         overlays_mgr.toggle_overlays_visibility()
         return {"status": "success", "message": "toggle-visibility handler executed."}
 
-    @mgmt.on("set-overlays-opacity")
-    def _set_opacity(args: dict) -> dict:
-        logger.debug("Received set-opacity command. args: %s", args)
+    @mgmt.on("set-global-opacity")
+    def _set_global_opacity(args: dict) -> dict:
+        logger.debug("Received set-global-opacity command. args: %s", args)
 
-        if opacity := args.get("opacity"):
-            overlays_mgr.set_overlays_opacity(opacity)
-            return {"status": "success", "message": "set-opacity handler executed."}
+        opacity = args.get("opacity")
+        if opacity is not None:
+            overlays_mgr.set_global_opacity(opacity)
+            return {"status": "success", "message": "set-global-opacity handler executed."}
 
-        return {"status": "error", "message": "Missing opacity value in set-opacity command."}
+        return {"status": "error", "message": "Missing opacity value in set-global-opacity command."}
 
     @mgmt.on("next-page")
     def _next_page(args: dict) -> dict:

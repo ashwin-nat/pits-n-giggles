@@ -244,10 +244,10 @@ class OverlaysMgr:
         rsp["layout"] = layout
         return rsp
 
-    def set_overlays_opacity(self, opacity: int):
-        """Set overlays opacity"""
-        self.logger.debug("Setting overlays opacity to %s%%", opacity)
-        self.window_manager.emit_event('__set_opacity__', {'opacity': opacity}, high_prio=True)
+    def set_global_opacity(self, opacity: int):
+        """Set the global opacity, used by every overlay without an override"""
+        self.logger.debug("Setting global opacity to %s%%", opacity)
+        self.window_manager.emit_event('__set_global_opacity__', {'opacity': opacity}, high_prio=True)
 
     def next_page(self):
         """Go to the next page in MFD overlay"""
