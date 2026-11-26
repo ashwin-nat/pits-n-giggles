@@ -21,63 +21,24 @@
 # SOFTWARE.
 # pylint: skip-file
 
-import os
-import sys
+"""StreamOverlaySettings defaults. Per-field ranges and types are in tests_config_properties.py."""
 
-from pydantic import ValidationError
-
-# Add the parent directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+import allure
 
 from lib.config import StreamOverlaySettings
 
-from .tests_config_base import TestF1ConfigBase
-
-# ----------------------------------------------------------------------------------------------------------------------
+pytestmark = allure.feature("Stream overlay settings")
 
 
-class TestStreamOverlaySettings(TestF1ConfigBase):
-    """Test StreamOverlaySettings model"""
+@allure.story("Defaults")
+@allure.title("Default StreamOverlaySettings hold the shipped values")
+def test_default_values():
+    """
+    Builds StreamOverlaySettings with no arguments.
 
-    def test_default_values(self):
-        """Test default values"""
-        settings = StreamOverlaySettings()
-        self.assertFalse(settings.show_sample_data_at_start)
-        self.assertEqual(settings.stream_overlay_update_interval_ms, 100)
+    Expected: every field holds its shipped default.
+    """
+    settings = StreamOverlaySettings()
 
-    def test_sample_data_at_start_validation(self):
-        # Accept explicit True
-        settings = StreamOverlaySettings(show_sample_data_at_start=True)
-        self.assertTrue(settings.show_sample_data_at_start)
-
-        # Accept explicit False
-        settings = StreamOverlaySettings(show_sample_data_at_start=False)
-        self.assertFalse(settings.show_sample_data_at_start)
-
-        # Invalid types should raise validation errors
-        with self.assertRaises(ValidationError):
-            StreamOverlaySettings(show_sample_data_at_start="notabool")
-
-        with self.assertRaises(ValidationError):
-            StreamOverlaySettings(show_sample_data_at_start=123)
-
-        # Default values for the other fields
-        self.assertEqual(settings.stream_overlay_update_interval_ms, 100)
-
-    def test_update_interval_validation(self):
-        """Test update interval must be positive and greater than 50ms"""
-        settings = StreamOverlaySettings(stream_overlay_update_interval_ms=100)
-        self.assertEqual(settings.stream_overlay_update_interval_ms, 100)
-
-        with self.assertRaises(ValidationError):
-            StreamOverlaySettings(stream_overlay_update_interval_ms=0)
-
-        with self.assertRaises(ValidationError):
-            StreamOverlaySettings(stream_overlay_update_interval_ms=49)
-
-        with self.assertRaises(ValidationError):
-            StreamOverlaySettings(stream_overlay_update_interval_ms="notanumber")
-
-        # Default values for the other fields
-        self.assertFalse(settings.show_sample_data_at_start)
+    assert settings.show_sample_data_at_start is False
+    assert settings.stream_overlay_update_interval_ms == 100

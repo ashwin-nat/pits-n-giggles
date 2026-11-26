@@ -29,6 +29,7 @@ from typing import Any, ClassVar, Dict, List, Tuple
 from pydantic import BaseModel, Field, model_validator
 
 from ..diff import ConfigDiffMixin
+from ..utils import ConflictError, key_str as _key_str
 
 # ------------------------------------- CONSTANTS ----------------------------------------------------------------------
 
@@ -118,6 +119,20 @@ class TimingTowerColOptions(ConfigDiffMixin, BaseModel):
         },
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def fill_missing_positions(cls, data: Any) -> Any:
+        """A known column stored without a position gets its default position."""
+        if not isinstance(data, dict) or not isinstance(data.get("cols"), dict):
+            return data
+        defaults = {col_id.value: col.position for col_id, col in DEFAULT_COLS.items()}
+        cols = {
+            key: {**col, "position": defaults[_key_str(key)]}
+            if isinstance(col, dict) and "position" not in col and _key_str(key) in defaults else col
+            for key, col in data["cols"].items()
+        }
+        return {**data, "cols": cols}
+
     @model_validator(mode="after")
     def check_unique_positions(self):
         pos_map: Dict[int, str] = {}
@@ -125,9 +140,11 @@ class TimingTowerColOptions(ConfigDiffMixin, BaseModel):
             if not col.enabled:
                 continue
             if col.position in pos_map:
-                raise ValueError(
+                # Default positions are unique, so resetting both positions resolves the clash
+                raise ConflictError(
                     f"Timing tower column '{col_id}' has duplicate position {col.position} "
-                    f"(also used by '{pos_map[col.position]}')"
+                    f"(also used by '{pos_map[col.position]}')",
+                    [f"cols.{_key_str(pos_map[col.position])}.position", f"cols.{_key_str(col_id)}.position"],
                 )
             pos_map[col.position] = col_id
         return self

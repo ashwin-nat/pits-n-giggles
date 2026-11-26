@@ -186,8 +186,9 @@ class PngSubsystem(ABC, Generic[ArgsT]):
         # pre_boot() known to have run.
         try:
             self.version: str = get_version()
+            # read_only: the launcher is the config file's only writer
             self.settings: PngSettings = load_config_from_json(
-                self.args.config_file, self.logger, fail_if_missing=self.CONFIG_REQUIRED)
+                self.args.config_file, self.logger, fail_if_missing=self.CONFIG_REQUIRED, read_only=True)
         except Exception as e:  # pylint: disable=broad-exception-caught
             self._report_fatal(e)
 

@@ -36,5 +36,6 @@ reports/
 .pits_n_giggles.lock
 *.gz
 graphify-out/
+.hypothesis/
 plans/
 data/

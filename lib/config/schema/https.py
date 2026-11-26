@@ -28,6 +28,7 @@ from typing import Any, ClassVar, Dict, Optional
 from pydantic import BaseModel, Field
 
 from .diff import ConfigDiffMixin
+from .utils import ConflictError
 from ..types.file_path_str import FilePathStr
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
@@ -69,11 +70,12 @@ class HttpsSettings(ConfigDiffMixin, BaseModel):
 
     def model_post_init(self, __context: Any) -> None: # pylint: disable=arguments-differ
         """Validate file existence only if HTTPS is enabled."""
+        # Only enabled is reset: the paths are kept, so the user can fix the files and turn HTTPS back on
         if self.enabled:
             if not self.key_file_path or not os.path.isfile(self.key_file_path):
-                raise ValueError("Key file is required and must exist when HTTPS is enabled")
+                raise ConflictError("Key file is required and must exist when HTTPS is enabled", ["enabled"])
             if not self.cert_file_path or not os.path.isfile(self.cert_file_path):
-                raise ValueError("Certificate file is required and must exist when HTTPS is enabled")
+                raise ConflictError("Certificate file is required and must exist when HTTPS is enabled", ["enabled"])
 
     @property
     def proto(self) -> str:

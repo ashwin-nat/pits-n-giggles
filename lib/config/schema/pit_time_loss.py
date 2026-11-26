@@ -88,7 +88,7 @@ def make_pit_time_loss_model(model_name: str, game_key: str) -> Type[BaseModel]:
     and stable release-to-release, since they are the JSON keys persisted in saved configs.
     """
     fields = {
-        track: (Optional[float], Field(per_game[game_key]))
+        track: (Optional[float], Field(per_game[game_key], ge=0, allow_inf_nan=False))
         for track, per_game in PIT_TIME_LOSS_DEFAULTS.items()
     }
     return create_model(model_name, __base__=_PitTimeLossBase, **fields)
