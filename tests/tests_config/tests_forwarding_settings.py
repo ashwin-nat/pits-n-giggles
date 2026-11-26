@@ -82,6 +82,8 @@ _DISTINCT = {
 _DUPLICATE = {
     "localhost and 127.0.0.1": {"target_1": "localhost:6000", "target_2": "127.0.0.1:6000"},
     "exact duplicate": {"target_1": "myhost:7000", "target_2": "myhost:7000"},
+    "different letter case": {"target_1": "MyHost:7000", "target_2": "myhost:7000"},
+    "absolute name": {"target_1": "nas.lan.:7000", "target_2": "nas.lan:7000"},
 }
 
 @allure.story("Cross-field rules")
@@ -101,7 +103,8 @@ def test_distinct_targets_accepted(case):
 @pytest.mark.parametrize("case", list(_DUPLICATE))
 def test_duplicate_targets_rejected(case):
     """
-    Sets two targets with the same port and the same host, counting localhost and 127.0.0.1 as one host.
+    Sets two targets with the same port and the same host, counting localhost and 127.0.0.1 as one host, and
+    ignoring letter case and a trailing dot.
 
     Expected: a ValidationError reporting the duplicate target.
     """

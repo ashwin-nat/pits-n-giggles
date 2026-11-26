@@ -330,8 +330,8 @@ _BROKEN_RULES = {
     ),
     "duplicate forwarding targets": (
         {"Forwarding": {"target_1": "a.lan:5000", "target_2": "a.lan:5000", "target_3": "b.lan:6000"}},
-        {"Forwarding.target_1": "", "Forwarding.target_2": ""},
-        {"Forwarding.target_3": "b.lan:6000"},
+        {"Forwarding.target_2": ""},
+        {"Forwarding.target_1": "a.lan:5000", "Forwarding.target_3": "b.lan:6000"},
     ),
     "HUD on with every overlay off": (
         {"HUD": {**dict.fromkeys(_HUD_OVERLAY_FLAGS, False), "track_radar_range_m": 30}},
@@ -352,16 +352,24 @@ _BROKEN_RULES = {
     ),
     "two timing tower columns at one position": (
         {"HUD": {"track_radar_range_m": 30, "timing_tower_col_options": {"cols": {
-            "delta": {"enabled": True, "position": 1}, "tyre": {"enabled": True, "position": 1}}}}},
-        {"HUD.timing_tower_col_options.cols.delta.enabled": False,
-         "HUD.timing_tower_col_options.cols.tyre.enabled": False},
-        {"HUD.track_radar_range_m": 30},
+            "delta": {"enabled": True, "position": 3}, "tyre": {"enabled": True, "position": 3}}}}},
+        {"HUD.timing_tower_col_options.cols.delta.position": 1, "HUD.timing_tower_col_options.cols.tyre.position": 2},
+        {"HUD.timing_tower_col_options.cols.delta.enabled": True,
+         "HUD.timing_tower_col_options.cols.tyre.enabled": True, "HUD.track_radar_range_m": 30},
+    ),
+    "two MFD pages at one position": (
+        {"HUD": {"track_radar_range_m": 30, "mfd_settings": {"pages": {
+            "lap_times": {"enabled": True, "position": 3}, "weather_forecast": {"enabled": True, "position": 3}}}}},
+        {"HUD.mfd_settings.pages.lap_times.position": 1, "HUD.mfd_settings.pages.weather_forecast.position": 2},
+        {"HUD.mfd_settings.pages.lap_times.enabled": True,
+         "HUD.mfd_settings.pages.weather_forecast.enabled": True, "HUD.track_radar_range_m": 30},
     ),
     "HTTPS on without key or cert files": (
         {"HTTPS": {"enabled": True, "key_file_path": "/no/key.pem", "cert_file_path": "/no/cert.pem"},
          "Display": {"refresh_interval": 300}},
-        {"HTTPS.enabled": False, "HTTPS.key_file_path": None, "HTTPS.cert_file_path": None},
-        {"Display.refresh_interval": 300},
+        {"HTTPS.enabled": False},
+        {"HTTPS.key_file_path": "/no/key.pem", "HTTPS.cert_file_path": "/no/cert.pem",
+         "Display.refresh_interval": 300},
     ),
     "UDP action code in Network and HUD": (
         {"Network": {"udp_custom_action_code": 3, "server_port": 4999},
@@ -381,8 +389,8 @@ _BROKEN_RULES = {
     ),
     "forwarding loops back to the telemetry port": (
         {"Network": {"telemetry_port": 20800}, "Forwarding": {"target_1": "localhost:20800", "target_2": "b.lan:6000"}},
-        {"Network.telemetry_port": 20777, "Forwarding.target_1": ""},
-        {"Forwarding.target_2": "b.lan:6000"},
+        {"Forwarding.target_1": ""},
+        {"Network.telemetry_port": 20800, "Forwarding.target_2": "b.lan:6000"},
     ),
     "overlay layout entry with a bad scale": (
         {"HUD": {"layout": {"mfd": {"x": 7, "y": 8, "scale_factor": -1}}, "track_radar_range_m": 30}},
@@ -397,14 +405,14 @@ _BROKEN_RULES = {
 }
 
 @allure.story("Bad value isolation")
-@allure.title("A config breaking a rule ({case}) resets every field the rule involves, and nothing else")
+@allure.title("A config breaking a rule ({case}) resets the fields the rule names, and nothing else")
 @pytest.mark.parametrize("case", list(_BROKEN_RULES))
 def test_broken_rule_resets_involved_fields(config_path, caplog, case):
     """
     Writes a config.json where each value is valid alone but a rule between fields is broken (within a section,
     across sections, or in a dict entry), plus valid values elsewhere, then loads it.
 
-    Expected: no exception; every field the rule involves reads as its default, the other values are kept, a
+    Expected: no exception; every field the rule names reads as its default, the other values are kept, a
     warning names what was reset, and the original is moved to config.json.invalid.
     """
     raw, expected, kept = _BROKEN_RULES[case]

@@ -116,6 +116,9 @@ _NO_LOOP = {
 _LOOP = {
     "localhost, same port": {"target_1": "localhost:20777"},
     "127.0.0.1 among several targets": {"target_1": "example.com:3000", "target_2": "127.0.0.1:20777"},
+    "localhost in mixed case": {"target_1": "LocalHost:20777"},
+    "localhost with a trailing dot": {"target_1": "localhost.:20777"},
+    "another 127.x address": {"target_1": "127.0.0.2:20777"},
 }
 
 @allure.story("Cross-section rules")
@@ -135,7 +138,8 @@ def test_forwarding_without_loop_accepted(case):
 @pytest.mark.parametrize("case", list(_LOOP))
 def test_forwarding_loop_rejected(case):
     """
-    Sets Network.telemetry_port to 20777 and forwards to localhost or 127.0.0.1 on that same port.
+    Sets Network.telemetry_port to 20777 and forwards to a loopback host (localhost in any spelling, or a
+    127.x address) on that same port.
 
     Expected: a ValidationError reporting the localhost loop.
     """

@@ -33,7 +33,7 @@ from .utils import ConflictError
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
-_LOCALHOST_ALIASES = {"localhost", "127.0.0.1", "::1"}
+_LOCALHOST_ALIASES = {"localhost", "127.0.0.1"}
 
 # One part of a hostname between dots: 1-63 letters, digits or hyphens, not starting or ending with a hyphen.
 # Allows "my-pc", "lan", "1a"; catches "-pc", "pc-", "" (as in "a..b") and "my_pc"
@@ -47,11 +47,11 @@ def _is_valid_host(host: str) -> bool:
     """Whether host can be a forwarding target: an IPv4 address or a hostname (RFC 1123). Checks the spelling
     only; the name is not looked up, so a valid hostname may still not resolve.
 
-    Accepted: "192.168.1.10", "127.0.0.1", "localhost", "MyPC", "my-pc.lan", "1a.example"
+    Accepted: "192.168.1.10", "127.0.0.1", "localhost", "MyPC", "my-pc.lan", "1a.example", "nas.lan." (absolute)
 
     Rejected:
         "999.999.999.999", "1.2.3", "010.0.0.1"  digits and dots, but not a valid IPv4 address
-        "-pc", "pc-.lan", "a..b", ".lan", "lan."  a part starts or ends with "-", or is empty
+        "-pc", "pc-.lan", "a..b", ".lan", "lan.."  a part starts or ends with "-", or is empty
         "my_pc", "my pc"                          a character other than a letter, digit, "-" or "."
         "a.123"                                   last part all digits; no real domain ends like that
         "::1", "[::1]"                            IPv6; the forwarder only sends over IPv4
@@ -64,9 +64,21 @@ def _is_valid_host(host: str) -> bool:
         except ValueError:
             return False
         return True
-    labels = host.split(".")
-    return len(host) <= 253 and all(_HOSTNAME_LABEL.fullmatch(label) for label in labels) and \
+    name = host.removesuffix(".")  # one trailing dot marks an absolute name: "nas.lan." is "nas.lan"
+    labels = name.split(".")
+    return len(name) <= 253 and all(_HOSTNAME_LABEL.fullmatch(label) for label in labels) and \
         not labels[-1].isdigit()
+
+
+def is_loopback_host(host: str) -> bool:
+    """Whether host always means this machine: "localhost" in any case, or an IPv4 address in 127.0.0.0/8."""
+    host = host.lower().removesuffix(".")
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.IPv4Address(host).is_loopback
+    except ValueError:
+        return False
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -179,11 +191,10 @@ class ForwardingSettings(ConfigDiffMixin, BaseModel):
     @staticmethod
     def _normalize_host(host: str) -> str:
         """
-        Normalize hostnames so localhost variants are treated the same.
+        Normalize hostnames so localhost variants, letter case and a trailing dot are treated the same.
         """
-        if host in _LOCALHOST_ALIASES:
-            return "localhost"
-        return host.lower()
+        host = host.lower().removesuffix(".")
+        return "localhost" if host in _LOCALHOST_ALIASES else host
 
     @model_validator(mode="after")
     def _validate_no_duplicate_targets(self):
@@ -198,7 +209,8 @@ class ForwardingSettings(ConfigDiffMixin, BaseModel):
 
             key = (self._normalize_host(host), port)
             if key in seen:
-                raise ConflictError(f"Duplicate forwarding target detected: {host}:{port}", [seen[key], field_name])
+                # Both hold the same target, so clearing the later one loses nothing
+                raise ConflictError(f"Duplicate forwarding target detected: {host}:{port}", [field_name])
 
             seen[key] = field_name
 

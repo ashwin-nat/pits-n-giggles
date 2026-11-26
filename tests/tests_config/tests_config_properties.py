@@ -294,7 +294,7 @@ _BAD_HOSTS = st.one_of(
     _DOMAINS.map(lambda d: "-" + d),                                     # label starts with a hyphen
     _DOMAINS.map(lambda d: d.replace(".", "-.", 1)),                     # label ends with a hyphen
     _DOMAINS.map(lambda d: d.replace(".", "..", 1)),                     # empty label
-    _DOMAINS.map(lambda d: "." + d) | _DOMAINS.map(lambda d: d + "."),   # leading / trailing dot
+    _DOMAINS.map(lambda d: "." + d) | _DOMAINS.map(lambda d: d + ".."),  # leading dot / two trailing dots
     st.tuples(_DOMAINS, st.integers(0, 999)).map(lambda t: f"{t[0]}.{t[1]}"),  # all-digit last label
     st.integers(64, 80).map(lambda n: "a" * n + ".com"),                 # label over 63 chars
     st.integers(254, 300).map(lambda n: ("a." * n)[:n - 3] + "com"),     # name over 253 chars
@@ -338,6 +338,7 @@ class HostPort:
     def edges_in(self) -> List[Any]:
         return ["localhost:1", "localhost:65535", "127.0.0.1:20777", "255.255.255.255:80", "my-server.domain:65535",
                 "MyPC:80", "1a.example:80", "a" * 63 + ".com:80", ("a." * 125) + "com:80",  # 253-char host
+                "nas.lan.:80", ("a." * 125) + "com.:80",  # absolute names: one trailing dot
                 "  myhost.com:1234 ",
                 "", "   ", None]
 
@@ -345,7 +346,8 @@ class HostPort:
         return ["localhost:0", "localhost:65536", "localhost", "localhost:", ":8080", "localhost:abc",
                 "host:1:2", "local host:8080", "a_b:80", "[::1]:80", "::1:80",
                 "999.999.999.999:80", "256.0.0.1:80", "1.2.3:80", "1.2.3.4.5:80", "010.0.0.1:80",
-                "-:80", "-a.com:80", "a-.com:80", "a..b:80", ".host:80", "host.:80", "a.123:80",
+                "-:80", "-a.com:80", "a-.com:80", "a..b:80", ".host:80", "host..:80", ".:80", "a.123:80",
+                "a.123.:80",
                 "a" * 64 + ".com:80", "b" + ("a." * 125) + "com:80", 5]  # last host: 254 chars
 
     def __str__(self) -> str:

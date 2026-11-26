@@ -27,7 +27,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .capture import CaptureSettings
 from .diff import ConfigDiffMixin
 from .display import DisplaySettings
-from .forwarding import _LOCALHOST_ALIASES, ForwardingSettings
+from .forwarding import ForwardingSettings, is_loopback_host
 from .https import HttpsSettings
 from .hud.hud import HudSettings
 from .mcp_cfg import McpSettings
@@ -94,11 +94,12 @@ class PngSettings(ConfigDiffMixin, BaseModel):
             if target is None:
                 continue
             host, port = target
-            if port == telemetry_port and host in _LOCALHOST_ALIASES:
+            if port == telemetry_port and is_loopback_host(host):
+                # Only the target is reset: the telemetry port is the one the game sends to
                 raise ConflictError(
                     f"UDP forwarding target {host}:{port} forms a localhost loop "
                     f"with Network.telemetry_port={telemetry_port}",
-                    ["Network.telemetry_port", f"Forwarding.{field_name}"],
+                    [f"Forwarding.{field_name}"],
                 )
 
         return self

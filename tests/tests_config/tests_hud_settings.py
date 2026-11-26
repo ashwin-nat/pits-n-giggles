@@ -334,6 +334,21 @@ def test_mfd_missing_pages_added_disabled():
 
 
 @allure.story("MFD pages")
+@allure.title("A known MFD page stored without a position gets its default position")
+def test_mfd_page_without_position_gets_default():
+    """
+    Validates stored MFD settings where the weather page has only "enabled": True, as left by a repair that reset
+    its position.
+
+    Expected: the page keeps enabled and takes its default position, 2.
+    """
+    mfd = MfdSettings.model_validate({"pages": {MfdPageId.WEATHER_FORECAST.value: {"enabled": True}}})
+
+    assert (mfd.pages[MfdPageId.WEATHER_FORECAST.value].enabled,
+            mfd.pages[MfdPageId.WEATHER_FORECAST.value].position) == (True, 2)
+
+
+@allure.story("MFD pages")
 @allure.title("Unknown MFD pages in a stored config are dropped")
 def test_mfd_unknown_pages_dropped():
     """
@@ -375,6 +390,20 @@ def test_col_keys_dump_as_strings():
     Expected: every column key is a str (a plain str or a str-valued column id), so the config JSON has string keys.
     """
     assert all(isinstance(key, str) for key in TimingTowerColOptions().model_dump()["cols"])
+
+
+@allure.story("Timing tower columns")
+@allure.title("A known timing tower column stored without a position gets its default position")
+def test_col_without_position_gets_default():
+    """
+    Validates stored column options where the tyre column has only "enabled": True, as left by a repair that
+    reset its position.
+
+    Expected: the column keeps enabled and takes its default position, 2.
+    """
+    opts = TimingTowerColOptions.model_validate({"cols": {TimingTowerColId.TYRE.value: {"enabled": True}}})
+
+    assert (opts.cols[TimingTowerColId.TYRE.value].enabled, opts.cols[TimingTowerColId.TYRE.value].position) == (True, 2)
 
 
 @allure.story("Timing tower columns")

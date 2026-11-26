@@ -102,6 +102,20 @@ class MfdSettings(ConfigDiffMixin, BaseModel):
         },
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def fill_missing_positions(cls, data: Any) -> Any:
+        """A known page stored without a position gets its default position."""
+        if not isinstance(data, dict) or not isinstance(data.get("pages"), dict):
+            return data
+        defaults = {key.value: page.position for key, page in DEFAULT_PAGES.items()}
+        pages = {
+            key: {**page, "position": defaults[_key_str(key)]}
+            if isinstance(page, dict) and "position" not in page and _key_str(key) in defaults else page
+            for key, page in data["pages"].items()
+        }
+        return {**data, "pages": pages}
+
     @model_validator(mode="after")
     def check_unique_positions(self):
         # Enabled pages must have unique positions
@@ -110,10 +124,11 @@ class MfdSettings(ConfigDiffMixin, BaseModel):
             if not page.enabled:
                 continue
             if page.position in pos_map:
+                # Default positions are unique, so resetting both positions resolves the clash
                 raise ConflictError(
                     f"MFD page '{name}' has duplicate position {page.position} "
                     f"(also used by '{pos_map[page.position]}')",
-                    [f"pages.{_key_str(pos_map[page.position])}", f"pages.{_key_str(name)}"],
+                    [f"pages.{_key_str(pos_map[page.position])}.position", f"pages.{_key_str(name)}.position"],
                 )
             pos_map[page.position] = name
 
