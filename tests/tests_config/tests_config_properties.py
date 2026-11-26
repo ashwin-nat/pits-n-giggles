@@ -115,7 +115,14 @@ class FloatRange:
 
     def valid(self) -> st.SearchStrategy:
         floats = st.floats(self.lo, self.hi, allow_nan=False, allow_infinity=False)
-        return floats | st.none() if self.nullable else floats
+        # Ints in range are accepted too, stored as float(value); capped where floats still hold ints exactly
+        ints = st.integers(-10**15 if self.lo is None else math.ceil(self.lo),
+                           10**15 if self.hi is None else math.floor(self.hi))
+        numbers = floats | ints
+        return numbers | st.none() if self.nullable else numbers
+
+    def expected(self, value: Any) -> Any:
+        return float(value) if isinstance(value, int) else value
 
     def invalid(self) -> st.SearchStrategy:
         bad = _LETTERS.filter(lambda s: s.lower() not in _FLOAT_WORDS)
@@ -181,8 +188,10 @@ class Choice:
         return list(self.values) + [self.enum(v) for v in self.values]
 
     def edges_out(self) -> List[Any]:
-        # A member added to the enum but not listed here must fail, so the table stays the record of stored values
-        return [None, ""] + [m.value for m in self.enum if m.value not in self.values]
+        # A member added to the enum but not listed here must fail, so the table stays the record of stored values.
+        # Values are case-sensitive: other casings of a stored value must fail too
+        recased = {c for v in self.values for c in (v.lower(), v.upper()) if c not in self.values}
+        return [None, ""] + [m.value for m in self.enum if m.value not in self.values] + sorted(recased)
 
     def __str__(self) -> str:
         return self.enum.__name__

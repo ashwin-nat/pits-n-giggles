@@ -50,6 +50,19 @@ def test_udp_action_code_shared_across_sections_rejected():
 
 
 @allure.story("Cross-section rules")
+@allure.title("Two HUD UDP action codes cannot share a code")
+def test_udp_action_code_shared_within_hud_rejected():
+    """
+    Sets HUD.lap_timer_toggle_udp_action_code and HUD.mfd_toggle_udp_action_code to 3. HudSettings has no
+    uniqueness check of its own, so this clash is only caught at the PngSettings level.
+
+    Expected: PngSettings raises a ValidationError naming the duplicate code.
+    """
+    with pytest.raises(ValidationError, match="Duplicate UDP action code 3"):
+        PngSettings(HUD=HudSettings(lap_timer_toggle_udp_action_code=3, mfd_toggle_udp_action_code=3))
+
+
+@allure.story("Cross-section rules")
 @allure.title("Distinct UDP action codes in Network and HUD are accepted")
 def test_udp_action_codes_distinct_across_sections_accepted():
     """

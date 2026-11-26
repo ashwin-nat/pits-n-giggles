@@ -22,1324 +22,537 @@
 # SOFTWARE.
 # pylint: skip-file
 
-import os
-import sys
+"""HudSettings rules the field spec table does not cover: defaults, cross-field rules, the MFD page and timing
+tower column containers, the overlay layout, and derived values. Per-field ranges, types and enum values are in
+tests_config_properties.py; diff behaviour is in tests_diff_mixin.py."""
 
-# Add the parent directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+import allure
+import pytest
 from pydantic import ValidationError
 
-from lib.config import (OverlaysFuelEstimationMode, OverlaysSpeedUnit,
-                        HudSettings, MfdPageId, MfdPageSettings, MfdSettings,
-                        MfdTyreWearRateType, OverlayId, OverlayPosition,
-                        TimingTowerColId, TimingTowerColOptions,
-                        TimingTowerColSettings, TimingTowerTyreInfoMode,
-                        WeatherMFDUIType)
+from lib.config import (HudSettings, MfdPageId, MfdPageSettings, MfdSettings, MfdTyreWearRateType, OverlayId,
+                        OverlayPosition, OverlaysFuelEstimationMode, OverlaysSpeedUnit, TimingTowerColId,
+                        TimingTowerColOptions, TimingTowerColSettings, TimingTowerTyreInfoMode, WeatherMFDUIType)
 from lib.config.schema.hud.mfd import DEFAULT_PAGES
-from lib.config.schema.hud.timing_tower import DEFAULT_COLS
-
-from .tests_config_base import TestF1ConfigBase
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-class TestHudSettings(TestF1ConfigBase):
-    """Test LoggingSettings model"""
-
-    def test_default_values(self):
-        """Test default values"""
-        settings = HudSettings()
-        self.assertEqual(settings.enabled, True)
-        self.assertEqual(settings.toggle_overlays_udp_action_code, None)
-        self.assertEqual(settings.show_lap_timer, True)
-        self.assertEqual(settings.lap_timer_minimal, False)
-        self.assertEqual(settings.show_timing_tower, True)
-        self.assertEqual(settings.lap_timer_toggle_udp_action_code, None)
-        self.assertEqual(settings.timing_tower_max_rows, 5)
-        self.assertEqual(settings.timing_tower_toggle_udp_action_code, None)
-        self.assertTrue(settings.timing_tower_col_options.show_col_header)
-        cols = settings.timing_tower_col_options.cols
-        self.assertTrue(cols[TimingTowerColId.DELTA].enabled)
-        self.assertTrue(cols[TimingTowerColId.TYRE].enabled)
-        self.assertTrue(cols[TimingTowerColId.ERS_DRS].enabled)
-        self.assertTrue(cols[TimingTowerColId.PENS].enabled)
-        self.assertTrue(cols[TimingTowerColId.TL_WARNS].enabled)
-        self.assertFalse(cols[TimingTowerColId.BEST_LAP].enabled)
-        self.assertFalse(cols[TimingTowerColId.LAST_LAP].enabled)
-        self.assertFalse(cols[TimingTowerColId.WING_DMG].enabled)
-        self.assertFalse(cols[TimingTowerColId.SPEED_TRAP].enabled)
-        self.assertFalse(cols[TimingTowerColId.FUEL].enabled)
-        self.assertFalse(cols[TimingTowerColId.DRIVER_STATUS].enabled)
-        self.assertEqual(settings.timing_tower_tyre_info_mode, TimingTowerTyreInfoMode.HYBRID)
-        self.assertEqual(settings.show_mfd, True)
-        self.assertEqual(settings.mfd_toggle_udp_action_code, None)
-        self.assertEqual(settings.mfd_interaction_udp_action_code, None)
-        self.assertEqual(settings.mfd_tyre_wear_threshold, 80)
-        self.assertEqual(settings.mfd_tyre_wear_rate_type, MfdTyreWearRateType.MAX)
-        self.assertEqual(settings.mfd_weather_page_ui_type, WeatherMFDUIType.CARDS)
-        self.assertEqual(settings.cycle_mfd_udp_action_code, None)
-        self.assertEqual(settings.prev_mfd_page_udp_action_code, None)
-        self.assertEqual(settings.show_track_map, False)
-        self.assertEqual(settings.show_input_overlay, True)
-        self.assertEqual(settings.input_overlay_toggle_udp_action_code, None)
-        self.assertEqual(settings.input_overlay_buffer_duration_sec, 5.0)
-        self.assertEqual(settings.show_track_radar_overlay, True)
-        self.assertEqual(settings.track_radar_overlay_toggle_udp_action_code, None)
-        self.assertEqual(settings.track_radar_idle_opacity, 30)
-        self.assertEqual(settings.track_radar_range_m, 25)
-        self.assertEqual(settings.show_hud_overlay, True)
-        self.assertEqual(settings.overlays_speed_unit, OverlaysSpeedUnit.KMPH)
-        self.assertTrue(settings.hud_overlay_speed_unit_kmph)
-        self.assertFalse(settings.hud_overlay_speed_unit_mph)
-        self.assertEqual(settings.overlays_fuel_estimation_mode, OverlaysFuelEstimationMode.LINEAR_REGRESSION)
-        self.assertTrue(settings.hud_overlay_fuel_estimation_linear_regression)
-        self.assertFalse(settings.hud_overlay_fuel_estimation_game_built_in)
-        self.assertEqual(settings.show_circuit_info, True)
-        self.assertEqual(settings.circuit_info_toggle_udp_action_code, None)
-        self.assertEqual(settings.circuit_info_length, 800)
-        self.assertEqual(settings.circuit_info_minimal, False)
-        self.assertEqual(settings.overlays_opacity, 100)
-        self.assertEqual(settings.use_windowed_overlays, False)
-        self.assertFalse(settings.timing_tower_relative_best_last_lap)
-        self.assertFalse(settings.timing_tower_combined_tl_pens)
-        self.assertTrue(settings.auto_hide_in_menu)
-        self.assertEqual(settings.menu_silence_threshold_sec, 3.0)
-        self.assertEqual(settings.show_pu_info, True)
-        self.assertEqual(settings.pu_toggle_udp_action_code, None)
-        self.assertFalse(settings.pu_display_harvest_info)
-        self.assertFalse(settings.show_fuel_info)
-        self.assertTrue(settings.fuel_info_show_title)
-        self.assertFalse(settings.show_tyre_info)
-        self.assertTrue(settings.tyre_info_show_title)
-        self.assertFalse(settings.show_lap_times)
-        self.assertTrue(settings.lap_times_show_title)
-        self.assertFalse(settings.show_weather)
-        self.assertTrue(settings.weather_show_title)
-        self.assertFalse(settings.show_pit_rejoin)
-        self.assertTrue(settings.pit_rejoin_show_title)
-        self.assertFalse(settings.show_tyre_sets)
-        self.assertTrue(settings.tyre_sets_show_title)
-        self.assertFalse(settings.show_pace_comp)
-        self.assertTrue(settings.pace_comp_show_title)
-        self.assertFalse(settings.show_traffic_monitor)
-        self.assertTrue(settings.traffic_monitor_show_title)
-        # MFD pages has its own test case because the structure is a bit more complex
-
-    def test_overlays_speed_unit_validation(self):
-        """Test overlays_speed_unit field accepts valid enum values and exposes bool properties"""
-        kmph_settings = HudSettings(overlays_speed_unit=OverlaysSpeedUnit.KMPH)
-        self.assertEqual(kmph_settings.overlays_speed_unit, OverlaysSpeedUnit.KMPH)
-        self.assertTrue(kmph_settings.hud_overlay_speed_unit_kmph)
-        self.assertFalse(kmph_settings.hud_overlay_speed_unit_mph)
-
-        mph_settings = HudSettings(overlays_speed_unit=OverlaysSpeedUnit.MPH)
-        self.assertEqual(mph_settings.overlays_speed_unit, OverlaysSpeedUnit.MPH)
-        self.assertFalse(mph_settings.hud_overlay_speed_unit_kmph)
-        self.assertTrue(mph_settings.hud_overlay_speed_unit_mph)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(overlays_speed_unit=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(overlays_speed_unit="invalid")  # type: ignore
-
-    def test_overlays_fuel_estimation_mode_validation(self):
-        """Test overlays_fuel_estimation_mode field accepts valid enum values and exposes bool properties"""
-        lr_settings = HudSettings(overlays_fuel_estimation_mode=OverlaysFuelEstimationMode.LINEAR_REGRESSION)
-        self.assertEqual(lr_settings.overlays_fuel_estimation_mode, OverlaysFuelEstimationMode.LINEAR_REGRESSION)
-        self.assertTrue(lr_settings.hud_overlay_fuel_estimation_linear_regression)
-        self.assertFalse(lr_settings.hud_overlay_fuel_estimation_game_built_in)
-
-        game_settings = HudSettings(overlays_fuel_estimation_mode=OverlaysFuelEstimationMode.GAME_BUILT_IN)
-        self.assertEqual(game_settings.overlays_fuel_estimation_mode, OverlaysFuelEstimationMode.GAME_BUILT_IN)
-        self.assertFalse(game_settings.hud_overlay_fuel_estimation_linear_regression)
-        self.assertTrue(game_settings.hud_overlay_fuel_estimation_game_built_in)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(overlays_fuel_estimation_mode=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(overlays_fuel_estimation_mode="invalid")  # type: ignore
-
-    def test_enabled_validation(self):
-        """Test valid and invalid log_file_size values"""
-        # Valid value
-        enabled = True
-        hud_settings = HudSettings(enabled=enabled)
-        self.assertEqual(hud_settings.enabled, enabled)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(enabled=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(enabled="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(enabled=420)
-
-    def test_udp_action_code_validation(self):
-        """Ensure all UDP toggle fields validate correctly."""
-
-        udp_action_code_fields = [
-            "toggle_overlays_udp_action_code",
-            "lap_timer_toggle_udp_action_code",
-            "timing_tower_toggle_udp_action_code",
-            "mfd_toggle_udp_action_code",
-            "cycle_mfd_udp_action_code",
-            "prev_mfd_page_udp_action_code",
-            "track_map_toggle_udp_action_code",
-            "input_overlay_toggle_udp_action_code",
-            "mfd_interaction_udp_action_code",
-            "hud_overlay_toggle_udp_action_code",
-            "pu_toggle_udp_action_code",
-        ]
-        for field in udp_action_code_fields:
-            with self.subTest(field=field):
-                # 1. Valid integer
-                settings = HudSettings(**{field: 2})
-                self.assertEqual(getattr(settings, field), 2)
-
-                # 2. Invalid string
-                with self.assertRaises(ValidationError):
-                    HudSettings(**{field: "invalid"})
-
-                # 3. Invalid out-of-range
-                with self.assertRaises(ValidationError):
-                    HudSettings(**{field: 420})
-
-                # 4. Boundary: min
-                settings_min = HudSettings(**{field: 1})
-                self.assertEqual(getattr(settings_min, field), 1)
-
-                # 5. Boundary: max
-                settings_max = HudSettings(**{field: 12})
-                self.assertEqual(getattr(settings_max, field), 12)
-
-    def test_show_lap_timer_validation(self):
-        """Test valid and invalid show_lap_timer values"""
-        # Valid value
-        show_lap_timer = True
-        hud_settings = HudSettings(show_lap_timer=show_lap_timer)
-        self.assertEqual(hud_settings.show_lap_timer, show_lap_timer)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_lap_timer=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_lap_timer="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_lap_timer=420)
-
-    def test_lap_timer_minimal_validation(self):
-        """Test valid and invalid lap_timer_minimal values"""
-        # Default is False
-        hud_settings = HudSettings()
-        self.assertEqual(hud_settings.lap_timer_minimal, False)
-
-        # Explicit True
-        hud_settings = HudSettings(lap_timer_minimal=True)
-        self.assertEqual(hud_settings.lap_timer_minimal, True)
-
-        # Explicit False
-        hud_settings = HudSettings(lap_timer_minimal=False)
-        self.assertEqual(hud_settings.lap_timer_minimal, False)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(lap_timer_minimal=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(lap_timer_minimal="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(lap_timer_minimal=420)
-
-    def test_show_timing_tower_validation(self):
-        """Test valid and invalid show_timing_tower values"""
-        # Valid value
-        show_timing_tower = True
-        hud_settings = HudSettings(show_timing_tower=show_timing_tower)
-        self.assertEqual(hud_settings.show_timing_tower, show_timing_tower)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_timing_tower=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_timing_tower="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_timing_tower=420)
-
-    def test_timing_tower_max_rows_validation(self):
-        """Test valid and invalid timing_tower_max_rows values"""
-        # Valid value
-        max_rows = 3
-        hud_settings = HudSettings(timing_tower_max_rows=max_rows)
-        self.assertEqual(hud_settings.timing_tower_max_rows, max_rows)
-        self.assertEqual(hud_settings.timing_tower_num_adjacent_cars, 1)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_max_rows=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_max_rows="invalid")
-
-        # Even number within acceptable range
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_max_rows=16)
-
-        # Odd number within acceptable range
-        HudSettings(timing_tower_max_rows=17)
-
-        # Well out of boundary
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_max_rows=-10)
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_max_rows=420)
-
-        # Just outside boundary
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_max_rows=0)
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_max_rows=25)
-
-        # Boundary - valid
-        hud_settings = HudSettings(timing_tower_max_rows=1)
-        self.assertEqual(hud_settings.timing_tower_max_rows, 1)
-        self.assertEqual(hud_settings.timing_tower_num_adjacent_cars, 0)
-
-        # Even number that was the old "all cars" value — now invalid
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_max_rows=22)
-
-        hud_settings = HudSettings(timing_tower_max_rows=23)
-        self.assertEqual(hud_settings.timing_tower_max_rows, 23)
-        self.assertEqual(hud_settings.timing_tower_num_adjacent_cars, 11)
-
-        # 24 is the "all cars" special case
-        hud_settings = HudSettings(timing_tower_max_rows=24)
-        self.assertEqual(hud_settings.timing_tower_max_rows, 24)
-        self.assertEqual(hud_settings.timing_tower_num_adjacent_cars, 12)
-
-    def test_overlays_opacity_validation(self):
-        """Test valid and invalid overlays_opacity values"""
-        # Valid value
-        opacity = 75
-        hud_settings = HudSettings(overlays_opacity=opacity)
-        self.assertEqual(hud_settings.overlays_opacity, opacity)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(overlays_opacity=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(overlays_opacity="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(overlays_opacity=-10)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(overlays_opacity=150)
-
-        # Boundary value: minimum (0) should fail because idle opacity must be strictly less
-        min_opacity = 0
-        with self.assertRaises(ValidationError):
-            HudSettings(overlays_opacity=min_opacity, track_radar_idle_opacity=0)
-
-        # Smallest valid combo under strict idle-opacity rule
-        hud_settings_min_valid = HudSettings(overlays_opacity=1, track_radar_idle_opacity=0)
-        self.assertEqual(hud_settings_min_valid.overlays_opacity, 1)
-        self.assertEqual(hud_settings_min_valid.track_radar_idle_opacity, 0)
-        # Boundary value: maximum (100)
-        max_opacity = 100
-        hud_settings_max = HudSettings(overlays_opacity=max_opacity)
-        self.assertEqual(hud_settings_max.overlays_opacity, max_opacity)
-        with self.assertRaises(ValidationError):
-            HudSettings(overlays_opacity=None)  # type: ignore
-
-    def test_show_mfd_validation(self):
-        """Test valid and invalid show_mfd values"""
-        # Valid value
-        show_mfd = True
-        hud_settings = HudSettings(show_mfd=show_mfd)
-        self.assertEqual(hud_settings.show_mfd, show_mfd)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_mfd=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_mfd="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_mfd=420)
-
-    def test_hud_enabled_dependency(self):
-        """Test hud_enabled dependency on show_lap_timer, show_timing_tower values, show_mfd"""
-
-        # Disable all overlays and enable HUD
-        with self.assertRaises(ValidationError):
-            HudSettings(enabled=True,
-                        show_lap_timer=False,
-                        show_timing_tower=False,
-                        show_mfd=False,
-                        show_track_map=False,
-                        show_input_overlay=False,
-                        show_track_radar_overlay=False,
-                        show_hud_overlay=False,
-                        show_circuit_info=False,
-                        show_pu_info=False)
-
-        # Enable atleast one overlay
-        settings = HudSettings(enabled=True, show_lap_timer=True, show_timing_tower=False,
-                               show_mfd=False, show_track_map=False, show_input_overlay=False,
-                               show_track_radar_overlay=False, show_hud_overlay=False,
-                               show_circuit_info=False)
-        self.assertEqual(settings.enabled, True)
-        self.assertEqual(settings.show_lap_timer, True)
-        self.assertEqual(settings.show_timing_tower, False)
-        self.assertEqual(settings.show_mfd, False)
-        self.assertEqual(settings.show_track_map, False)
-        self.assertEqual(settings.show_input_overlay, False)
-        self.assertEqual(settings.show_track_radar_overlay, False)
-        self.assertEqual(settings.show_hud_overlay, False)
-
-    def test_mfd_default_pages(self):
-        """Verify default MFD pages exist and are valid"""
-        settings = HudSettings()
-        mfd = settings.mfd_settings
-
-        self.assertIsInstance(mfd, MfdSettings)
-        self.assertTrue(len(mfd.pages) > 0)
-
-        expected_pages = {
-            MfdPageId.LAP_TIMES,
-            MfdPageId.WEATHER_FORECAST,
-            MfdPageId.FUEL_INFO,
-            MfdPageId.TYRE_INFO,
-            MfdPageId.PIT_REJOIN,
-            MfdPageId.TYRE_SETS,
-            MfdPageId.PACE_COMP,
-            MfdPageId.TRAFFIC_MONITOR,
-            MfdPageId.RIVALS_STATUS,
-            MfdPageId.TYRES_STATUS,
-        }
-
-        for page in expected_pages:
-            self.assertIn(page, mfd.pages)
-            self.assertIsInstance(mfd.pages[page], MfdPageSettings)
-
-        for page in mfd.pages.keys():
-            self.assertIn(page, expected_pages)
-
-    def test_mfd_default_positions_unique(self):
-        """All default enabled pages must have unique positions"""
-        settings = HudSettings()
-        mfd = settings.mfd_settings
-
-        positions = [
-            p.position for p in mfd.pages.values()
-            if p.enabled
-        ]
-
-        self.assertEqual(len(positions), len(set(positions)))
-
-    def test_model_validator_adds_missing_pages(self):
-        data = {
-            "pages": {
-                MfdPageId.LAP_TIMES: {"enabled": True, "position": 1}
-            }
-        }
-
-        mfd = MfdSettings.model_validate(data)
-
-        for key in DEFAULT_PAGES:
-            self.assertIn(key, mfd.pages)
-
-        assert mfd.pages[MfdPageId.TYRE_SETS].enabled is False
-
-    #
-    # ------------------------------------------------------------
-    #  VALIDATION — DUPLICATE POSITIONS
-    # ------------------------------------------------------------
-    #
-
-    def test_mfd_duplicate_positions_validation(self):
-        """Duplicate enabled positions should raise ValidationError"""
-        settings = HudSettings()
-        mfd = settings.mfd_settings
-
-        # Force two pages to same position
-        keys = list(mfd.pages.keys())
-        mfd.pages[keys[0]].position = 0
-        mfd.pages[keys[1]].position = 0
-
-        with self.assertRaises(ValidationError):
-            HudSettings(mfd_settings=mfd)
-
-    #
-    # ------------------------------------------------------------
-    #  VALIDATION — MFD enabled and page disabled
-    # ------------------------------------------------------------
-    #
-
-    def test_mfd_enabled_with_pages_disabled(self):
-        """MFD cannot be enabled while all MFD pages are disabled"""
-        with self.assertRaises(ValidationError):
-            HudSettings(show_mfd=True,
-                        mfd_settings={
-                            {"lap_times": MfdPageSettings(enabled=False)},
-                            {"fuel_info": MfdPageSettings(enabled=False)},
-                            {"tyre_info": MfdPageSettings(enabled=False)},
-                        }
-            )
-
-    #
-    # ------------------------------------------------------------
-    #  SORTING
-    # ------------------------------------------------------------
-    #
-
-    def test_mfd_sorted_enabled_pages(self):
-        """sorted_enabled_pages must return pages ordered by position"""
-        settings = HudSettings()
-        mfd = settings.mfd_settings
-
-        mfd.pages[MfdPageId.LAP_TIMES].position = 3
-        mfd.pages[MfdPageId.FUEL_INFO].position = 1
-        mfd.pages[MfdPageId.TYRE_INFO].position = 2
-
-        sorted_pages = mfd.sorted_enabled_pages()
-
-        positions = [p.position for _, p in sorted_pages]
-        self.assertEqual(positions, sorted(positions))
-
-    def test_mfd_sorted_excludes_disabled(self):
-        """Disabled pages must be excluded from sorted output"""
-        settings = HudSettings()
-        mfd = settings.mfd_settings
-
-        mfd.pages[MfdPageId.LAP_TIMES].enabled = False
-        mfd.pages[MfdPageId.FUEL_INFO].enabled = True
-
-        sorted_pages = mfd.sorted_enabled_pages()
-
-        self.assertNotIn(MfdPageId.LAP_TIMES, [name for name, _ in sorted_pages])
-        self.assertIn(MfdPageId.FUEL_INFO, [name for name, _ in sorted_pages])
-
-    #
-    # ------------------------------------------------------------
-    #  ADDING / REMOVING PAGES
-    # ------------------------------------------------------------
-    #
-
-    def test_mfd_add_page(self):
-        """Adding a new MFD page should be allowed and valid"""
-        settings = HudSettings()
-        mfd = settings.mfd_settings
-
-        mfd.pages["new_page"] = MfdPageSettings(enabled=True, position=25)
-
-        self.assertIn("new_page", mfd.pages)
-        self.assertEqual(mfd.pages["new_page"].position, 25)
-
-    #
-    # ------------------------------------------------------------
-    #  DIFF BEHAVIOR
-    # ------------------------------------------------------------
-    #
-
-    def test_mfd_diff_internal_field_change(self):
-        """Changing a field inside a page must show up in the diff"""
-        old = HudSettings()
-        new = HudSettings()
-
-        new.mfd_settings.pages[MfdPageId.LAP_TIMES].position = 50
-
-        diff = new.diff(old)
-
-        self.assertIn("mfd_settings", diff)
-        self.assertIn("pages", diff["mfd_settings"])
-        self.assertIn(MfdPageId.LAP_TIMES, diff["mfd_settings"]["pages"])
-        self.assertIn("position", diff["mfd_settings"]["pages"][MfdPageId.LAP_TIMES])
-
-        self.assertEqual(
-            diff["mfd_settings"]["pages"][MfdPageId.LAP_TIMES]["position"]["old_value"],
-            50
-        )
-        self.assertEqual(
-            diff["mfd_settings"]["pages"][MfdPageId.LAP_TIMES]["position"]["new_value"],
-            old.mfd_settings.pages[MfdPageId.LAP_TIMES].position
-        )
-
-    #
-    # ------------------------------------------------------------
-    #  ENABLE / DISABLE PAGE
-    # ------------------------------------------------------------
-    #
-
-    def test_mfd_enable_disable_page_affects_diff(self):
-        old = HudSettings()
-        new = HudSettings()
-
-        new.mfd_settings.pages[MfdPageId.TYRE_INFO].enabled = False
-
-        diff = new.diff(old)
-
-        self.assertIn("mfd_settings", diff)
-        self.assertIn("pages", diff["mfd_settings"])
-        self.assertIn(MfdPageId.TYRE_INFO, diff["mfd_settings"]["pages"])
-        self.assertIn("enabled", diff["mfd_settings"]["pages"][MfdPageId.TYRE_INFO])
-
-    def test_use_windowed_overlays(self):
-        windowed_overlays = True
-        hud_settings = HudSettings(use_windowed_overlays=windowed_overlays)
-        self.assertEqual(hud_settings.use_windowed_overlays, windowed_overlays)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(use_windowed_overlays=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(use_windowed_overlays="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(use_windowed_overlays=420)
-
-    def test_show_track_map(self):
-        show_track_map = True
-        hud_settings = HudSettings(show_track_map=show_track_map)
-        self.assertEqual(hud_settings.show_track_map, show_track_map)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_track_map=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_track_map="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_track_map=420)
-
-    def test_show_input_overlay(self):
-        show_input_overlay = True
-        hud_settings = HudSettings(show_input_overlay=show_input_overlay)
-        self.assertEqual(hud_settings.show_input_overlay, show_input_overlay)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_input_overlay=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_input_overlay="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_input_overlay=420)
-
-    def test_input_overlay_buffer_duration_sec(self):
-        input_overlay_buffer_duration_sec = 1.1
-        hud_settings = HudSettings(input_overlay_buffer_duration_sec=input_overlay_buffer_duration_sec)
-        self.assertEqual(hud_settings.input_overlay_buffer_duration_sec, input_overlay_buffer_duration_sec)
-
-        # int should be accepted
-        HudSettings(input_overlay_buffer_duration_sec=2)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(input_overlay_buffer_duration_sec=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(input_overlay_buffer_duration_sec="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(input_overlay_buffer_duration_sec=420)
-
-        # Boundary conditions
-        HudSettings(input_overlay_buffer_duration_sec=1.0)
-        with self.assertRaises(ValidationError):
-            HudSettings(input_overlay_buffer_duration_sec=0.9)
-
-        HudSettings(input_overlay_buffer_duration_sec=20.0)
-        with self.assertRaises(ValidationError):
-            HudSettings(input_overlay_buffer_duration_sec=21.0)
-
-    def test_show_track_radar(self):
-        show_track_radar_overlay = True
-        hud_settings = HudSettings(show_track_radar_overlay=show_track_radar_overlay)
-        self.assertEqual(hud_settings.show_track_radar_overlay, show_track_radar_overlay)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_track_radar_overlay=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_track_radar_overlay="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_track_radar_overlay=420)
-
-    def test_track_radar_overlay_toggle_udp_action_code(self):
-        track_radar_overlay_toggle_udp_action_code = 1
-        hud_settings = HudSettings(track_radar_overlay_toggle_udp_action_code=track_radar_overlay_toggle_udp_action_code)
-        self.assertEqual(hud_settings.track_radar_overlay_toggle_udp_action_code, track_radar_overlay_toggle_udp_action_code)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(track_radar_overlay_toggle_udp_action_code="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(track_radar_overlay_toggle_udp_action_code=420)
-
-    def test_new_key_in_layout_defaults(self):
-
-        # Assume input_telemetry is new
-        loaded_settings = HudSettings(enabled=True,
-                                      layout={
-                                          OverlayId.LAP_TIMER: OverlayPosition(x=1, y=1),
-                                          OverlayId.TIMING_TOWER: OverlayPosition(x=2, y=2),
-                                          OverlayId.MFD: OverlayPosition(x=3, y=3),
-                                          OverlayId.TRACK_RADAR: OverlayPosition(x=4, y=4),
-                                      })
-
-        # Validate that the input telemetry key got inserted with defaults
-        self.assertIn(OverlayId.INPUT_TELEMETRY, loaded_settings.layout)
-        self.assertEqual(loaded_settings.layout[OverlayId.INPUT_TELEMETRY],
-                         HudSettings.get_default_layout_dict()[OverlayId.INPUT_TELEMETRY])
-
-        # Validate that the other keys are still there and their values are preserved
-        self.assertIn(OverlayId.LAP_TIMER, loaded_settings.layout)
-        self.assertEqual(loaded_settings.layout[OverlayId.LAP_TIMER], OverlayPosition(x=1, y=1))
-        self.assertIn(OverlayId.TIMING_TOWER, loaded_settings.layout)
-        self.assertEqual(loaded_settings.layout[OverlayId.TIMING_TOWER], OverlayPosition(x=2, y=2))
-        self.assertIn(OverlayId.MFD, loaded_settings.layout)
-        self.assertEqual(loaded_settings.layout[OverlayId.MFD], OverlayPosition(x=3, y=3))
-        self.assertIn(OverlayId.TRACK_RADAR, loaded_settings.layout)
-        self.assertEqual(loaded_settings.layout[OverlayId.TRACK_RADAR], OverlayPosition(x=4, y=4))
-
-    def test_col_options_diff(self):
-
-        # Diff from parent obj - no diff
-        old_settings = HudSettings()
-        new_settings = HudSettings()
-        self.assertFalse(old_settings.has_changed(new_settings))
-        self.assertEqual(old_settings.diff(new_settings), {})
-
-        # Diff from parent obj - real diff (disable a column that is enabled by default)
-        modified_cols = {k: v.model_copy(deep=True) for k, v in DEFAULT_COLS.items()}
-        modified_cols[TimingTowerColId.ERS_DRS] = TimingTowerColSettings(
-            enabled=False, position=DEFAULT_COLS[TimingTowerColId.ERS_DRS].position
-        )
-        new_settings = HudSettings(
-            timing_tower_col_options=TimingTowerColOptions(cols=modified_cols)
-        )
-        self.assertTrue(old_settings.has_changed(new_settings))
-        diff = old_settings.diff(new_settings)
-        self.assertIn("timing_tower_col_options", diff)
-        self.assertIn("cols", diff["timing_tower_col_options"])
-
-        # Diff from obj directly - no diff
-        old_col_opts = TimingTowerColOptions()
-        new_col_opts = TimingTowerColOptions()
-        self.assertFalse(old_col_opts.has_changed(new_col_opts))
-        self.assertEqual(old_col_opts.diff(new_col_opts), {})
-
-        # Real diff on obj directly
-        new_col_opts = TimingTowerColOptions(cols=modified_cols)
-        self.assertTrue(old_col_opts.has_changed(new_col_opts))
-
-    def test_idle_opacity(self):
-
-        idle_opacity = 50
-        hud_settings = HudSettings(track_radar_idle_opacity=idle_opacity)
-        self.assertEqual(hud_settings.track_radar_idle_opacity, idle_opacity)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(track_radar_idle_opacity="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(track_radar_idle_opacity=420)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(track_radar_idle_opacity=None)
-
-        # Boundary value: minimum (0)
-        with self.assertRaises(ValidationError):
-            HudSettings(track_radar_idle_opacity=-1)
-        HudSettings(track_radar_idle_opacity=0)
-
-        # Boundary value: maximum (100)
-        with self.assertRaises(ValidationError):
-            HudSettings(track_radar_idle_opacity=101)
-        with self.assertRaises(ValidationError):
-            HudSettings(track_radar_idle_opacity=100)
-        HudSettings(track_radar_idle_opacity=99)
-
-        # Idle opacity more than overall opacity
-        with self.assertRaises(ValidationError):
-            HudSettings(enabled=True, overlays_opacity=70, track_radar_idle_opacity=80)
-
-    def test_mfd_tyre_wear_threshold(self):
-
-        mfd_tyre_wear_threshold = 50
-        hud_settings = HudSettings(mfd_tyre_wear_threshold=mfd_tyre_wear_threshold)
-        self.assertEqual(hud_settings.mfd_tyre_wear_threshold, mfd_tyre_wear_threshold)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(mfd_tyre_wear_threshold="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(mfd_tyre_wear_threshold=420)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(mfd_tyre_wear_threshold=None)
-
-        # Boundary value: minimum (0)
-        with self.assertRaises(ValidationError):
-            HudSettings(mfd_tyre_wear_threshold=-1)
-        HudSettings(mfd_tyre_wear_threshold=0)
-
-        # Boundary value: maximum (100)
-        with self.assertRaises(ValidationError):
-            HudSettings(mfd_tyre_wear_threshold=101)
-        HudSettings(mfd_tyre_wear_threshold=100)
-
-    def test_mfd_weather_page_ui_type(self):
-
-        ui_type = WeatherMFDUIType.CARDS
-        hud_settings = HudSettings(mfd_weather_page_ui_type=ui_type)
-        self.assertEqual(hud_settings.mfd_weather_page_ui_type, ui_type)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(mfd_weather_page_ui_type="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(mfd_weather_page_ui_type=None)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(mfd_weather_page_ui_type=420)
-
-        with self.assertRaises(AttributeError):
-            HudSettings(mfd_weather_page_ui_type=WeatherMFDUIType.UNKNOWN)
-
-    def test_mfd_tyre_wear_rate_type_default(self):
-        hud_settings = HudSettings()
-        self.assertEqual(hud_settings.mfd_tyre_wear_rate_type, MfdTyreWearRateType.MAX)
-
-    def test_mfd_tyre_wear_rate_type_valid_values(self):
-        for value in MfdTyreWearRateType:
-            hud_settings = HudSettings(mfd_tyre_wear_rate_type=value)
-            self.assertEqual(hud_settings.mfd_tyre_wear_rate_type, value)
-
-        hud_settings = HudSettings(mfd_tyre_wear_rate_type="Max")
-        self.assertEqual(hud_settings.mfd_tyre_wear_rate_type, MfdTyreWearRateType.MAX)
-
-        hud_settings = HudSettings(mfd_tyre_wear_rate_type="Average")
-        self.assertEqual(hud_settings.mfd_tyre_wear_rate_type, MfdTyreWearRateType.AVERAGE)
-
-    def test_mfd_tyre_wear_rate_type_invalid_value(self):
-        with self.assertRaises(ValidationError):
-            HudSettings(mfd_tyre_wear_rate_type="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(mfd_tyre_wear_rate_type=None)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(mfd_tyre_wear_rate_type=42)
-
-        with self.assertRaises(AttributeError):
-            HudSettings(mfd_tyre_wear_rate_type=MfdTyreWearRateType.UNKNOWN)
-
-    def test_timing_tower_tyre_info_mode_default(self):
-        hud_settings = HudSettings()
-        self.assertEqual(hud_settings.timing_tower_tyre_info_mode, TimingTowerTyreInfoMode.HYBRID)
-
-    def test_timing_tower_tyre_info_mode_valid_values(self):
-        for value in TimingTowerTyreInfoMode:
-            hud_settings = HudSettings(timing_tower_tyre_info_mode=value)
-            self.assertEqual(hud_settings.timing_tower_tyre_info_mode, value)
-
-        hud_settings = HudSettings(timing_tower_tyre_info_mode="Tyre Age")
-        self.assertEqual(hud_settings.timing_tower_tyre_info_mode, TimingTowerTyreInfoMode.TYRE_AGE)
-
-        hud_settings = HudSettings(timing_tower_tyre_info_mode="Tyre Wear")
-        self.assertEqual(hud_settings.timing_tower_tyre_info_mode, TimingTowerTyreInfoMode.TYRE_WEAR)
-
-        hud_settings = HudSettings(timing_tower_tyre_info_mode="Hybrid")
-        self.assertEqual(hud_settings.timing_tower_tyre_info_mode, TimingTowerTyreInfoMode.HYBRID)
-
-    def test_timing_tower_tyre_info_mode_invalid_value(self):
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_tyre_info_mode="invalid")
-
-        # Case sensitive - a differently cased variant must not slip through
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_tyre_info_mode="tyre age")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_tyre_info_mode=None)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_tyre_info_mode=42)
-
-    def test_timing_tower_tyre_info_mode_diff(self):
-        old_settings = HudSettings()
-        new_settings = HudSettings(timing_tower_tyre_info_mode=TimingTowerTyreInfoMode.TYRE_WEAR)
-        diff = old_settings.diff(new_settings, ["timing_tower_tyre_info_mode"])
-        self.assertIn("timing_tower_tyre_info_mode", diff)
-
-    def test_show_circuit_info(self):
-        hud_settings = HudSettings(show_circuit_info=True)
-        self.assertEqual(hud_settings.show_circuit_info, True)
-
-        hud_settings = HudSettings(show_circuit_info=False)
-        self.assertEqual(hud_settings.show_circuit_info, False)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_circuit_info=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_circuit_info="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_circuit_info=420)
-
-    def test_circuit_info_toggle_udp_action_code(self):
-        hud_settings = HudSettings(circuit_info_toggle_udp_action_code=1)
-        self.assertEqual(hud_settings.circuit_info_toggle_udp_action_code, 1)
-
-        hud_settings = HudSettings(circuit_info_toggle_udp_action_code=None)
-        self.assertIsNone(hud_settings.circuit_info_toggle_udp_action_code)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(circuit_info_toggle_udp_action_code="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(circuit_info_toggle_udp_action_code=420)
-
-    def test_layout_default_scale_factor(self):
-        """Each default layout entry must have scale_factor == 1.0."""
-        settings = HudSettings()
-        for oid, pos in settings.layout.items():
-            with self.subTest(overlay=oid):
-                self.assertEqual(pos.scale_factor, 1.0)
-
-    def test_circuit_info_length_validation(self):
-        """Test valid and invalid circuit_info_length values"""
-        # Valid value
-        hud_settings = HudSettings(circuit_info_length=800)
-        self.assertEqual(hud_settings.circuit_info_length, 800)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(circuit_info_length=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(circuit_info_length="invalid")
-
-        # Well out of range
-        with self.assertRaises(ValidationError):
-            HudSettings(circuit_info_length=-10)
-        with self.assertRaises(ValidationError):
-            HudSettings(circuit_info_length=9999)
-
-        # Boundary value: minimum (200)
-        with self.assertRaises(ValidationError):
-            HudSettings(circuit_info_length=199)
-        HudSettings(circuit_info_length=200)
-
-        # Boundary value: maximum (1500)
-        with self.assertRaises(ValidationError):
-            HudSettings(circuit_info_length=1501)
-        HudSettings(circuit_info_length=1500)
-
-    def test_circuit_info_minimal_validation(self):
-        """Test valid and invalid circuit_info_minimal values"""
-        # Default is False
-        hud_settings = HudSettings()
-        self.assertEqual(hud_settings.circuit_info_minimal, False)
-
-        # Explicit True
-        hud_settings = HudSettings(circuit_info_minimal=True)
-        self.assertEqual(hud_settings.circuit_info_minimal, True)
-
-        # Explicit False
-        hud_settings = HudSettings(circuit_info_minimal=False)
-        self.assertEqual(hud_settings.circuit_info_minimal, False)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(circuit_info_minimal=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(circuit_info_minimal="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(circuit_info_minimal=420)
-
-    def test_track_radar_range_m_default(self):
-        """track_radar_range_m defaults to 25"""
-        self.assertEqual(HudSettings().track_radar_range_m, 25)
-
-    def test_track_radar_range_m_validation(self):
-        """track_radar_range_m accepts 5–35 and rejects outside that range"""
-        # Valid boundary values
-        HudSettings(track_radar_range_m=5)
-        HudSettings(track_radar_range_m=35)
-
-        # Just outside boundary
-        with self.assertRaises(ValidationError):
-            HudSettings(track_radar_range_m=4)
-        with self.assertRaises(ValidationError):
-            HudSettings(track_radar_range_m=36)
-
-        # Well outside boundary
-        with self.assertRaises(ValidationError):
-            HudSettings(track_radar_range_m=0)
-        with self.assertRaises(ValidationError):
-            HudSettings(track_radar_range_m=100)
-
-        # Invalid types
-        with self.assertRaises(ValidationError):
-            HudSettings(track_radar_range_m=None)  # type: ignore
-        with self.assertRaises(ValidationError):
-            HudSettings(track_radar_range_m="invalid")
-
-    def test_timing_tower_relative_best_last_lap_default(self):
-        """timing_tower_relative_best_last_lap defaults to False"""
-        self.assertFalse(HudSettings().timing_tower_relative_best_last_lap)
-
-    def test_timing_tower_relative_best_last_lap_validation(self):
-        """timing_tower_relative_best_last_lap accepts booleans and rejects invalid types"""
-        self.assertTrue(HudSettings(timing_tower_relative_best_last_lap=True).timing_tower_relative_best_last_lap)
-        self.assertFalse(HudSettings(timing_tower_relative_best_last_lap=False).timing_tower_relative_best_last_lap)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_relative_best_last_lap=None)  # type: ignore
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_relative_best_last_lap="invalid")
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_relative_best_last_lap=420)
-
-    def test_timing_tower_combined_tl_pens_default(self):
-        """timing_tower_combined_tl_pens defaults to False"""
-        self.assertFalse(HudSettings().timing_tower_combined_tl_pens)
-
-    def test_timing_tower_combined_tl_pens_validation(self):
-        """timing_tower_combined_tl_pens accepts booleans and rejects invalid types"""
-        self.assertTrue(HudSettings(timing_tower_combined_tl_pens=True).timing_tower_combined_tl_pens)
-        self.assertFalse(HudSettings(timing_tower_combined_tl_pens=False).timing_tower_combined_tl_pens)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_combined_tl_pens=None)  # type: ignore
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_combined_tl_pens="invalid")
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_combined_tl_pens=420)
-
-    def test_auto_hide_in_menu_validation(self):
-        """Test auto_hide_in_menu accepts booleans and rejects invalid types"""
-        self.assertTrue(HudSettings(auto_hide_in_menu=True).auto_hide_in_menu)
-        self.assertFalse(HudSettings(auto_hide_in_menu=False).auto_hide_in_menu)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(auto_hide_in_menu="notabool")
-        with self.assertRaises(ValidationError):
-            HudSettings(auto_hide_in_menu=None)  # type: ignore
-
-    def test_menu_silence_threshold_sec_validation(self):
-        """Test menu_silence_threshold_sec boundary and type validation"""
-        # Valid values
-        self.assertEqual(HudSettings(menu_silence_threshold_sec=1.0).menu_silence_threshold_sec, 1.0)
-        self.assertEqual(HudSettings(menu_silence_threshold_sec=3.0).menu_silence_threshold_sec, 3.0)
-        self.assertEqual(HudSettings(menu_silence_threshold_sec=30.0).menu_silence_threshold_sec, 30.0)
-
-        # Below minimum
-        with self.assertRaises(ValidationError):
-            HudSettings(menu_silence_threshold_sec=0.9)
-
-        # Above maximum
-        with self.assertRaises(ValidationError):
-            HudSettings(menu_silence_threshold_sec=30.1)
-
-        # Invalid type
-        with self.assertRaises(ValidationError):
-            HudSettings(menu_silence_threshold_sec="fast")
-        with self.assertRaises(ValidationError):
-            HudSettings(menu_silence_threshold_sec=None)  # type: ignore
-
-    def test_show_pu_info_validation(self):
-        """Test show_pu_info accepts booleans and rejects invalid types"""
-        self.assertTrue(HudSettings(show_pu_info=True).show_pu_info)
-        self.assertFalse(HudSettings(show_pu_info=False).show_pu_info)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(show_pu_info=None)  # type: ignore
-        with self.assertRaises(ValidationError):
-            HudSettings(show_pu_info="invalid")
-        with self.assertRaises(ValidationError):
-            HudSettings(show_pu_info=420)
-
-    def test_pu_display_harvest_info_default(self):
-        """pu_display_harvest_info defaults to False"""
-        self.assertFalse(HudSettings().pu_display_harvest_info)
-
-    def test_pu_display_harvest_info_validation(self):
-        """pu_display_harvest_info accepts booleans and rejects invalid types"""
-        self.assertTrue(HudSettings(pu_display_harvest_info=True).pu_display_harvest_info)
-        self.assertFalse(HudSettings(pu_display_harvest_info=False).pu_display_harvest_info)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(pu_display_harvest_info=None)  # type: ignore
-        with self.assertRaises(ValidationError):
-            HudSettings(pu_display_harvest_info="invalid")
-        with self.assertRaises(ValidationError):
-            HudSettings(pu_display_harvest_info=420)
-
-    def test_standalone_page_overlay_show_fields(self):
-        """All 8 standalone page show_* fields accept booleans, reject invalid types, default to False."""
-        fields = [
-            "show_fuel_info",
-            "show_tyre_info",
-            "show_lap_times",
-            "show_weather",
-            "show_pit_rejoin",
-            "show_tyre_sets",
-            "show_pace_comp",
-            "show_traffic_monitor",
-        ]
-        for field in fields:
-            with self.subTest(field=field):
-                self.assertFalse(getattr(HudSettings(), field))
-                self.assertTrue(getattr(HudSettings(**{field: True}), field))
-                self.assertFalse(getattr(HudSettings(**{field: False}), field))
-
-                with self.assertRaises(ValidationError):
-                    HudSettings(**{field: None})  # type: ignore
-                with self.assertRaises(ValidationError):
-                    HudSettings(**{field: "invalid"})
-                with self.assertRaises(ValidationError):
-                    HudSettings(**{field: 420})
-
-    def test_standalone_page_overlay_show_title_fields(self):
-        """All 8 show_title fields default True, accept booleans, reject invalid types."""
-        fields = [
-            "fuel_info_show_title",
-            "tyre_info_show_title",
-            "lap_times_show_title",
-            "weather_show_title",
-            "pit_rejoin_show_title",
-            "tyre_sets_show_title",
-            "pace_comp_show_title",
-            "traffic_monitor_show_title",
-        ]
-        for field in fields:
-            with self.subTest(field=field):
-                self.assertTrue(getattr(HudSettings(), field))
-                self.assertTrue(getattr(HudSettings(**{field: True}), field))
-                self.assertFalse(getattr(HudSettings(**{field: False}), field))
-
-                with self.assertRaises(ValidationError):
-                    HudSettings(**{field: None})  # type: ignore
-                with self.assertRaises(ValidationError):
-                    HudSettings(**{field: "invalid"})
-                with self.assertRaises(ValidationError):
-                    HudSettings(**{field: 420})
-
-    def test_standalone_overlay_layout_defaults(self):
-        """All 8 new standalone OverlayId entries must appear in the default layout."""
-        settings = HudSettings()
-        for oid in (
-            OverlayId.FUEL_INFO,
-            OverlayId.TYRE_INFO,
-            OverlayId.LAP_TIMES,
-            OverlayId.WEATHER,
-            OverlayId.PIT_REJOIN,
-            OverlayId.TYRE_SETS,
-            OverlayId.PACE_COMP,
-            OverlayId.TRAFFIC_MONITOR,
-        ):
-            with self.subTest(overlay=oid):
-                self.assertIn(oid, settings.layout)
-                self.assertIsInstance(settings.layout[oid], OverlayPosition)
-                self.assertEqual(settings.layout[oid].scale_factor, 1.0)
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-class TestTimingTowerColConfig(TestF1ConfigBase):
-    """Tests for TimingTowerColId, TimingTowerColSettings, and TimingTowerColOptions."""
-
-    # --- Enum ---
-
-    def test_col_id_values_are_strings(self):
-        for col_id in TimingTowerColId:
-            self.assertIsInstance(col_id.value, str)
-            self.assertIsInstance(col_id, str)  # str, Enum members ARE strings
-
-    def test_col_id_used_as_dict_key(self):
-        opts = TimingTowerColOptions()
-        dumped = opts.model_dump()
-        # After model_dump all keys must be plain strings (JSON-serializable)
-        for key in dumped["cols"].keys():
-            self.assertIsInstance(key, str)
-
-    # --- Defaults ---
-
-    def test_default_cols_all_present(self):
-        opts = TimingTowerColOptions()
-        for col_id in TimingTowerColId:
-            self.assertIn(col_id.value, opts.cols)
-
-    def test_default_positions_unique(self):
-        opts = TimingTowerColOptions()
-        positions = [col.position for col in opts.cols.values()]
-        self.assertEqual(len(positions), len(set(positions)))
-
-    def test_default_enabled_set(self):
-        opts = TimingTowerColOptions()
-        enabled_by_default = {
-            TimingTowerColId.DELTA, TimingTowerColId.TYRE,
-            TimingTowerColId.ERS_DRS, TimingTowerColId.PENS,
-            TimingTowerColId.TL_WARNS,
-        }
-        disabled_by_default = set(TimingTowerColId) - enabled_by_default
-        for col_id in enabled_by_default:
-            self.assertTrue(opts.cols[col_id.value].enabled, f"{col_id} should be enabled by default")
-        for col_id in disabled_by_default:
-            self.assertFalse(opts.cols[col_id.value].enabled, f"{col_id} should be disabled by default")
-
-    def test_delta_to_leader_col_present_and_disabled_by_default(self):
-        opts = TimingTowerColOptions()
-        self.assertIn(TimingTowerColId.DELTA_TO_LEADER.value, opts.cols)
-        self.assertFalse(opts.cols[TimingTowerColId.DELTA_TO_LEADER.value].enabled)
-
-    def test_delta_to_leader_col_can_be_enabled(self):
-        cols = {
-            col_id.value: TimingTowerColSettings(enabled=True, position=i + 1)
-            for i, col_id in enumerate(TimingTowerColId)
-        }
-        opts = TimingTowerColOptions(cols=cols)
-        self.assertTrue(opts.cols[TimingTowerColId.DELTA_TO_LEADER.value].enabled)
-
-    def test_delta_to_leader_in_sorted_enabled_when_enabled(self):
-        base_cols = {
-            col_id.value: TimingTowerColSettings(enabled=False, position=i + 1)
-            for i, col_id in enumerate(TimingTowerColId)
-        }
-        base_cols[TimingTowerColId.DELTA_TO_LEADER.value] = TimingTowerColSettings(enabled=True, position=1)
-        opts = TimingTowerColOptions(cols=base_cols)
-        enabled_keys = [key for key, _ in opts.sorted_enabled_cols()]
-        self.assertIn(TimingTowerColId.DELTA_TO_LEADER.value, enabled_keys)
-
-    # --- sorted_enabled_cols ---
-
-    def test_sorted_enabled_cols_order(self):
-        opts = TimingTowerColOptions()
-        enabled = opts.sorted_enabled_cols()
-        positions = [col.position for _, col in enabled]
-        self.assertEqual(positions, sorted(positions))
-        # All returned cols must be enabled
-        for _, col in enabled:
-            self.assertTrue(col.enabled)
-
-    def test_sorted_enabled_cols_excludes_disabled(self):
-        opts = TimingTowerColOptions()
-        enabled_keys = {key for key, _ in opts.sorted_enabled_cols()}
-        for col_id in TimingTowerColId:
-            col = opts.cols[col_id.value]
-            if not col.enabled:
-                self.assertNotIn(col_id.value, enabled_keys)
-
-    def test_sorted_enabled_cols_empty_when_all_disabled(self):
-        all_disabled = {
-            col_id.value: TimingTowerColSettings(enabled=False, position=i + 1)
-            for i, col_id in enumerate(TimingTowerColId)
-        }
-        opts = TimingTowerColOptions(cols=all_disabled)
-        self.assertEqual(opts.sorted_enabled_cols(), [])
-
-    # --- Validators ---
-
-    def test_duplicate_position_among_enabled_rejected(self):
-        with self.assertRaises(ValidationError):
-            TimingTowerColOptions(cols={
-                TimingTowerColId.DELTA.value:   TimingTowerColSettings(enabled=True, position=1),
-                TimingTowerColId.TYRE.value:    TimingTowerColSettings(enabled=True, position=1),
-            })
-
-    def test_duplicate_position_among_disabled_allowed(self):
-        # Two disabled cols sharing a position must not raise
-        opts = TimingTowerColOptions(cols={
-            TimingTowerColId.DELTA.value:   TimingTowerColSettings(enabled=False, position=1),
-            TimingTowerColId.TYRE.value:    TimingTowerColSettings(enabled=False, position=1),
+
+pytestmark = allure.feature("HUD settings")
+
+# -------------------------------------- HELPERS -----------------------------------------------------------------------
+
+_OVERLAY_FLAGS = [name for name, field in HudSettings.model_fields.items()
+                  if (field.json_schema_extra or {}).get("ui", {}).get("overlay_enable")]
+
+
+def _all_overlays_off() -> dict:
+    return dict.fromkeys(_OVERLAY_FLAGS, False)
+
+
+def _pages(*enabled: MfdPageId) -> dict:
+    """The default MFD pages, with only the given ones enabled."""
+    return {key: page.model_copy(update={"enabled": key in enabled}) for key, page in DEFAULT_PAGES.items()}
+
+
+def _cols(enabled_positions: dict) -> dict:
+    """Every timing tower column disabled at its own position, except the given {col_id: position}, enabled."""
+    cols = {col.value: TimingTowerColSettings(enabled=False, position=i + 1) for i, col in enumerate(TimingTowerColId)}
+    for col_id, position in enabled_positions.items():
+        cols[col_id.value] = TimingTowerColSettings(enabled=True, position=position)
+    return cols
+
+# -------------------------------------- DEFAULTS ----------------------------------------------------------------------
+
+_DEFAULTS = {
+    "enabled": True,
+    "toggle_overlays_udp_action_code": None,
+    "use_windowed_overlays": False,
+    "overlays_speed_unit": OverlaysSpeedUnit.KMPH,
+    "overlays_fuel_estimation_mode": OverlaysFuelEstimationMode.LINEAR_REGRESSION,
+    "show_lap_timer": True,
+    "lap_timer_minimal": False,
+    "lap_timer_toggle_udp_action_code": None,
+    "show_timing_tower": True,
+    "timing_tower_max_rows": 5,
+    "timing_tower_tyre_info_mode": TimingTowerTyreInfoMode.HYBRID,
+    "timing_tower_relative_best_last_lap": False,
+    "timing_tower_combined_tl_pens": False,
+    "timing_tower_toggle_udp_action_code": None,
+    "show_mfd": True,
+    "mfd_tyre_wear_threshold": 80,
+    "mfd_tyre_wear_rate_type": MfdTyreWearRateType.MAX,
+    "mfd_weather_page_ui_type": WeatherMFDUIType.CARDS,
+    "mfd_toggle_udp_action_code": None,
+    "mfd_interaction_udp_action_code": None,
+    "cycle_mfd_udp_action_code": None,
+    "prev_mfd_page_udp_action_code": None,
+    "show_track_map": False,
+    "track_map_toggle_udp_action_code": None,
+    "show_input_overlay": True,
+    "input_overlay_toggle_udp_action_code": None,
+    "input_overlay_buffer_duration_sec": 5.0,
+    "show_track_radar_overlay": True,
+    "track_radar_overlay_toggle_udp_action_code": None,
+    "track_radar_idle_opacity": 30,
+    "track_radar_range_m": 25,
+    "show_hud_overlay": True,
+    "hud_overlay_toggle_udp_action_code": None,
+    "show_circuit_info": True,
+    "circuit_info_toggle_udp_action_code": None,
+    "circuit_info_length": 800,
+    "circuit_info_minimal": False,
+    "show_pu_info": True,
+    "pu_display_harvest_info": False,
+    "pu_toggle_udp_action_code": None,
+    "show_fuel_info": False,
+    "fuel_info_show_title": True,
+    "show_tyre_info": False,
+    "tyre_info_show_title": True,
+    "show_lap_times": False,
+    "lap_times_show_title": True,
+    "show_weather": False,
+    "weather_show_title": True,
+    "show_pit_rejoin": False,
+    "pit_rejoin_show_title": True,
+    "show_tyre_sets": False,
+    "tyre_sets_show_title": True,
+    "show_pace_comp": False,
+    "pace_comp_show_title": True,
+    "show_traffic_monitor": False,
+    "traffic_monitor_show_title": True,
+    "show_last_corner_stats": False,
+    "show_rivals_status": False,
+    "rivals_status_show_title": True,
+    "show_tyres_status": False,
+    "tyres_status_show_title": True,
+    "auto_hide_in_menu": True,
+    "menu_silence_threshold_sec": 3.0,
+    "overlays_opacity": 100,
+}
+
+@allure.story("Defaults")
+@allure.title("Default HudSettings hold the shipped values for every scalar field")
+def test_default_values():
+    """
+    Builds HudSettings with no arguments and compares each scalar field with _DEFAULTS. The three containers
+    (MFD pages, timing tower columns, layout) have their own default tests.
+
+    Expected: every field holds its shipped default, and _DEFAULTS names every scalar field the model has.
+    """
+    settings = HudSettings()
+    scalar_fields = set(HudSettings.model_fields) - {"mfd_settings", "timing_tower_col_options", "layout"}
+
+    assert set(_DEFAULTS) == scalar_fields
+    for field, value in _DEFAULTS.items():
+        assert getattr(settings, field) == value, field
+
+
+@allure.story("Defaults")
+@allure.title("The default MFD has the known pages, enabled ones at unique positions")
+def test_default_mfd_pages():
+    """
+    Builds HudSettings with no arguments and reads its MFD pages.
+
+    Expected: exactly the ten known pages (not the collapsed page), and no two enabled pages share a position.
+    """
+    pages = HudSettings().mfd_settings.pages
+
+    assert set(pages) == {
+        MfdPageId.LAP_TIMES, MfdPageId.WEATHER_FORECAST, MfdPageId.FUEL_INFO, MfdPageId.TYRE_INFO,
+        MfdPageId.PIT_REJOIN, MfdPageId.TYRE_SETS, MfdPageId.PACE_COMP, MfdPageId.TRAFFIC_MONITOR,
+        MfdPageId.RIVALS_STATUS, MfdPageId.TYRES_STATUS,
+    }
+    positions = [page.position for page in pages.values() if page.enabled]
+    assert len(positions) == len(set(positions))
+
+
+@allure.story("Defaults")
+@allure.title("The default timing tower shows its column header and the five default columns")
+def test_default_timing_tower_cols():
+    """
+    Builds TimingTowerColOptions with no arguments.
+
+    Expected: the header is shown, every column id is present at a unique position, and only delta, tyre, ERS/DRS,
+    penalties and track limit warnings are enabled.
+    """
+    opts = TimingTowerColOptions()
+    enabled = {TimingTowerColId.DELTA, TimingTowerColId.TYRE, TimingTowerColId.ERS_DRS, TimingTowerColId.PENS,
+               TimingTowerColId.TL_WARNS}
+
+    assert opts.show_col_header is True
+    assert set(opts.cols) == {col.value for col in TimingTowerColId}
+    positions = [col.position for col in opts.cols.values()]
+    assert len(positions) == len(set(positions))
+    assert {col_id for col_id, col in opts.cols.items() if col.enabled} == {col.value for col in enabled}
+
+
+@allure.story("Defaults")
+@allure.title("The default layout places every overlay at scale 1.0")
+def test_default_layout():
+    """
+    Builds HudSettings with no arguments and reads its overlay layout.
+
+    Expected: one OverlayPosition per overlay id, each at scale factor 1.0.
+    """
+    layout = HudSettings().layout
+
+    assert set(layout) == set(OverlayId)
+    assert all(isinstance(pos, OverlayPosition) and pos.scale_factor == 1.0 for pos in layout.values())
+
+# -------------------------------------- CROSS-FIELD RULES -------------------------------------------------------------
+
+@allure.story("Cross-field rules")
+@allure.title("An enabled HUD with every overlay off is rejected")
+def test_enabled_hud_needs_an_overlay():
+    """
+    Turns every overlay flag off and leaves the HUD enabled.
+
+    Expected: a ValidationError saying the HUD cannot be enabled with all overlays disabled.
+    """
+    with pytest.raises(ValidationError, match="all overlays are disabled"):
+        HudSettings(enabled=True, **_all_overlays_off())
+
+
+@allure.story("Cross-field rules")
+@allure.title("A disabled HUD may have every overlay off")
+def test_disabled_hud_may_have_no_overlay():
+    """
+    Turns every overlay flag off and disables the HUD.
+
+    Expected: the model builds; the overlay rule only applies to an enabled HUD.
+    """
+    HudSettings(enabled=False, **_all_overlays_off())
+
+
+@allure.story("Cross-field rules")
+@allure.title("An enabled HUD with one overlay on is accepted")
+def test_enabled_hud_with_one_overlay():
+    """
+    Turns every overlay flag off except the lap timer.
+
+    Expected: the model builds.
+    """
+    HudSettings(enabled=True, **{**_all_overlays_off(), "show_lap_timer": True})
+
+
+@allure.story("Cross-field rules")
+@allure.title("Showing the MFD with every MFD page disabled is rejected")
+def test_mfd_needs_an_enabled_page():
+    """
+    Shows the MFD and disables all of its pages.
+
+    Expected: a ValidationError saying the HUD cannot be enabled with all MFD pages disabled.
+    """
+    with pytest.raises(ValidationError, match="all MFD pages are disabled"):
+        HudSettings(show_mfd=True, mfd_settings=MfdSettings(pages=_pages()))
+
+
+@allure.story("Cross-field rules")
+@allure.title("A hidden MFD may have every page disabled")
+def test_hidden_mfd_may_have_no_page():
+    """
+    Hides the MFD and disables all of its pages, leaving the other default overlays on.
+
+    Expected: the model builds.
+    """
+    HudSettings(show_mfd=False, mfd_settings=MfdSettings(pages=_pages()))
+
+
+_OPACITIES = {
+    "idle 0, overall 1": (0, 1, True),
+    "idle just below overall": (29, 30, True),
+    "idle equal to overall": (30, 30, False),
+    "idle above overall": (80, 70, False),
+}
+
+@allure.story("Cross-field rules")
+@allure.title("Track radar idle opacity must be below overlays opacity ({case})")
+@pytest.mark.parametrize("case", list(_OPACITIES))
+def test_idle_opacity_below_overlays_opacity(case):
+    """
+    Sets the track radar idle opacity and the overlays opacity on an enabled HUD.
+
+    Expected: accepted when idle is strictly below overall, else a ValidationError naming the opacity rule.
+    """
+    idle, overall, accepted = _OPACITIES[case]
+    if accepted:
+        HudSettings(track_radar_idle_opacity=idle, overlays_opacity=overall)
+    else:
+        with pytest.raises(ValidationError, match="idle opacity"):
+            HudSettings(track_radar_idle_opacity=idle, overlays_opacity=overall)
+
+
+@allure.story("Cross-field rules")
+@allure.title("A disabled HUD may have idle opacity above overlays opacity")
+def test_disabled_hud_skips_opacity_rule():
+    """
+    Disables the HUD and sets the track radar idle opacity above the overlays opacity.
+
+    Expected: the model builds; the opacity rule only applies to an enabled HUD.
+    """
+    HudSettings(enabled=False, track_radar_idle_opacity=80, overlays_opacity=70)
+
+# -------------------------------------- MFD PAGES ---------------------------------------------------------------------
+
+@allure.story("MFD pages")
+@allure.title("Two enabled MFD pages at the same position are rejected")
+def test_mfd_duplicate_enabled_positions_rejected():
+    """
+    Enables the lap times and fuel pages, both at position 1.
+
+    Expected: a ValidationError reporting the duplicate position.
+    """
+    pages = {MfdPageId.LAP_TIMES: MfdPageSettings(enabled=True, position=1),
+             MfdPageId.FUEL_INFO: MfdPageSettings(enabled=True, position=1)}
+    with pytest.raises(ValidationError, match="duplicate position"):
+        MfdSettings(pages=pages)
+
+
+@allure.story("MFD pages")
+@allure.title("Disabled MFD pages may share a position")
+def test_mfd_duplicate_disabled_positions_allowed():
+    """
+    Puts the lap times and fuel pages, both disabled, at position 1.
+
+    Expected: the model builds; only enabled pages need unique positions.
+    """
+    MfdSettings(pages={MfdPageId.LAP_TIMES: MfdPageSettings(enabled=False, position=1),
+                       MfdPageId.FUEL_INFO: MfdPageSettings(enabled=False, position=1)})
+
+
+@allure.story("MFD pages")
+@allure.title("Known MFD pages missing from a stored config are added, disabled")
+def test_mfd_missing_pages_added_disabled():
+    """
+    Validates stored MFD settings that only hold the lap times page.
+
+    Expected: every known page is present; the stored one keeps its values and the added ones are disabled.
+    """
+    mfd = MfdSettings.model_validate({"pages": {MfdPageId.LAP_TIMES: {"enabled": True, "position": 1}}})
+
+    assert set(mfd.pages) == set(DEFAULT_PAGES)
+    assert mfd.pages[MfdPageId.LAP_TIMES].enabled is True
+    assert not any(page.enabled for key, page in mfd.pages.items() if key != MfdPageId.LAP_TIMES)
+
+
+@allure.story("MFD pages")
+@allure.title("Unknown MFD pages in a stored config are dropped")
+def test_mfd_unknown_pages_dropped():
+    """
+    Validates stored MFD settings that hold a page id no longer known (e.g. removed in an update).
+
+    Expected: the unknown page is gone and the known pages are present.
+    """
+    mfd = MfdSettings.model_validate({"pages": {"retired_page": {"enabled": True, "position": 1}}})
+
+    assert "retired_page" not in mfd.pages
+    assert set(mfd.pages) == set(DEFAULT_PAGES)
+
+
+@allure.story("MFD pages")
+@allure.title("sorted_enabled_pages lists only enabled pages, in position order")
+def test_mfd_sorted_enabled_pages():
+    """
+    Enables tyre info at position 1, fuel at 2 and lap times at 3, leaving the rest disabled, and reads
+    sorted_enabled_pages.
+
+    Expected: exactly those three pages, ordered by position.
+    """
+    pages = _pages()
+    pages[MfdPageId.LAP_TIMES] = MfdPageSettings(enabled=True, position=3)
+    pages[MfdPageId.FUEL_INFO] = MfdPageSettings(enabled=True, position=2)
+    pages[MfdPageId.TYRE_INFO] = MfdPageSettings(enabled=True, position=1)
+
+    order = [key for key, _ in MfdSettings(pages=pages).sorted_enabled_pages()]
+    assert order == [MfdPageId.TYRE_INFO, MfdPageId.FUEL_INFO, MfdPageId.LAP_TIMES]
+
+# -------------------------------------- TIMING TOWER COLUMNS ----------------------------------------------------------
+
+@allure.story("Timing tower columns")
+@allure.title("Timing tower column keys dump as plain strings")
+def test_col_keys_dump_as_strings():
+    """
+    Dumps default TimingTowerColOptions with model_dump.
+
+    Expected: every column key is a str (a plain str or a str-valued column id), so the config JSON has string keys.
+    """
+    assert all(isinstance(key, str) for key in TimingTowerColOptions().model_dump()["cols"])
+
+
+@allure.story("Timing tower columns")
+@allure.title("Two enabled timing tower columns at the same position are rejected")
+def test_col_duplicate_enabled_positions_rejected():
+    """
+    Enables the delta and tyre columns, both at position 1.
+
+    Expected: a ValidationError reporting the duplicate position.
+    """
+    with pytest.raises(ValidationError, match="duplicate position"):
+        TimingTowerColOptions(cols={
+            TimingTowerColId.DELTA.value: TimingTowerColSettings(enabled=True, position=1),
+            TimingTowerColId.TYRE.value: TimingTowerColSettings(enabled=True, position=1),
         })
-        self.assertIsNotNone(opts)
-
-    def test_missing_col_auto_added_as_disabled(self):
-        # Provide only one column; all others must be auto-inserted as disabled
-        partial = {TimingTowerColId.DELTA.value: TimingTowerColSettings(enabled=True, position=1)}
-        opts = TimingTowerColOptions(cols=partial)
-        for col_id in TimingTowerColId:
-            self.assertIn(col_id.value, opts.cols)
-        # The auto-added ones must be disabled
-        for col_id in TimingTowerColId:
-            if col_id.value != TimingTowerColId.DELTA.value:
-                self.assertFalse(opts.cols[col_id.value].enabled)
-
-    def test_empty_cols_auto_filled_with_defaults(self):
-        opts = TimingTowerColOptions.model_validate({"cols": {}})
-        self.assertEqual(len(opts.cols), len(TimingTowerColId))
-        # All auto-filled must be disabled (missing cols default to disabled)
-        for col in opts.cols.values():
-            self.assertFalse(col.enabled)
-
-    def test_auto_added_positions_are_unique(self):
-        # Even when auto-filled from empty, positions must not collide
-        opts = TimingTowerColOptions.model_validate({"cols": {}})
-        positions = [col.position for col in opts.cols.values()]
-        self.assertEqual(len(positions), len(set(positions)))
-
-    # --- Upgrade compatibility ---
-
-    def test_old_flat_booleans_ignored_gracefully(self):
-        # Old config format: flat show_* booleans under timing_tower_col_options.
-        # With extra="ignore" (Pydantic default), these are silently dropped and
-        # cols falls back to defaults (all missing cols auto-inserted as disabled).
-        old_data = {
-            "show_team_logos": True,
-            "show_deltas": True,
-            "show_tyre_info": True,
-            "show_ers_drs_info": True,
-            "show_pens": True,
-            "show_tl_warns": True,
-            "show_best_lap": False,
-            "show_last_lap": False,
-            "show_wing_dmg": False,
-            "show_speed_trap": False,
-            "show_fuel": False,
-            "show_driver_status": False,
-        }
-        opts = TimingTowerColOptions.model_validate(old_data)
-        # All 12 cols must be present (auto-filled)
-        self.assertEqual(len(opts.cols), len(TimingTowerColId))
-
-    def test_partial_cols_in_stored_config_auto_filled(self):
-        # Simulate a future upgrade where two new columns were added to the enum
-        # but the stored config only has the old columns.
-        stored = {
-            TimingTowerColId.DELTA.value:  {"enabled": True,  "position": 1},
-            TimingTowerColId.TYRE.value:   {"enabled": True,  "position": 2},
-            TimingTowerColId.PENS.value:   {"enabled": False, "position": 3},
-        }
-        opts = TimingTowerColOptions.model_validate({"cols": stored})
-        self.assertEqual(len(opts.cols), len(TimingTowerColId))
-        # Stored values are preserved
-        self.assertTrue(opts.cols[TimingTowerColId.DELTA.value].enabled)
-        self.assertTrue(opts.cols[TimingTowerColId.TYRE.value].enabled)
-        self.assertFalse(opts.cols[TimingTowerColId.PENS.value].enabled)
-        # Missing ones are added as disabled
-        for col_id in TimingTowerColId:
-            if col_id.value not in stored:
-                self.assertFalse(opts.cols[col_id.value].enabled)
 
 
-def test_tyres_status_defaults():
-    hud = HudSettings()
-    assert hud.show_tyres_status is False
-    assert hud.tyres_status_show_title is True
-    assert OverlayId.TYRES_STATUS not in hud.enabled_overlays_by_id()
+@allure.story("Timing tower columns")
+@allure.title("Disabled timing tower columns may share a position")
+def test_col_duplicate_disabled_positions_allowed():
+    """
+    Puts the delta and tyre columns, both disabled, at position 1.
+
+    Expected: the model builds; only enabled columns need unique positions.
+    """
+    TimingTowerColOptions(cols={
+        TimingTowerColId.DELTA.value: TimingTowerColSettings(enabled=False, position=1),
+        TimingTowerColId.TYRE.value: TimingTowerColSettings(enabled=False, position=1),
+    })
 
 
-def test_tyres_status_enabled_overlay():
-    hud = HudSettings(show_tyres_status=True)
-    assert OverlayId.TYRES_STATUS in hud.enabled_overlays_by_id()
+_STORED_COLS = {
+    "empty": {},
+    "one column": {TimingTowerColId.DELTA.value: {"enabled": True, "position": 1}},
+    "three columns": {
+        TimingTowerColId.DELTA.value: {"enabled": True, "position": 1},
+        TimingTowerColId.TYRE.value: {"enabled": True, "position": 2},
+        TimingTowerColId.PENS.value: {"enabled": False, "position": 3},
+    },
+}
+
+@allure.story("Timing tower columns")
+@allure.title("Columns missing from a stored config are added, disabled, at free positions ({case})")
+@pytest.mark.parametrize("case", list(_STORED_COLS))
+def test_missing_cols_added_disabled(case):
+    """
+    Validates stored timing tower columns that hold none, one or three of the known columns.
+
+    Expected: every known column is present at a unique position; stored ones keep their values and added ones
+    are disabled.
+    """
+    stored = _STORED_COLS[case]
+    opts = TimingTowerColOptions.model_validate({"cols": stored})
+
+    assert set(opts.cols) == {col.value for col in TimingTowerColId}
+    positions = [col.position for col in opts.cols.values()]
+    assert len(positions) == len(set(positions))
+    for col_id, col in opts.cols.items():
+        if col_id in stored:
+            assert (col.enabled, col.position) == (stored[col_id]["enabled"], stored[col_id]["position"]), col_id
+        else:
+            assert col.enabled is False, col_id
+
+
+@allure.story("Timing tower columns")
+@allure.title("An old flat-boolean column config is ignored and the columns are filled in")
+def test_old_flat_col_booleans_ignored():
+    """
+    Validates an old timing tower config made of flat show_* booleans instead of a cols dict.
+
+    Expected: the unknown keys are ignored and every known column is present.
+    """
+    old = {"show_team_logos": True, "show_deltas": True, "show_tyre_info": True, "show_ers_drs_info": True,
+           "show_pens": True, "show_tl_warns": True, "show_best_lap": False, "show_last_lap": False,
+           "show_wing_dmg": False, "show_speed_trap": False, "show_fuel": False, "show_driver_status": False}
+
+    assert set(TimingTowerColOptions.model_validate(old).cols) == {col.value for col in TimingTowerColId}
+
+
+_ENABLED_COLS = {
+    "default columns": None,
+    "delta to leader only": {TimingTowerColId.DELTA_TO_LEADER: 1},
+    "three, out of order": {TimingTowerColId.FUEL: 3, TimingTowerColId.DELTA: 1, TimingTowerColId.PENS: 2},
+    "none": {},
+}
+
+@allure.story("Timing tower columns")
+@allure.title("sorted_enabled_cols lists only enabled columns, in position order ({case})")
+@pytest.mark.parametrize("case", list(_ENABLED_COLS))
+def test_sorted_enabled_cols(case):
+    """
+    Enables a set of columns (or keeps the defaults) and reads sorted_enabled_cols.
+
+    Expected: exactly the enabled columns, ordered by position.
+    """
+    enabled = _ENABLED_COLS[case]
+    opts = TimingTowerColOptions() if enabled is None else TimingTowerColOptions(cols=_cols(enabled))
+    expected = sorted(((col_id, col.position) for col_id, col in opts.cols.items() if col.enabled),
+                      key=lambda pair: pair[1])
+
+    assert [(col_id, col.position) for col_id, col in opts.sorted_enabled_cols()] == expected
+    if enabled is not None:
+        assert [col_id for col_id, _ in expected] == [c.value for c, _ in sorted(enabled.items(), key=lambda i: i[1])]
+
+# -------------------------------------- LAYOUT ------------------------------------------------------------------------
+
+@allure.story("Layout")
+@allure.title("Overlays missing from a stored layout get their default positions")
+def test_layout_missing_overlays_filled():
+    """
+    Builds HudSettings with a layout for four overlays, as a config saved before the others existed.
+
+    Expected: the four keep their positions, and every other overlay gets its default position.
+    """
+    stored = {OverlayId.LAP_TIMER: OverlayPosition(x=1, y=1), OverlayId.TIMING_TOWER: OverlayPosition(x=2, y=2),
+              OverlayId.MFD: OverlayPosition(x=3, y=3), OverlayId.TRACK_RADAR: OverlayPosition(x=4, y=4)}
+    layout = HudSettings(layout=stored).layout
+    defaults = HudSettings.get_default_layout_dict()
+
+    assert set(layout) == set(OverlayId)
+    for oid in OverlayId:
+        assert layout[oid] == stored.get(oid, defaults[oid]), oid
+
+# -------------------------------------- DERIVED VALUES ----------------------------------------------------------------
+
+@allure.story("Derived values")
+@allure.title("Speed unit {unit.value} sets the km/h and mph flags")
+@pytest.mark.parametrize("unit, kmph, mph", [(OverlaysSpeedUnit.KMPH, True, False),
+                                             (OverlaysSpeedUnit.MPH, False, True)],
+                         ids=["km/h", "mph"])
+def test_speed_unit_flags(unit, kmph, mph):
+    """
+    Sets overlays_speed_unit and reads hud_overlay_speed_unit_kmph/_mph.
+
+    Expected: exactly the flag for the chosen unit is True.
+    """
+    settings = HudSettings(overlays_speed_unit=unit)
+
+    assert (settings.hud_overlay_speed_unit_kmph, settings.hud_overlay_speed_unit_mph) == (kmph, mph)
+
+
+@allure.story("Derived values")
+@allure.title("Fuel estimation mode '{mode.value}' sets the linear regression and game built-in flags")
+@pytest.mark.parametrize("mode, regression, built_in",
+                         [(OverlaysFuelEstimationMode.LINEAR_REGRESSION, True, False),
+                          (OverlaysFuelEstimationMode.GAME_BUILT_IN, False, True)],
+                         ids=["linear regression", "game built-in"])
+def test_fuel_estimation_flags(mode, regression, built_in):
+    """
+    Sets overlays_fuel_estimation_mode and reads the two fuel estimation flags.
+
+    Expected: exactly the flag for the chosen mode is True.
+    """
+    settings = HudSettings(overlays_fuel_estimation_mode=mode)
+
+    assert (settings.hud_overlay_fuel_estimation_linear_regression,
+            settings.hud_overlay_fuel_estimation_game_built_in) == (regression, built_in)
+
+
+@allure.story("Derived values")
+@allure.title("A timing tower of {rows} rows shows {adjacent} cars either side")
+@pytest.mark.parametrize("rows, adjacent", [(1, 0), (3, 1), (23, 11), (24, 12)])
+def test_timing_tower_num_adjacent_cars(rows, adjacent):
+    """
+    Sets timing_tower_max_rows and reads timing_tower_num_adjacent_cars.
+
+    Expected: (rows - 1) / 2 for odd rows, and 12 for 24 rows (the whole grid).
+    """
+    assert HudSettings(timing_tower_max_rows=rows).timing_tower_num_adjacent_cars == adjacent
+
+
+@allure.story("Derived values")
+@allure.title("enabled_overlays_by_id includes the tyres status overlay only when it is shown")
+def test_enabled_overlays_by_id_tyres_status():
+    """
+    Reads enabled_overlays_by_id with the tyres status overlay hidden (the default) and shown.
+
+    Expected: TYRES_STATUS is absent by default and present once show_tyres_status is True.
+    """
+    assert OverlayId.TYRES_STATUS not in HudSettings().enabled_overlays_by_id()
+    assert OverlayId.TYRES_STATUS in HudSettings(show_tyres_status=True).enabled_overlays_by_id()
