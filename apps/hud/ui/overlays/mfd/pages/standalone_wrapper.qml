@@ -1,10 +1,11 @@
 import QtQuick
 import QtQuick.Window
+import "../../base"
 
-Window {
+OverlayWindow {
     id: root
     visible: true
-    color: "black"
+    backgroundColor: "black"
     property real scaleFactor: 1.0
     property url  pageSource:  ""
     property bool showTitleBar: false

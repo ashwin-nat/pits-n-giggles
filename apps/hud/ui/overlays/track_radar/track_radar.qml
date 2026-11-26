@@ -2,8 +2,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
 import QtQuick.Shapes
+import "../base"
 
-Window {
+OverlayWindow {
     id: root
     visible: true
 
@@ -13,7 +14,6 @@ Window {
 
     width: baseWidth * scaleFactor
     height: baseHeight * scaleFactor
-    color: "transparent"
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
 
     // Radar properties

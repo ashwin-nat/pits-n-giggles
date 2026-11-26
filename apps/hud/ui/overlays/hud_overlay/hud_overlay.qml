@@ -24,8 +24,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
 import QtQuick.Layouts
+import "../base"
 
-Window {
+OverlayWindow {
     id: root
     visible: true
 
@@ -36,7 +37,6 @@ Window {
 
     width:  Math.max(1, Math.round(baseWidth  * scaleFactor))
     height: Math.max(1, Math.round(baseHeight * scaleFactor))
-    color: "transparent"
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
 
     property real   throttleValue:  0

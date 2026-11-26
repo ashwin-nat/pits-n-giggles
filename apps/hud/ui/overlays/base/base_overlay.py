@@ -78,8 +78,8 @@ class BaseOverlay(QmlBridge, QObject):
     - Loading QML from disk using QQmlApplicationEngine
     - Ownership of the root QML window (QQuickWindow)
     - Applying window flags (always-on-top, frameless, tool vs full window)
-    - Position & opacity management via QQuickWindow
-    - Fade-in/fade-out via QPropertyAnimation bound to QQuickWindow.opacity
+    - Position via QQuickWindow; opacity via the OverlayWindow contentOpacity property
+    - Fade-in/fade-out via QPropertyAnimation bound to QQuickWindow.opacity (0 to 1)
     - Allowing locked/unlocked (click-through) behavior via flags
     - Windowed Overlay Mode (OBS capture)
     - Optional fixed-rate render tick, enabled via the ANIMATION_DRIVEN class attr;
@@ -90,7 +90,8 @@ class BaseOverlay(QmlBridge, QObject):
     --------------------------------------------------------------------------
     - OVERLAY_ID class attribute
     - A QML file path via the QML_FILE class attribute
-    - QML should expose a root Window {} containing `property real scaleFactor`
+    - QML should expose a root OverlayWindow {} (base/OverlayWindow.qml) containing
+      `property real scaleFactor`; a background colour goes in backgroundColor, not color
     - render_frame() if a refresh interval is used
 
     Lifecycle hooks (override in leaf classes):
@@ -332,6 +333,7 @@ class BaseOverlay(QmlBridge, QObject):
 
     def apply_config(self):
         self._root.setPosition(self.config.x, self.config.y)
+        self._root.setOpacity(1.0 if self.get_visibility() else 0.0)
         self.set_opacity(self.opacity)
 
     def update_window_flags(self):
@@ -379,7 +381,8 @@ class BaseOverlay(QmlBridge, QObject):
         self._unlock_overlay.setVisible(not self.locked)
 
     def set_opacity(self, opacity: int):
-        self._root.setOpacity(opacity / 100.0)
+        """Set the content opacity (0-100). Window opacity is left to the fade."""
+        self._root.setProperty("contentOpacity", opacity / 100.0)
 
     def set_ui_scale(self, ui_scale: float):
         """Update the UI scale factor at runtime."""
@@ -398,8 +401,9 @@ class BaseOverlay(QmlBridge, QObject):
             self.logger.warning("%s | Cannot set UI scale - root window not initialized", self.OVERLAY_ID)
 
     def animate_fade(self, show: bool):
-        target_opacity = self.opacity / 100.0
-        end = target_opacity if show else 0.0
+        # Window opacity is only the fade; the opacity level is contentOpacity. Fading to it here would
+        # apply it twice and fade the unlock border with the content
+        end = 1.0 if show else 0.0
 
         if self._fade_anim is None:
             # Parented to self._root so Qt owns its lifetime - avoids the animation's

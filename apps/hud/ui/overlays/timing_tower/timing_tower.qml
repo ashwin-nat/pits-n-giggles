@@ -4,7 +4,7 @@ import QtQuick.Window
 import QtQuick.Layouts
 import "../base"
 
-Window {
+OverlayWindow {
     id: root
     visible: true
 
@@ -284,7 +284,6 @@ Window {
 
     width: (mode === "tt" ? ttBaseWidth : baseWidth) * scaleFactor
     height: (mode === "tt" ? ttBaseHeight : baseHeight) * scaleFactor
-    color: "transparent"
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
 
     // Exposed properties for Python to set
