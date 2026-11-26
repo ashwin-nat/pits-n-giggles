@@ -29,6 +29,7 @@ from typing import Any, ClassVar, Dict, Optional, Tuple
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .diff import ConfigDiffMixin
+from .utils import ConflictError
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -186,22 +187,19 @@ class ForwardingSettings(ConfigDiffMixin, BaseModel):
 
     @model_validator(mode="after")
     def _validate_no_duplicate_targets(self):
-        seen: set[tuple[str, int]] = set()
+        seen: dict[tuple[str, int], str] = {}  # (normalized host, port) -> field name
 
-        for target in (
-            self.target_1_tuple,
-            self.target_2_tuple,
-            self.target_3_tuple,
-        ):
+        for field_name in ("target_1", "target_2", "target_3"):
+            target = getattr(self, f"{field_name}_tuple")
             if target is None:
                 continue
 
-            host, port = target # pylint: disable=unpacking-non-sequence
+            host, port = target
 
             key = (self._normalize_host(host), port)
             if key in seen:
-                raise ValueError(f"Duplicate forwarding target detected: {host}:{port}")
+                raise ConflictError(f"Duplicate forwarding target detected: {host}:{port}", [seen[key], field_name])
 
-            seen.add(key)
+            seen[key] = field_name
 
         return self

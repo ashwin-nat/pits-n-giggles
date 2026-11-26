@@ -29,6 +29,7 @@ from typing import Any, ClassVar, Dict, List, Tuple
 from pydantic import BaseModel, Field, model_validator
 
 from ..diff import ConfigDiffMixin
+from ..utils import ConflictError, key_str as _key_str
 
 # ------------------------------------- CONSTANTS ----------------------------------------------------------------------
 
@@ -125,9 +126,10 @@ class TimingTowerColOptions(ConfigDiffMixin, BaseModel):
             if not col.enabled:
                 continue
             if col.position in pos_map:
-                raise ValueError(
+                raise ConflictError(
                     f"Timing tower column '{col_id}' has duplicate position {col.position} "
-                    f"(also used by '{pos_map[col.position]}')"
+                    f"(also used by '{pos_map[col.position]}')",
+                    [f"cols.{_key_str(pos_map[col.position])}", f"cols.{_key_str(col_id)}"],
                 )
             pos_map[col.position] = col_id
         return self

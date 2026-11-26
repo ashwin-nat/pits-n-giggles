@@ -31,6 +31,7 @@ from pydantic import ValidationError
 
 from lib.config import ForwardingSettings, HudSettings, NetworkSettings, PngSettings
 from lib.config.schema.mcp_cfg import McpSettings
+from lib.config.schema.utils import PortConflictError, UdpActionCodeConflictError
 
 pytestmark = allure.feature("PngSettings")
 
@@ -44,9 +45,10 @@ def test_udp_action_code_shared_across_sections_rejected():
 
     Expected: PngSettings raises a ValidationError naming the duplicate code.
     """
-    with pytest.raises(ValidationError, match="Duplicate UDP action code 3"):
+    with pytest.raises(ValidationError, match="Duplicate UDP action code 3") as exc:
         PngSettings(Network=NetworkSettings(udp_custom_action_code=3),
                     HUD=HudSettings(mfd_toggle_udp_action_code=3))
+    assert isinstance(exc.value.errors()[0]["ctx"]["error"], UdpActionCodeConflictError)
 
 
 @allure.story("Cross-section rules")
@@ -58,8 +60,9 @@ def test_udp_action_code_shared_within_hud_rejected():
 
     Expected: PngSettings raises a ValidationError naming the duplicate code.
     """
-    with pytest.raises(ValidationError, match="Duplicate UDP action code 3"):
+    with pytest.raises(ValidationError, match="Duplicate UDP action code 3") as exc:
         PngSettings(HUD=HudSettings(lap_timer_toggle_udp_action_code=3, mfd_toggle_udp_action_code=3))
+    assert isinstance(exc.value.errors()[0]["ctx"]["error"], UdpActionCodeConflictError)
 
 
 @allure.story("Cross-section rules")
@@ -85,8 +88,9 @@ def test_tcp_port_shared_across_sections_rejected():
 
     Expected: PngSettings raises a ValidationError naming the duplicate TCP port.
     """
-    with pytest.raises(ValidationError, match="Duplicate TCP port 4770"):
+    with pytest.raises(ValidationError, match="Duplicate TCP port 4770") as exc:
         PngSettings(Network=NetworkSettings(server_port=4770), MCP=McpSettings(mcp_http_port=4770))
+    assert isinstance(exc.value.errors()[0]["ctx"]["error"], PortConflictError)
 
 
 @allure.story("Cross-section rules")

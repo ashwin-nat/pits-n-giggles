@@ -29,6 +29,7 @@ import pytest
 from pydantic import ValidationError
 
 from lib.config import NetworkSettings
+from lib.config.schema.utils import PortConflictError, UdpActionCodeConflictError
 
 pytestmark = allure.feature("Network settings")
 
@@ -66,8 +67,9 @@ def test_udp_action_codes_must_differ():
 
     Expected: a ValidationError saying the two must not be the same.
     """
-    with pytest.raises(ValidationError, match="must not be the same"):
+    with pytest.raises(ValidationError, match="must not be the same") as exc:
         NetworkSettings(udp_tyre_delta_action_code=5, udp_custom_action_code=5)
+    assert isinstance(exc.value.errors()[0]["ctx"]["error"], UdpActionCodeConflictError)
 
 
 _PORT_CONFLICTS = {
@@ -85,8 +87,9 @@ def test_tcp_port_conflict_rejected(case):
 
     Expected: a ValidationError reporting the port conflict.
     """
-    with pytest.raises(ValidationError, match="Port conflict"):
+    with pytest.raises(ValidationError, match="Port conflict") as exc:
         NetworkSettings(**_PORT_CONFLICTS[case])
+    assert isinstance(exc.value.errors()[0]["ctx"]["error"], PortConflictError)
 
 
 @allure.story("Cross-field rules")

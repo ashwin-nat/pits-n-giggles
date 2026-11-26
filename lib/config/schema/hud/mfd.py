@@ -29,6 +29,7 @@ from typing import Any, ClassVar, Dict, Optional
 from pydantic import BaseModel, Field, model_validator
 
 from ..diff import ConfigDiffMixin
+from ..utils import ConflictError, key_str as _key_str
 
 # ------------------------------------- CONSTANTS ----------------------------------------------------------------------
 
@@ -109,9 +110,10 @@ class MfdSettings(ConfigDiffMixin, BaseModel):
             if not page.enabled:
                 continue
             if page.position in pos_map:
-                raise ValueError(
+                raise ConflictError(
                     f"MFD page '{name}' has duplicate position {page.position} "
-                    f"(also used by '{pos_map[page.position]}')"
+                    f"(also used by '{pos_map[page.position]}')",
+                    [f"pages.{_key_str(pos_map[page.position])}", f"pages.{_key_str(name)}"],
                 )
             pos_map[page.position] = name
 

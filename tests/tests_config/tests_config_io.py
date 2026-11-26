@@ -33,11 +33,11 @@ from hypothesis import strategies as st
 from pydantic import ValidationError
 
 from lib.config import (CaptureSettings, DisplaySettings, ForwardingSettings,
-                        HttpsSettings, NetworkSettings, PngSettings,
+                        HttpsSettings, HudSettings, NetworkSettings, PngSettings,
                         PrivacySettings, StreamOverlaySettings,
                         load_config_from_json, save_config_to_json)
 
-from .tests_config_properties import png_settings_dicts
+from .tests_config_properties import FIELDS, _CONTAINERS, _nested_model_fields, png_settings_dicts
 
 pytestmark = allure.feature("Config file I/O")
 
@@ -195,7 +195,7 @@ def test_https_with_existing_files(tmp_path, config_path):
 
 _GOOD_NETWORK = {"Network": {"telemetry_port": 20779}}
 
-# File content, sections expected back at defaults, valid sections expected to survive
+# File content, sections expected back at defaults (every value in them was bad), valid values expected to survive
 _BAD_CONFIGS = {
     "out-of-range value": (json.dumps({"Display": {"refresh_interval": 0}}), ["Display"], {}),
     "one bad forwarding target": (
@@ -217,14 +217,14 @@ _BAD_CONFIGS = {
 }
 
 @allure.story("Bad input")
-@allure.title("Bad input ({case}) restores only the affected sections and backs up the file")
+@allure.title("Bad input ({case}) is reset to defaults, valid values survive, and the file is backed up")
 @pytest.mark.parametrize("case", list(_BAD_CONFIGS))
 def test_bad_input_restores_section(config_path, case):
     """
-    Writes a config.json with an invalid value, invalid JSON, or valid JSON that is not an object, then loads it.
+    Writes a config.json with invalid values, invalid JSON, or valid JSON that is not an object, then loads it.
 
-    Expected: each affected section reads as its defaults, valid sections in the same file keep their values, and
-    the original file is moved to config.json.invalid.
+    Expected: every invalid value reads as its default (here each section holds only bad values, so it equals its
+    defaults), valid values elsewhere in the file are kept, and the original is moved to config.json.invalid.
     """
     content, restored, kept = _BAD_CONFIGS[case]
     config_path.write_text(content, encoding="utf-8")
@@ -238,6 +238,230 @@ def test_bad_input_restores_section(config_path, case):
         for key, value in fields.items():
             assert getattr(getattr(settings, section), key) == value, f"{section}.{key}"
     assert _backup_exists(config_path)
+
+# -------------------------------------- BAD VALUE ISOLATION -----------------------------------------------------------
+
+def _leaf_paths(model: type, prefix: tuple = ()) -> list:
+    """(path, spec) for every FIELDS leaf under model, following fields typed directly as a model."""
+    leaves = [(prefix + (name,), spec) for name, spec in FIELDS.get(model, {}).items()]
+    for name in _nested_model_fields(model):
+        leaves += _leaf_paths(model.model_fields[name].annotation, prefix + (name,))
+    return leaves
+
+
+_LEAVES = _leaf_paths(PngSettings)
+
+
+def _set(raw: dict, path: tuple, value) -> None:
+    node = raw
+    for key in path[:-1]:
+        node = node.setdefault(key, {})
+    node[path[-1]] = value
+
+
+def _delete(raw: dict, path: tuple) -> None:
+    node = raw
+    for key in path[:-1]:
+        node = node.get(key, {})
+    node.pop(path[-1], None)
+
+
+@allure.story("Bad value isolation")
+@allure.title("One bad value in a saved config resets only that value")
+@given(data=st.data())
+def test_one_bad_value_resets_only_that_value(data):
+    """
+    Generates a valid whole config, replaces one field (any FIELDS leaf, at any depth) with a value its spec
+    rejects, writes it as config.json and loads it.
+
+    Expected: no exception; the loaded settings equal the config with that one value removed, so it reads as its
+    default and every other value is kept; the original is backed up. Draws where the default itself breaks a rule
+    with the rest of the config are skipped.
+    """
+    raw = data.draw(png_settings_dicts())
+    try:
+        PngSettings.model_validate(raw)
+    except ValidationError:
+        reject()
+    path, spec = data.draw(st.sampled_from(_LEAVES), label="field")
+    bad_value = data.draw(spec.invalid() | _CONTAINERS, label="bad value")
+
+    without = json.loads(json.dumps(raw))
+    _delete(without, path)
+    try:
+        expected = PngSettings.model_validate(without)
+    except ValidationError:
+        reject()  # the field's default clashes with a generated value elsewhere
+
+    corrupted = json.loads(json.dumps(raw))
+    _set(corrupted, path, bad_value)
+    with tempfile.TemporaryDirectory() as tmp:
+        config_path = Path(tmp) / "config.json"
+        config_path.write_text(json.dumps(corrupted), encoding="utf-8")
+
+        loaded = load_config_from_json(str(config_path))
+
+        assert loaded == expected, ".".join(path)
+        assert _backup_exists(config_path)
+
+
+def _at(settings, path: str):
+    """The value at a dotted path, through model attributes and dict keys."""
+    node = settings
+    for key in path.split("."):
+        node = node[key] if isinstance(node, dict) else getattr(node, key)
+    return node
+
+
+_HUD_OVERLAY_FLAGS = [name for name, field in HudSettings.model_fields.items()
+                      if (field.json_schema_extra or {}).get("ui", {}).get("overlay_enable")]
+
+# File content breaking one rule, expected values afterwards, and values in the same file that must survive
+_BROKEN_RULES = {
+    "Network action codes equal": (
+        {"Network": {"udp_tyre_delta_action_code": 5, "udp_custom_action_code": 5, "server_port": 4999}},
+        {"Network.udp_tyre_delta_action_code": None, "Network.udp_custom_action_code": None},
+        {"Network.server_port": 4999},
+    ),
+    "two Network TCP ports equal": (
+        {"Network": {"server_port": 5000, "broker_xpub_port": 5000, "telemetry_port": 20800}},
+        {"Network.server_port": 4768, "Network.broker_xpub_port": 53838},
+        {"Network.telemetry_port": 20800},
+    ),
+    "duplicate forwarding targets": (
+        {"Forwarding": {"target_1": "a.lan:5000", "target_2": "a.lan:5000", "target_3": "b.lan:6000"}},
+        {"Forwarding.target_1": "", "Forwarding.target_2": ""},
+        {"Forwarding.target_3": "b.lan:6000"},
+    ),
+    "HUD on with every overlay off": (
+        {"HUD": {**dict.fromkeys(_HUD_OVERLAY_FLAGS, False), "track_radar_range_m": 30}},
+        {f"HUD.{flag}": getattr(HudSettings(), flag) for flag in _HUD_OVERLAY_FLAGS},
+        {"HUD.track_radar_range_m": 30},
+    ),
+    "MFD shown with every page disabled": (
+        {"HUD": {"show_mfd": True, "track_radar_range_m": 30,
+                 "mfd_settings": {"pages": {page.value: {"enabled": False, "position": i + 1}
+                                            for i, page in enumerate(HudSettings().mfd_settings.pages)}}}},
+        {"HUD.show_mfd": True, "HUD.mfd_settings": HudSettings().mfd_settings},
+        {"HUD.track_radar_range_m": 30},
+    ),
+    "radar idle opacity above overall": (
+        {"HUD": {"track_radar_idle_opacity": 90, "overlays_opacity": 50, "track_radar_range_m": 30}},
+        {"HUD.track_radar_idle_opacity": 30, "HUD.overlays_opacity": 100},
+        {"HUD.track_radar_range_m": 30},
+    ),
+    "two timing tower columns at one position": (
+        {"HUD": {"track_radar_range_m": 30, "timing_tower_col_options": {"cols": {
+            "delta": {"enabled": True, "position": 1}, "tyre": {"enabled": True, "position": 1}}}}},
+        {"HUD.timing_tower_col_options.cols.delta.enabled": False,
+         "HUD.timing_tower_col_options.cols.tyre.enabled": False},
+        {"HUD.track_radar_range_m": 30},
+    ),
+    "HTTPS on without key or cert files": (
+        {"HTTPS": {"enabled": True, "key_file_path": "/no/key.pem", "cert_file_path": "/no/cert.pem"},
+         "Display": {"refresh_interval": 300}},
+        {"HTTPS.enabled": False, "HTTPS.key_file_path": None, "HTTPS.cert_file_path": None},
+        {"Display.refresh_interval": 300},
+    ),
+    "UDP action code in Network and HUD": (
+        {"Network": {"udp_custom_action_code": 3, "server_port": 4999},
+         "HUD": {"mfd_toggle_udp_action_code": 3, "track_radar_range_m": 30}},
+        {"Network.udp_custom_action_code": None, "HUD.mfd_toggle_udp_action_code": None},
+        {"Network.server_port": 4999, "HUD.track_radar_range_m": 30},
+    ),
+    "TCP port in Network and MCP": (
+        {"Network": {"server_port": 4770, "telemetry_port": 20800}, "MCP": {"mcp_http_port": 4770}},
+        {"Network.server_port": 4768, "MCP.mcp_http_port": 4770},
+        {"Network.telemetry_port": 20800},
+    ),
+    "MCP port set to the default server port": (
+        {"Network": {"telemetry_port": 20800}, "MCP": {"mcp_http_port": 4768}},
+        {"Network.server_port": 4768, "MCP.mcp_http_port": 4770},
+        {"Network.telemetry_port": 20800},
+    ),
+    "forwarding loops back to the telemetry port": (
+        {"Network": {"telemetry_port": 20800}, "Forwarding": {"target_1": "localhost:20800", "target_2": "b.lan:6000"}},
+        {"Network.telemetry_port": 20777, "Forwarding.target_1": ""},
+        {"Forwarding.target_2": "b.lan:6000"},
+    ),
+    "overlay layout entry with a bad scale": (
+        {"HUD": {"layout": {"mfd": {"x": 7, "y": 8, "scale_factor": -1}}, "track_radar_range_m": 30}},
+        {"HUD.layout.mfd.scale_factor": 1.0},
+        {"HUD.layout.mfd.x": 7, "HUD.layout.mfd.y": 8, "HUD.track_radar_range_m": 30},
+    ),
+    "overlay layout entry missing a required field": (
+        {"HUD": {"layout": {"mfd": {"y": 5}, "lap_timer": {"x": 11, "y": 12}}, "track_radar_range_m": 30}},
+        {"HUD.layout.mfd": HudSettings().layout["mfd"]},
+        {"HUD.layout.lap_timer.x": 11, "HUD.track_radar_range_m": 30},
+    ),
+}
+
+@allure.story("Bad value isolation")
+@allure.title("A config breaking a rule ({case}) resets every field the rule involves, and nothing else")
+@pytest.mark.parametrize("case", list(_BROKEN_RULES))
+def test_broken_rule_resets_involved_fields(config_path, caplog, case):
+    """
+    Writes a config.json where each value is valid alone but a rule between fields is broken (within a section,
+    across sections, or in a dict entry), plus valid values elsewhere, then loads it.
+
+    Expected: no exception; every field the rule involves reads as its default, the other values are kept, a
+    warning names what was reset, and the original is moved to config.json.invalid.
+    """
+    raw, expected, kept = _BROKEN_RULES[case]
+    _write_json(config_path, raw)
+    logger = logging.getLogger("tests_config_io")
+
+    with caplog.at_level(logging.WARNING, logger=logger.name):
+        settings = load_config_from_json(str(config_path), logger=logger)
+
+    for path, value in {**expected, **kept}.items():
+        assert _at(settings, path) == value, path
+    assert "Invalid config" in caplog.text
+    assert _backup_exists(config_path)
+
+
+@allure.story("Bad value isolation")
+@allure.title("After an upgrade, a new setting whose default clashes with a saved value loads with both reset")
+def test_upgrade_default_clash_resets_both(config_path):
+    """
+    Loads a config saved before the MCP section existed, whose Network.server_port is 4770: the port the new
+    MCP.mcp_http_port defaults to. The new field is already at its default, so only resetting both works.
+
+    Expected: no exception; server_port reads as its default 4768, the MCP port as its default 4770, and the
+    rest of the saved values are kept.
+    """
+    _write_json(config_path, {"Network": {"server_port": 4770, "telemetry_port": 20800},
+                              "Display": {"refresh_interval": 300}})
+
+    settings = load_config_from_json(str(config_path))
+
+    assert (settings.Network.server_port, settings.MCP.mcp_http_port) == (4768, 4770)
+    assert (settings.Network.telemetry_port, settings.Display.refresh_interval) == (20800, 300)
+
+
+@allure.story("Bad value isolation")
+@allure.title("A section whose validation raises an unexpected exception is reset, not the whole config")
+def test_unexpected_exception_resets_only_that_section(config_path, caplog, monkeypatch):
+    """
+    Makes NetworkSettings validation raise RuntimeError (as a validator raising something other than ValueError
+    would), then loads a config with Network and Display values.
+
+    Expected: no exception escapes the loader; Network reads as its defaults, Display keeps its value, and an
+    error is logged.
+    """
+    def explode(cls, data, *args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(NetworkSettings, "model_validate", classmethod(explode))
+    _write_json(config_path, {"Network": {"server_port": 4999}, "Display": {"refresh_interval": 300}})
+    logger = logging.getLogger("tests_config_io")
+
+    with caplog.at_level(logging.ERROR, logger=logger.name):
+        settings = load_config_from_json(str(config_path), logger=logger)
+
+    assert settings.Network == NetworkSettings()
+    assert settings.Display.refresh_interval == 300
+    assert "Unexpected RuntimeError" in caplog.text
 
 # -------------------------------------- PARTIAL CONFIGS ---------------------------------------------------------------
 

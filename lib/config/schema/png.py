@@ -36,6 +36,7 @@ from .pit_time_loss import PitTimeLossF1, PitTimeLossF2
 from .prediction import PredictionSettings
 from .privacy import PrivacySettings
 from .stream_overlay import StreamOverlaySettings
+from .utils import ConflictError, PortConflictError, UdpActionCodeConflictError
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -76,8 +77,9 @@ class PngSettings(ConfigDiffMixin, BaseModel):
                 continue
 
             if val in seen:
-                raise ValueError(
-                    f"Duplicate UDP action code {val} between {seen[val]} and {name}"
+                raise UdpActionCodeConflictError(
+                    f"Duplicate UDP action code {val} between {seen[val]} and {name}",
+                    [seen[val], name],
                 )
             seen[val] = name
 
@@ -87,11 +89,16 @@ class PngSettings(ConfigDiffMixin, BaseModel):
     def _validate_no_localhost_udp_loop(self):
         telemetry_port = self.Network.telemetry_port
 
-        for host, port in self.Forwarding.forwarding_targets:
+        for field_name in ("target_1", "target_2", "target_3"):
+            target = getattr(self.Forwarding, f"{field_name}_tuple")
+            if target is None:
+                continue
+            host, port = target
             if port == telemetry_port and host in _LOCALHOST_ALIASES:
-                raise ValueError(
+                raise ConflictError(
                     f"UDP forwarding target {host}:{port} forms a localhost loop "
-                    f"with Network.telemetry_port={telemetry_port}"
+                    f"with Network.telemetry_port={telemetry_port}",
+                    ["Network.telemetry_port", f"Forwarding.{field_name}"],
                 )
 
         return self
@@ -124,9 +131,10 @@ class PngSettings(ConfigDiffMixin, BaseModel):
 
                 if value in ports_by_type[port_type]:
                     prev = ports_by_type[port_type][value]
-                    raise ValueError(
+                    raise PortConflictError(
                         f"Duplicate {port_type.upper()} port {value} between "
-                        f"{prev} and {section_name}.{field_name}"
+                        f"{prev} and {section_name}.{field_name}",
+                        [prev, f"{section_name}.{field_name}"],
                     )
 
                 ports_by_type[port_type][value] = f"{section_name}.{field_name}"

@@ -23,9 +23,33 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from enum import Enum
-from typing import Optional, List
+from typing import Iterable, List, Optional
 
 from pydantic import Field
+
+# -------------------------------------- ERRORS ------------------------------------------------------------------------
+
+class ConflictError(ValueError):
+    """A rule between fields failed, though each field is valid alone (two equal ports, idle opacity above overall).
+
+    Args:
+        message: The error message, as for ValueError.
+        fields: Dotted paths of every field the rule involves, relative to the model that raises it
+            ("udp_custom_action_code", "pages.lap_times", "Network.server_port"). The config loader resets
+            all of them to their defaults.
+    """
+
+    def __init__(self, message: str, fields: Iterable[str]):
+        super().__init__(message)
+        self.fields = tuple(fields)
+
+
+class PortConflictError(ConflictError):
+    """Two port fields of the same protocol hold the same port."""
+
+
+class UdpActionCodeConflictError(ConflictError):
+    """Two UDP action code fields hold the same code."""
 
 # -------------------------------------- ENUM --------------------------------------------------------------------------
 
@@ -43,6 +67,10 @@ class PortType(Enum):
         return cls(value)
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+def key_str(key: object) -> str:
+    """A dict key as it appears in the config file: an enum member's value, anything else as str."""
+    return str(key.value) if isinstance(key, Enum) else str(key)
 
 def udp_action_field(
         description: str,
