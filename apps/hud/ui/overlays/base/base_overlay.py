@@ -539,6 +539,9 @@ class BaseOverlay(QmlBridge, QObject):
         return None
 
     def _on_mouse_press(self, event: QMouseEvent) -> bool:
+        if event.button() == Qt.MouseButton.RightButton:
+            self._window_manager.open_opacity_popover(self, event.globalPosition().toPoint())
+            return True
         if event.button() != Qt.MouseButton.LeftButton:
             return False
         local = event.position().toPoint()
@@ -776,7 +779,10 @@ class BaseOverlay(QmlBridge, QObject):
             locked = data.get('new-value', False)
             self.logger.silent('%s | Setting locked state to %s', self.OVERLAY_ID, locked)
             self.set_locked_state(locked)
-            if not locked:
+            if locked:
+                # Its changes are already on the overlay, so the lock that follows saves them
+                self._window_manager.close_opacity_popover()
+            else:
                 self.set_visibility(True)
 
         @self.on_event("__toggle_visibility__")
