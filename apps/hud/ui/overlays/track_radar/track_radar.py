@@ -72,9 +72,9 @@ class TrackRadarOverlay(BaseOverlay):
 
     @final
     def set_opacity(self, opacity: int):
-        """Set opacity."""
+        """Set the radar's base opacity (0-100), used while cars are nearby or unlocked."""
         self.logger.debug('%s | [OVERRIDDEN HANDLER] Setting opacity to %s', self.OVERLAY_ID, opacity)
-        super().set_opacity(opacity)
+        # Content opacity stays at 1: scaledRoot picks base or idle, so applying it here too would square it
         self._set_base_opacity_property(opacity)
 
     @final
