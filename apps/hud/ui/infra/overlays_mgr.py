@@ -80,6 +80,7 @@ class OverlaysMgr:
         self._local_wdt_ok: bool = False
         self._auto_hide_in_menu: bool = settings.HUD.auto_hide_in_menu
         self._telemetry_active: Optional[bool] = None
+        self._session_uid: Optional[int] = None
         self.wdt = WatchDogTimerSync(
             status_callback=self._wdt_status_callback,
             timeout=settings.Display.wdt_timeout,
@@ -158,6 +159,7 @@ class OverlaysMgr:
         """Handle race table update"""
         if self.wdt:
             self.wdt.kick()
+        self._handle_session_change(data)
         self._prep_race_table_data(data)
         self.window_manager.emit_event('race_table_update', data)
         self._handle_in_menu_status(data)
@@ -379,6 +381,21 @@ class OverlaysMgr:
         self.logger.debug("Local WDT status: %s", active)
         self._local_wdt_ok = active
         self._update_telemetry_active()
+
+    def _handle_session_change(self, data: Dict[str, Any]):
+        """On a new session, drop user hide requests made in the previous one."""
+        # None is seen when the core has not received any packets from the game yet
+        # 0 is seen on button press events in menus -> skip these two
+        uid = data.get("session-uid")
+        if not uid or uid == self._session_uid:
+            return
+        if self._session_uid is not None:
+            self.logger.silent("Session UID changed %s -> %s. Clearing user hidden flags", self._session_uid, uid)
+            self.window_manager.emit_event(
+                "__clear_user_hidden__",
+                {"reason": "session UID change"},
+                high_prio=True)
+        self._session_uid = uid
 
     def _handle_in_menu_status(self, data: Dict[str, Any]):
         """Hide overlays when backend reports in-menu state; restore when session resumes."""
