@@ -274,7 +274,9 @@ Changing a bound means editing both the schema and `FIELDS`. That is deliberate:
 fails the test.
 
 Hypothesis runs under the `png` profile in `conftest.py`: 50 examples, no deadline, no example database, and a fixed
-seed per test, so a failure reproduces on every run and machine.
+seed per test, so a failure reproduces on every run and machine. It does not shrink: a failing property reports the
+first failing example it found. To get a minimal example while debugging, rerun the failing test with
+`--hypothesis-profile png-shrink` (slow on whole-settings properties).
 
 ## Serial vs Parallel
 

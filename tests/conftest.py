@@ -5,12 +5,17 @@ from pathlib import Path
 import allure
 import pytest
 from allure_commons.types import LabelType
+from hypothesis import Phase
 from hypothesis import settings as hypothesis_settings
 
 _GLOBAL_SEED = 42
 
-# Seed derived from each test and no example database, so a failure reproduces on every run and machine
-hypothesis_settings.register_profile("png", max_examples=50, deadline=None, database=None, derandomize=True)
+# Seed derived from each test and no example database, so a failure reproduces on every run and machine.
+# No shrinking: a failure reports its first example at once. Pass --hypothesis-profile png-shrink to minimise it
+hypothesis_settings.register_profile("png", max_examples=50, deadline=None, database=None, derandomize=True,
+                                     phases=[Phase.explicit, Phase.generate])
+hypothesis_settings.register_profile("png-shrink", hypothesis_settings.get_profile("png"),
+                                     phases=[Phase.explicit, Phase.generate, Phase.shrink])
 hypothesis_settings.load_profile("png")
 
 
