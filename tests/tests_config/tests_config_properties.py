@@ -221,11 +221,43 @@ class Text:
         return "str" + (" or None" if self.nullable else "")
 
 
+_OCTETS = st.lists(st.integers(0, 255), min_size=4, max_size=4)
+
+
+def _dotted(octets: List[int]) -> str:
+    return ".".join(map(str, octets))
+
+
+@dataclass(frozen=True)
+class IPv4:
+    """A str field holding a dotted-quad IPv4 address."""
+
+    def valid(self) -> st.SearchStrategy:
+        return st.ip_addresses(v=4).map(str)
+
+    def invalid(self) -> st.SearchStrategy:
+        # Four octets with one replaced by 256..999, or 1-3 / 5-6 valid octets
+        octet_too_big = st.tuples(_OCTETS, st.integers(0, 3), st.integers(256, 999)).map(
+            lambda t: _dotted(t[0][:t[1]] + [t[2]] + t[0][t[1] + 1:]))
+        wrong_count = st.lists(st.integers(0, 255), min_size=1, max_size=6).filter(lambda o: len(o) != 4).map(_dotted)
+        return (st.ip_addresses(v=6).map(str) | octet_too_big | wrong_count | _LETTERS | st.just("") |
+                st.none() | st.integers())
+
+    def edges_in(self) -> List[Any]:
+        return ["0.0.0.0", "127.0.0.1", "255.255.255.255"]
+
+    def edges_out(self) -> List[Any]:
+        return ["256.0.0.0", "0.0.0.256", "1.2.3", "1.2.3.4.5", "::1", "", None]
+
+    def __str__(self) -> str:
+        return "IPv4 address"
+
+
 def _range_str(lo: Any, hi: Any, nullable: bool) -> str:
     return f"{'' if lo is None else lo}..{'' if hi is None else hi}" + (" or None" if nullable else "")
 
 
-FieldSpec = Union[IntRange, FloatRange, IntChoice, Choice, Flag, Text]
+FieldSpec = Union[IntRange, FloatRange, IntChoice, Choice, Flag, Text, IPv4]
 
 FLAG = Flag()
 PORT = IntRange(1, 65535)
@@ -247,6 +279,7 @@ FIELDS: Dict[Type[BaseModel], Dict[str, FieldSpec]] = {
         "broker_xpub_port": PORT,
         "broker_xsub_port": PORT,
         "broker_router_port": PORT,
+        "bind_address": IPv4(),
         "udp_tyre_delta_action_code": UDP_ACTION_CODE,
         "udp_custom_action_code": UDP_ACTION_CODE,
         "wdt_interval_sec": IntRange(1, 120),
@@ -335,7 +368,6 @@ FIELDS: Dict[Type[BaseModel], Dict[str, FieldSpec]] = {
 
 # Fields no spec above can express; their example tests stay the only coverage
 EXAMPLE_ONLY: Dict[Type[BaseModel], Set[str]] = {
-    NetworkSettings: {"bind_address"},          # IPv4 validator
     CaptureSettings: {"session_dir"},           # non-empty validator
     ForwardingSettings: {"target_1", "target_2", "target_3"},  # host:port validator
     HttpsSettings: {"key_file_path", "cert_file_path"},       # FilePathStr
@@ -419,7 +451,6 @@ _FORWARDING_TARGETS = ["host1.example.com:8000", "192.168.1.10:20777", "10.0.0.5
 
 # Values for EXAMPLE_ONLY fields, so whole-settings strategies cover them too. Dict containers are left at defaults
 EXAMPLE_ONLY_VALUES: Dict[Type[BaseModel], st.SearchStrategy] = {
-    NetworkSettings: st.fixed_dictionaries({"bind_address": st.ip_addresses(v=4).map(str)}),
     CaptureSettings: st.fixed_dictionaries({
         "session_dir": st.text(alphabet=string.ascii_letters + string.digits + "_-/", min_size=1)}),
     # Enabling HTTPS needs real key/cert files; a test that makes them passes its own via extra
