@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import ipaddress
 import re
 from typing import Any, ClassVar, Dict, Optional, Tuple
 
@@ -32,6 +33,39 @@ from .diff import ConfigDiffMixin
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 _LOCALHOST_ALIASES = {"localhost", "127.0.0.1", "::1"}
+
+# One part of a hostname between dots: 1-63 letters, digits or hyphens, not starting or ending with a hyphen.
+# Allows "my-pc", "lan", "1a"; catches "-pc", "pc-", "" (as in "a..b") and "my_pc"
+_HOSTNAME_LABEL = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?")
+# Only digits and dots, like "192.168.1.10" or "999.999.999.999": can only be meant as an IPv4 address
+_DOTTED_NUMERIC = re.compile(r"[0-9.]+")
+
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+def _is_valid_host(host: str) -> bool:
+    """Whether host can be a forwarding target: an IPv4 address or a hostname (RFC 1123). Checks the spelling
+    only; the name is not looked up, so a valid hostname may still not resolve.
+
+    Accepted: "192.168.1.10", "127.0.0.1", "localhost", "MyPC", "my-pc.lan", "1a.example"
+
+    Rejected:
+        "999.999.999.999", "1.2.3", "010.0.0.1"  digits and dots, but not a valid IPv4 address
+        "-pc", "pc-.lan", "a..b", ".lan", "lan."  a part starts or ends with "-", or is empty
+        "my_pc", "my pc"                          a character other than a letter, digit, "-" or "."
+        "a.123"                                   last part all digits; no real domain ends like that
+        "::1", "[::1]"                            IPv6; the forwarder only sends over IPv4
+        a part over 63 characters, or a whole name over 253
+    """
+    # The forwarder's socket is AF_INET, so IPv6 is not accepted
+    if _DOTTED_NUMERIC.fullmatch(host):
+        try:
+            ipaddress.IPv4Address(host)
+        except ValueError:
+            return False
+        return True
+    labels = host.split(".")
+    return len(host) <= 253 and all(_HOSTNAME_LABEL.fullmatch(label) for label in labels) and \
+        not labels[-1].isdigit()
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -96,6 +130,8 @@ class ForwardingSettings(ConfigDiffMixin, BaseModel):
         match = cls.hostport_pattern.match(v)
         if not match:
             raise ValueError(f"Invalid host:port format: '{v}'")
+        if not _is_valid_host(match.group(1)):
+            raise ValueError(f"Invalid host in '{v}': expected an IPv4 address or a hostname")
         port = int(match.group(2))
         if port < 1 or port > 65535:
             raise ValueError(f"Port number out of range in '{v}'")

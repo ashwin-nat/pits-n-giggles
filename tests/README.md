@@ -258,8 +258,8 @@ FIELDS = {
 
 For each entry, Hypothesis checks that the model accepts values inside the spec and rejects values outside it, and
 `test_edges` checks each bound and one step past it. The spec kinds are `IntRange`, `FloatRange` (`finite=True`
-rejects inf/nan), `IntChoice`, `Choice` (stored enum values, listed), `Flag`, `Text` and `IPv4` (Hypothesis's
-`st.ip_addresses`).
+rejects inf/nan), `IntChoice`, `Choice` (stored enum values, listed), `Flag`, `Text`, `IPv4` (Hypothesis's
+`st.ip_addresses`) and `HostPort` (IPv4 or hostname, from `st.ip_addresses` and `provisional.domains`).
 
 When you add or change a config field:
 

@@ -36,6 +36,7 @@ import allure
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
+from hypothesis.provisional import domains
 from pydantic import BaseModel, ValidationError
 
 from lib.config import (AutoOpenDashboardMode, CaptureSettings, DisplaySettings, ForwardingSettings,
@@ -265,11 +266,87 @@ class IPv4:
         return "IPv4 address"
 
 
+# Short domains: full-length ones (up to 255 chars) overrun Hypothesis's per-example data budget
+_DOMAINS = domains(max_length=40, max_element_length=12)
+_HOSTS = st.ip_addresses(v=4).map(str) | _DOMAINS | st.just("localhost")
+_TCP_UDP_PORTS = st.integers(1, 65535)
+# One character the host pattern [a-zA-Z0-9.-] does not allow
+_BAD_HOST_CHAR = st.sampled_from([" ", "_", "/", "@", "!", ",", "é", "#"])
+
+
+def _not_ipv4_quad(octets: List[int]) -> bool:
+    return len(octets) != 4 or any(o > 255 for o in octets)
+
+
+# Hosts made of allowed characters that are still not an IPv4 address or an RFC 1123 hostname
+_BAD_HOSTS = st.one_of(
+    st.lists(st.integers(0, 999), min_size=1, max_size=6).filter(_not_ipv4_quad).map(_dotted),  # numeric, not IPv4
+    _DOMAINS.map(lambda d: "-" + d),                                     # label starts with a hyphen
+    _DOMAINS.map(lambda d: d.replace(".", "-.", 1)),                     # label ends with a hyphen
+    _DOMAINS.map(lambda d: d.replace(".", "..", 1)),                     # empty label
+    _DOMAINS.map(lambda d: "." + d) | _DOMAINS.map(lambda d: d + "."),   # leading / trailing dot
+    st.tuples(_DOMAINS, st.integers(0, 999)).map(lambda t: f"{t[0]}.{t[1]}"),  # all-digit last label
+    st.integers(64, 80).map(lambda n: "a" * n + ".com"),                 # label over 63 chars
+    st.integers(254, 300).map(lambda n: ("a." * n)[:n - 3] + "com"),     # name over 253 chars
+)
+
+
+@dataclass(frozen=True)
+class HostPort:
+    """A str field holding "host:port" or empty. Host is an IPv4 address or an RFC 1123 hostname (localhost
+    included), port 1..65535. None and whitespace are stored as "", and the value is stored stripped."""
+
+    def valid(self) -> st.SearchStrategy:
+        target = st.tuples(_HOSTS, _TCP_UDP_PORTS).map(lambda t: f"{t[0]}:{t[1]}")
+        padded = st.tuples(st.sampled_from(["", " ", "  "]), target, st.sampled_from(["", " ", "\t"])).map("".join)
+        return padded | st.sampled_from([None, "", "   "])
+
+    def invalid(self) -> st.SearchStrategy:
+        def with_bad_char(t: Tuple[str, int, str]) -> str:
+            # Strictly inside the host: a leading space would just be whitespace the validator strips
+            host, pos, char = t
+            pos = 1 + pos % (len(host) - 1)
+            return host[:pos] + char + host[pos:]
+
+        ipv6 = st.tuples(st.ip_addresses(v=6).map(str), _TCP_UDP_PORTS, st.booleans()).map(
+            lambda t: f"[{t[0]}]:{t[1]}" if t[2] else f"{t[0]}:{t[1]}")
+        port_out = st.tuples(_HOSTS, st.just(0) | st.integers(65536, 99999)).map(lambda t: f"{t[0]}:{t[1]}")
+        bad_char = st.tuples(_HOSTS, st.integers(0, 50), _BAD_HOST_CHAR).map(with_bad_char)
+        bad_host = st.tuples(bad_char | _BAD_HOSTS, _TCP_UDP_PORTS).map(lambda t: f"{t[0]}:{t[1]}")
+        malformed = st.one_of(
+            _HOSTS,                                                               # no port
+            _HOSTS.map(lambda h: f"{h}:"),                                        # empty port
+            _TCP_UDP_PORTS.map(lambda p: f":{p}"),                                # no host
+            st.tuples(_HOSTS, _LETTERS).map(lambda t: f"{t[0]}:{t[1]}"),          # non-numeric port
+            st.tuples(_HOSTS, _TCP_UDP_PORTS, _TCP_UDP_PORTS).map(lambda t: f"{t[0]}:{t[1]}:{t[2]}"),  # extra part
+        )
+        return ipv6 | port_out | bad_host | malformed | st.integers()
+
+    def expected(self, value: Any) -> str:
+        return "" if value is None else value.strip()
+
+    def edges_in(self) -> List[Any]:
+        return ["localhost:1", "localhost:65535", "127.0.0.1:20777", "255.255.255.255:80", "my-server.domain:65535",
+                "MyPC:80", "1a.example:80", "a" * 63 + ".com:80", ("a." * 125) + "com:80",  # 253-char host
+                "  myhost.com:1234 ",
+                "", "   ", None]
+
+    def edges_out(self) -> List[Any]:
+        return ["localhost:0", "localhost:65536", "localhost", "localhost:", ":8080", "localhost:abc",
+                "host:1:2", "local host:8080", "a_b:80", "[::1]:80", "::1:80",
+                "999.999.999.999:80", "256.0.0.1:80", "1.2.3:80", "1.2.3.4.5:80", "010.0.0.1:80",
+                "-:80", "-a.com:80", "a-.com:80", "a..b:80", ".host:80", "host.:80", "a.123:80",
+                "a" * 64 + ".com:80", "b" + ("a." * 125) + "com:80", 5]  # last host: 254 chars
+
+    def __str__(self) -> str:
+        return "host:port or empty"
+
+
 def _range_str(lo: Any, hi: Any, nullable: bool) -> str:
     return f"{'' if lo is None else lo}..{'' if hi is None else hi}" + (" or None" if nullable else "")
 
 
-FieldSpec = Union[IntRange, FloatRange, IntChoice, Choice, Flag, Text, IPv4]
+FieldSpec = Union[IntRange, FloatRange, IntChoice, Choice, Flag, Text, IPv4, HostPort]
 
 FLAG = Flag()
 PORT = IntRange(1, 65535)
@@ -311,6 +388,7 @@ FIELDS: Dict[Type[BaseModel], Dict[str, FieldSpec]] = {
         "wdt_timeout": FloatRange(lo=2.0, nullable=True, finite=True),   # None = overlays never hide
     },
     PrivacySettings: _flags("process_car_setup"),
+    ForwardingSettings: dict.fromkeys(("target_1", "target_2", "target_3"), HostPort()),
     StreamOverlaySettings: {
         "show_sample_data_at_start": FLAG,
         "stream_overlay_update_interval_ms": IntRange(lo=50),
@@ -381,7 +459,6 @@ FIELDS: Dict[Type[BaseModel], Dict[str, FieldSpec]] = {
 # Fields no spec above can express; their example tests stay the only coverage
 EXAMPLE_ONLY: Dict[Type[BaseModel], Set[str]] = {
     CaptureSettings: {"session_dir"},           # non-empty validator
-    ForwardingSettings: {"target_1", "target_2", "target_3"},  # host:port validator
     HttpsSettings: {"key_file_path", "cert_file_path"},       # FilePathStr
     HudSettings: {"layout"},                    # dict keyed by overlay id
     TimingTowerColOptions: {"cols"},            # dict keyed by column id
@@ -463,16 +540,20 @@ CASES = [pytest.param(Case(model, field, spec), id=f"{model.__name__}.{field}")
 
 # ------------------------- WHOLE-SETTINGS STRATEGY --------------------------------------------------------------------
 
-_FORWARDING_TARGETS = ["host1.example.com:8000", "192.168.1.10:20777", "10.0.0.5:5000"]
+# Up to 3 forwarding targets, distinct even with localhost aliases folded, none on localhost (no loop with telemetry)
+_FORWARDING = st.lists(
+    st.tuples(st.ip_addresses(v=4).map(str) | _DOMAINS, _TCP_UDP_PORTS).map(lambda t: f"{t[0]}:{t[1]}"),
+    max_size=3, unique_by=str.lower).filter(lambda ts: not any(t.startswith("127.") for t in ts)).map(
+        lambda targets: {f"target_{i + 1}": t for i, t in enumerate(targets + [""] * (3 - len(targets)))})
 
-# Values for EXAMPLE_ONLY fields, so whole-settings strategies cover them too. Dict containers are left at defaults
+# Values for EXAMPLE_ONLY fields, so whole-settings strategies cover them too, plus fields whose cross-field rules
+# need a joint draw (forwarding targets). Dict containers are left at defaults
 EXAMPLE_ONLY_VALUES: Dict[Type[BaseModel], st.SearchStrategy] = {
     CaptureSettings: st.fixed_dictionaries({
         "session_dir": st.text(alphabet=string.ascii_letters + string.digits + "_-/", min_size=1)}),
     # Enabling HTTPS needs real key/cert files; a test that makes them passes its own via extra
     HttpsSettings: st.just({"enabled": False}),
-    ForwardingSettings: st.lists(st.sampled_from(_FORWARDING_TARGETS), unique=True, max_size=3).map(
-        lambda targets: {f"target_{i + 1}": t for i, t in enumerate(targets + [""] * (3 - len(targets)))}),
+    ForwardingSettings: _FORWARDING,
     HudSettings: st.fixed_dictionaries({"layout": st.dictionaries(
         st.sampled_from([o.value for o in OverlayId]),
         st.fixed_dictionaries({name: spec.valid() for name, spec in FIELDS[OverlayPosition].items()}),
