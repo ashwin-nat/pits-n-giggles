@@ -141,6 +141,8 @@ class OpacityPopover(QWidget):
         self._slider.blockSignals(True)
         self._enabled.setChecked(overlay.config.opacity_override.enabled)
         self._slider.setMinimum(overlay.min_override_opacity())
+        # The override's own value, kept while disabled so re-enabling restores it
+        self._slider.setValue(overlay.config.opacity_override.value)
         self._enabled.blockSignals(False)
         self._slider.blockSignals(False)
         self._sync_widgets()
@@ -162,10 +164,6 @@ class OpacityPopover(QWidget):
         enabled = self._enabled.isChecked()
         self._slider.setEnabled(enabled)
         self._value.setEnabled(enabled)
-        # The slider shows the resolved opacity: the global value while disabled, so enabling keeps the look
-        self._slider.blockSignals(True)
-        self._slider.setValue(self._overlay.opacity)
-        self._slider.blockSignals(False)
         self._value.setText(f"{self._slider.value()}%")
 
     def _clamped_pos(self, global_pos: QPoint) -> QPoint:
