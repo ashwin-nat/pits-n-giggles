@@ -1,6 +1,6 @@
 // Injected at runtime by BaseOverlay when the overlay is in unlocked mode.
 // Parented to the root window's contentItem.
-// Shows a dashed border + four corner drag handles.
+// Shows a dashed border + four corner drag handles, and the overlay's name on hover.
 import QtQuick
 
 Item {
@@ -15,6 +15,68 @@ Item {
     readonly property color accentColor: "#E10600"
     readonly property color borderColor: "#E10600"
     readonly property real borderOpacity: 0.85
+    property string overlayName: ""
+
+    property bool nameShown: false
+
+    HoverHandler {
+        id: hover
+        onHoveredChanged: {
+            if (hovered) {
+                nameDelay.restart()
+            } else {
+                nameDelay.stop()
+                unlockOverlay.nameShown = false
+            }
+        }
+    }
+
+    Timer {
+        id: nameDelay
+        interval: 700
+        onTriggered: {
+            nameLabel.placeAt(hover.point.position)
+            unlockOverlay.nameShown = true
+        }
+    }
+
+    // Takes no input, so covering a corner handle does not block a resize
+    Rectangle {
+        id: nameLabel
+        readonly property int margin: 4
+        readonly property int cursorGap: 16
+
+        // Below-right of the cursor, flipped above or left where it would leave the window
+        function placeAt(p) {
+            const maxX = unlockOverlay.width - width - margin
+            const maxY = unlockOverlay.height - height - margin
+            const nx = p.x + cursorGap <= maxX ? p.x + cursorGap : p.x - cursorGap - width
+            const ny = p.y + cursorGap <= maxY ? p.y + cursorGap : p.y - cursorGap - height
+            x = Math.max(margin, Math.min(nx, maxX))
+            y = Math.max(margin, Math.min(ny, maxY))
+        }
+
+        width: Math.min(nameText.implicitWidth + 20, parent.width - 2 * margin)
+        height: nameText.implicitHeight + 10
+        radius: 4
+        color: "#CC000000"
+        border.color: unlockOverlay.accentColor
+        border.width: 1
+        visible: unlockOverlay.nameShown && unlockOverlay.overlayName !== "" && width > 0
+
+        Text {
+            id: nameText
+            anchors.fill: parent
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+            verticalAlignment: Text.AlignVCenter
+            text: unlockOverlay.overlayName
+            color: "white"
+            font.family: "Formula1"
+            font.pixelSize: 18
+            elide: Text.ElideRight
+        }
+    }
 
     // Dashed border drawn as four thin rectangles
     Rectangle {

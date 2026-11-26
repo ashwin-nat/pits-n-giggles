@@ -387,6 +387,7 @@ class BaseOverlay(QmlBridge, QObject):
             return
         obj.setParent(self._root)
         obj.setParentItem(self._root.contentItem())
+        obj.setProperty("overlayName", self.OVERLAY_ID.display_name)
         obj.setZ(9999)
         obj.setVisible(False)
         self._unlock_overlay = obj
