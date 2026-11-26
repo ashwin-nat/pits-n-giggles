@@ -23,7 +23,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .tests_capture_settings import TestCaptureSettings
 from .tests_diff_mixin import TestConfigDiffMixin
 from .tests_display_settings import TestDisplaySettings
 from .tests_file_path_str_config import TestFilePathStr
@@ -39,7 +38,6 @@ from .tests_stream_overlay_settings import TestStreamOverlaySettings
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "TestCaptureSettings",
     "TestDisplaySettings",
     "TestForwardingSettings",
     "TestPngSettings",

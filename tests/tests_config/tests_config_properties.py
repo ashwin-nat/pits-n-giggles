@@ -52,17 +52,23 @@ pytestmark = allure.feature("Field constraints")
 
 _LETTERS = st.text(alphabet=string.ascii_letters, min_size=1)
 # Strings pydantic's lax bool parses, case-insensitively
-_BOOL_WORDS = {"0", "off", "f", "false", "n", "no", "1", "on", "t", "true", "y", "yes"}
+# Same as pydantic.v1.validators.BOOL_TRUE/BOOL_FALSE; v2 parses in pydantic-core and exposes no constant
+_TRUE_WORDS = {"1", "on", "t", "true", "y", "yes"}
+_BOOL_WORDS = _TRUE_WORDS | {"0", "off", "f", "false", "n", "no"}
 # Strings pydantic's float parses as non-finite, case-insensitively and signed
 _FLOAT_WORDS = {"inf", "infinity", "nan"}
 _NON_FINITE = [math.inf, -math.inf, math.nan]
 
 
+def _random_case(word: str) -> st.SearchStrategy:
+    """The word with each letter upper or lower case."""
+    return st.lists(st.booleans(), min_size=len(word), max_size=len(word)).map(
+        lambda upper: "".join(c.upper() if u else c for c, u in zip(word, upper)))
+
+
 def _case_variants(word: str) -> st.SearchStrategy:
     """The word in random letter case, optionally signed."""
-    cased = st.lists(st.booleans(), min_size=len(word), max_size=len(word)).map(
-        lambda upper: "".join(c.upper() if u else c for c, u in zip(word, upper)))
-    return st.tuples(st.sampled_from(["", "+", "-"]), cased).map("".join)
+    return st.tuples(st.sampled_from(["", "+", "-"]), _random_case(word)).map("".join)
 
 
 @dataclass(frozen=True)
@@ -181,20 +187,24 @@ class Choice:
 
 @dataclass(frozen=True)
 class Flag:
-    """A bool field."""
+    """A bool field. Also accepts pydantic's bool words in any case, and 0/1, stored as the matching bool."""
 
     def valid(self) -> st.SearchStrategy:
-        return st.booleans()
+        return (st.booleans() | st.sampled_from([0, 1]) |
+                st.sampled_from(sorted(_BOOL_WORDS)).flatmap(_random_case))
 
     def invalid(self) -> st.SearchStrategy:
         return (st.none() | st.integers().filter(lambda i: i not in (0, 1)) |
                 _LETTERS.filter(lambda s: s.lower() not in _BOOL_WORDS))
 
+    def expected(self, value: Any) -> bool:
+        return value.lower() in _TRUE_WORDS if isinstance(value, str) else bool(value)
+
     def edges_in(self) -> List[Any]:
-        return [False, True]
+        return [False, True, 0, 1, "True", "False", "yes", "NO"]
 
     def edges_out(self) -> List[Any]:
-        return [None, 2]
+        return [None, 2, "", "maybe"]
 
     def __str__(self) -> str:
         return "bool"
@@ -434,7 +444,11 @@ class Case:
             # A model-level rule (a port clashing with another field's default) does not count against the field
             assert not self.field_errors(exc), f"{self} ({self.spec}) rejected {value!r}: {self.field_errors(exc)}"
             return
-        assert getattr(model, self.field) == value
+        expected = self.spec.expected(value) if hasattr(self.spec, "expected") else value
+        stored = getattr(model, self.field)
+        # 1 == True, so also check a bool field stores a real bool
+        assert stored == expected and isinstance(stored, bool) == isinstance(expected, bool), \
+            f"{self} ({self.spec}) stored {stored!r} for {value!r}, expected {expected!r}"
 
     def assert_rejects(self, value: Any) -> None:
         with pytest.raises(ValidationError) as exc:
