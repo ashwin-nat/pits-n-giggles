@@ -44,7 +44,8 @@ _MAX_REPAIR_PASSES = 100
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def load_config_from_json(path: str, logger: Optional[Logger] = None, fail_if_missing: bool = False) -> PngSettings:
+def load_config_from_json(path: str, logger: Optional[Logger] = None, fail_if_missing: bool = False,
+                          read_only: bool = False) -> PngSettings:
     """
     Load and validate configuration from JSON, repairing what is invalid.
 
@@ -59,6 +60,8 @@ def load_config_from_json(path: str, logger: Optional[Logger] = None, fail_if_mi
         path (str): Path to the JSON file.
         logger (Optional[Any]): Logger for debug/info logs.
         fail_if_missing (bool): Whether to fail if the config file is missing.
+        read_only (bool): Repair in memory only: never write, create or back up the file. Launcher-managed
+            subsystems load this way, so the launcher is the file's only writer.
 
     Returns:
         PngSettings: Fully validated config with missing or invalid parts repaired.
@@ -67,19 +70,25 @@ def load_config_from_json(path: str, logger: Optional[Logger] = None, fail_if_mi
         FileNotFoundError: If fail_if_missing is True and the config file is missing.
     """
     if os.path.exists(path):
-        raw = _load_raw_json(path, logger)
+        raw = _load_raw_json(path, logger, read_only)
         model, repaired = _validate_with_repairs(raw, logger)
-        _maybe_update_config(raw, model, path, logger, repaired)
+        if not read_only:
+            _maybe_update_config(raw, model, path, logger, repaired)
         _log_invalid_keys(raw, model, logger)
         return model
 
     if fail_if_missing:
         raise FileNotFoundError(f"Config file not found: {path}")
 
+    model = PngSettings()
+    if read_only:
+        if logger:
+            logger.info("No config at %s, using defaults", path)
+        return model
+
     # No config file --> create full defaults
     if logger:
         logger.info("No config at %s, writing defaults", path)
-    model = PngSettings()
     save_config_to_json(model, path)
     return model
 
@@ -95,8 +104,8 @@ def save_config_to_json(settings: PngSettings, path: str) -> None:
         json.dump(settings.model_dump(by_alias=True), f, indent=4)
 
 
-def _load_raw_json(path: str, logger: Optional[Logger]) -> Dict[str, Any]:
-    """Read JSON safely and provide empty dict on catastrophic failure."""
+def _load_raw_json(path: str, logger: Optional[Logger], read_only: bool = False) -> Dict[str, Any]:
+    """Read JSON safely and provide empty dict on catastrophic failure, backing the file up unless read_only."""
     try:
         with open(path, "r", encoding="utf-8") as f:
             raw = json.load(f)
@@ -106,7 +115,8 @@ def _load_raw_json(path: str, logger: Optional[Logger]) -> Dict[str, Any]:
     except Exception as e: # pylint: disable=broad-exception-caught
         if logger:
             logger.error("Could not parse JSON config: %s", e)
-        _backup_invalid_file(path, logger)
+        if not read_only:
+            _backup_invalid_file(path, logger)
         return {}
 
 

@@ -127,6 +127,8 @@ class ConfigDiffMixin:
         return value
 
     def _basic_diff(self, self_obj: Any, other_obj: Any, fields: Iterable[str]) -> Dict[str, Any]:
+        # A listed dict field is compared whole (one old/new leaf), unlike the full diff's per-key _diff_dict.
+        # Nothing lists a dict field today; if one must, route dicts through _diff_dict here.
         changes = {}
         for f in fields:
             old_val = getattr(self_obj, f, None)

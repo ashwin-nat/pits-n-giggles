@@ -463,6 +463,40 @@ def test_unexpected_exception_resets_only_that_section(config_path, caplog, monk
     assert settings.Display.refresh_interval == 300
     assert "Unexpected RuntimeError" in caplog.text
 
+# -------------------------------------- READ-ONLY LOAD ----------------------------------------------------------------
+
+_READ_ONLY_FILES = {
+    "a repairable bad value": json.dumps({"Network": {"telemetry_port": 0, "server_port": 4999}}),
+    "corrupted json": "{ this is not valid json! ",
+    "no file": None,
+}
+
+@allure.story("Read-only load")
+@allure.title("A read-only load ({case}) repairs in memory and leaves the disk untouched")
+@pytest.mark.parametrize("case", list(_READ_ONLY_FILES))
+def test_read_only_load_never_writes(config_path, case):
+    """
+    Loads with read_only=True, as launcher-managed subsystems do, from a file with a bad value, an unparsable
+    file, or no file.
+
+    Expected: the settings are repaired in memory as a normal load would, but the file is not rewritten,
+    created or moved to .invalid, so the launcher stays the only writer.
+    """
+    content = _READ_ONLY_FILES[case]
+    if content is not None:
+        config_path.write_text(content, encoding="utf-8")
+
+    settings = load_config_from_json(str(config_path), read_only=True)
+
+    assert settings.Network.telemetry_port == 20777
+    if content is None:
+        assert not config_path.exists()
+    else:
+        assert config_path.read_text(encoding="utf-8") == content
+        if case == "a repairable bad value":
+            assert settings.Network.server_port == 4999
+    assert not _backup_exists(config_path)
+
 # -------------------------------------- PARTIAL CONFIGS ---------------------------------------------------------------
 
 _PARTIAL_CONFIGS = {
