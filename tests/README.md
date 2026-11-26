@@ -269,7 +269,10 @@ When you add or change a config field:
   instead, and keeps hand-written tests in its section's file. Give it a value strategy in `EXAMPLE_ONLY_VALUES`
   too, or the save-and-load property (`test_any_settings_roundtrip`) only ever sees its default.
 - A new required field (no default) needs a value in `REQUIRED`, so the other fields' cases can build the model.
-- Cross-field rules (port conflicts, distinct UDP action codes) are not covered here. Write example tests for them.
+- Cross-field rules (port conflicts, distinct UDP action codes) are not covered here. Write example tests for them,
+  and add the rule to `_BROKEN_RULES` in `tests_config_io.py`. That checks a saved config breaking it loads with
+  exactly the rule's fields reset. `test_one_bad_value_resets_only_that_value` checks the same for one bad value
+  in any `FIELDS` field, using its spec's `invalid()` values.
 
 Changing a bound means editing both the schema and `FIELDS`. That is deliberate: a bound changed in only one place
 fails the test.

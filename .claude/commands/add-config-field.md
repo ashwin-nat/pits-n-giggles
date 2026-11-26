@@ -42,6 +42,8 @@ Add `@field_validator` or `@model_validator` if the field needs intra-section va
 
 If the field requires a cross-section constraint (e.g. uniqueness with another section's field), add a `@model_validator(mode="after")` to `lib/config/schema/png.py`.
 
+A rule between fields (a `@model_validator`, or `model_post_init`) must raise `ConflictError` from `lib/config/schema/utils.py`, naming **every** field it involves (paths relative to the model: `"udp_custom_action_code"`, `"pages.lap_times"`, `"Network.server_port"`). On load, the config loader resets exactly those fields to their defaults, so a hand-edited or upgraded config never fails to load. Use `PortConflictError` / `UdpActionCodeConflictError` for port and UDP code clashes. A plain `ValueError` from a rule can't be repaired: the loader falls back to the whole section. New `port_field` / `udp_action_field` fields join the existing uniqueness checks automatically.
+
 ### 2b. Wire into subsystem managers
 
 For each subsystem in the approved plan, read the file and add the field to the appropriate diff block in `on_settings_change`:
@@ -65,9 +67,11 @@ Read `tests/README.md` for how to run tests, and its "Config Field Constraints" 
 **Field constraints:** add the field to `FIELDS` in `tests/tests_config/tests_config_properties.py`, one entry with the bounds from the approved plan (e.g. `IntRange(1, 120)`, `Choice(MyEnum, ("A", "B"))`). This covers valid values, invalid values, and the boundaries. Do not write per-field boundary tests. If no spec kind fits (custom string validator, `FilePathStr`, id-keyed dict), add the field to `EXAMPLE_ONLY` and write example tests for it instead. A required field with no default also needs a `REQUIRED` entry.
 
 **Section test file:** find the section's file in `tests/tests_config/`. If one exists, add to it. Otherwise create `tests/tests_config/tests_<section>_settings.py` in native pytest style (see `tests/README.md`). Cover:
-- Default value is correct (in `test_default_values`)
+- Default value is correct (in `test_default_values`; the HUD's `_DEFAULTS` must name every HUD scalar field, so a new HUD field fails that test until it is added)
 - Example tests for `EXAMPLE_ONLY` fields
 - Cross-section constraint raises `ValidationError` (if applicable)
+
+**New rule between fields:** add a case to `_BROKEN_RULES` in `tests/tests_config/tests_config_io.py`. It is a file breaking the rule, the values every involved field must reset to, and a value elsewhere that must survive the load.
 
 ---
 

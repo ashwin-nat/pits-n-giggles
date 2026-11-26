@@ -8,7 +8,7 @@ This directory contains shared code used across multiple apps in the Pits N Gigg
 | Module / File | Purpose |
 |---|---|
 | `f1_types/` | Core data structures (lap data, car status, session info) used by telemetry processing and visualization |
-| `config/` | Configuration schema (Pydantic models), loading, and validation |
+| `config/` | Configuration schema (Pydantic models), loading, and validation. Loading repairs invalid values field by field; `read_only=True` loads without writing the file |
 | `web_server/` | HTTP/Socket.IO server, static file serving, security headers, CORS |
 | `telemetry_manager/` | Orchestrates telemetry ingest, state updates, and event distribution |
 | `tyre_wear_extrapolator/` | Weather-aware tyre wear regression and prediction |
