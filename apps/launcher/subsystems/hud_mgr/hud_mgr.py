@@ -95,6 +95,7 @@ class HudAppMgr(PngAppMgrBase):
             self._set_state(AppState.UNSUPPORTED)
 
         self.overlays_adj_popup = OverlaysAdjustPopup(self.window)
+        self.overlays_adj_popup.set_hint("Unlock the overlays, then right-click one to set its own opacity")
         self.overlays_adj_popup.hide()
 
     def _get_button_configs(self) -> List[ButtonConfig]:
