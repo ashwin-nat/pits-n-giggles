@@ -10,7 +10,21 @@ poetry run python -m apps.dev_tools.telemetry_recorder
 poetry run python -m apps.dev_tools.compress_pcap <src-file> <dst-file>
 poetry run python -m apps.dev_tools.udp_action_code_injector --action-code <code>
 poetry run python -m apps.dev_tools.check_save_invariants "data/**/*.json"
+poetry run python -m apps.dev_tools.ipc_injector --port <port> <msg.json>
 ```
+
+## IPC Injector
+
+Sends management IPC commands to a subsystem that the launcher is already running. The payload is a JSON file holding one message, or a list of them sent in order:
+
+```json
+{"cmd": "set-overlays-opacity", "args": {"opacity": 50}}
+```
+
+- `--port <int>` (required) - the subsystem's IPC port. It is ephemeral; with the launcher started with `--debug`, find the latest `<name> IPC port reported: <port>` line in the launcher log. Without `--debug`, take the subsystem's listening ports from `netstat -ano` and confirm with `__ping__`, whose reply names the subsystem
+- `--timeout <seconds>` (default 5) - reply timeout per message
+- `--force` - allow `__shutdown__` and `__terminate__`. `__heartbeat__` is always refused
+- Prints one JSON reply per line. Exits 0 only if every reply has `"status": "success"`, so `__ping__` exits 1 even when it gets a reply
 
 ## Save Invariant Checker
 
