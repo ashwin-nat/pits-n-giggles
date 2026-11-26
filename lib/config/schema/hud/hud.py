@@ -626,7 +626,6 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             "ui": {
                 "visible": False
             },
-            "diff_exclude": True,
         }
     )
 

@@ -60,10 +60,6 @@ class Outer(ConfigDiffMixin, BaseModel):
     value: int = 1
     inner: Inner = Field(default_factory=Inner)
     tags: Dict[str, int] = Field(default_factory=dict)
-    position: Dict[str, int] = Field(
-        default_factory=dict,
-        json_schema_extra={"diff_exclude": True},
-    )
     ratio: Optional[float] = None
     mode: Mode = Mode.A
     items: Dict[str, Inner] = Field(default_factory=dict)
@@ -162,23 +158,6 @@ class TestConfigDiffMixin(TestF1ConfigBase):
         b = Outer(tags={"k": 1}, name="y")
         result = a.diff(b)
         self.assertNotIn("tags", result)
-
-    # ---- diff_exclude annotation ----
-
-    def test_diff_exclude_field_ignored(self):
-        """field annotated with diff_exclude is not included in diff"""
-        a = Outer(position={"x": 0, "y": 0})
-        b = Outer(position={"x": 999, "y": 999})
-        result = a.diff(b)
-        self.assertNotIn("position", result)
-
-    def test_diff_exclude_does_not_suppress_other_fields(self):
-        """diff_exclude on one field does not suppress unrelated changed fields"""
-        a = Outer(name="old", position={"x": 0})
-        b = Outer(name="new", position={"x": 999})
-        result = a.diff(b)
-        self.assertIn("name", result)
-        self.assertNotIn("position", result)
 
     # ---- has_changed ----
 
@@ -322,7 +301,6 @@ _SMALL_INT = st.integers(0, 2)
 _WORD = st.sampled_from(["a", "b"])
 
 _INNERS = st.builds(Inner, x=_SMALL_INT, y=_WORD)
-# position (diff_exclude) stays at its default: the properties do not cover exclusion, which is being dropped
 _OUTERS = st.builds(
     Outer, name=_WORD, value=_SMALL_INT, inner=_INNERS, tags=st.dictionaries(_KEYS, _SMALL_INT),
     ratio=st.none() | st.sampled_from([0.5, 1.5]), mode=st.sampled_from(Mode),

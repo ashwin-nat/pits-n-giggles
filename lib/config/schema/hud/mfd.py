@@ -66,7 +66,7 @@ class MfdPageSettings(ConfigDiffMixin, BaseModel):
         default=None,
         exclude=True,  # display-only label; never persisted to png_config.json
         description="Display label for this MFD page in the settings UI",
-        json_schema_extra={"diff_exclude": True, "ui": {"visible": False}},
+        json_schema_extra={"ui": {"visible": False}},
     )
 
 DEFAULT_PAGES = {

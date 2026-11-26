@@ -68,11 +68,7 @@ class ConfigDiffMixin:
 
         # --- Case 3: Compare everything recursively
         result = {}
-        model_fields = getattr(type(self), "model_fields", {})
         for name, value in getattr(self, "__dict__", {}).items():
-            field_info = model_fields.get(name)
-            if field_info and (field_info.json_schema_extra or {}).get("diff_exclude"):
-                continue
             other_value = getattr(other, name, None)
 
             # --- NEW: Recursively diff dicts
