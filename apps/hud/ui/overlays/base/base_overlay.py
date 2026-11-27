@@ -179,6 +179,7 @@ class BaseOverlay(QmlBridge, QObject):
         self._hf_subscriptions: set[str] = set()
         self._window_manager: Optional["WindowManager"] = None  # set via set_window_manager() during registration
         self._user_hidden: bool = False  # True when user explicitly hid this overlay
+        self._shown: bool = True  # last requested visibility, by user or auto-hide
         self._pending_change_ns: Optional[int] = None  # newest QML content change not yet presented
         self._display_period_ns: int = _DEFAULT_DISPLAY_PERIOD_NS
 
@@ -307,14 +308,12 @@ class BaseOverlay(QmlBridge, QObject):
     def toggle_visibility(self):
         """Common handler for toggling visibility.
 
-        Keyed off _user_hidden (intent) rather than get_visibility() (the window's
-        current physical state). A fade-out only calls setVisible(False) when it
-        completes, so for the 250ms it runs the window still reports visible - and
-        presses arriving inside that window would all pick the fade-out branch
-        again, leaving the overlay stuck hidden until the user stopped pressing.
+        Flips the last requested visibility, so a press on an auto-hidden overlay
+        shows it. Records the result as user intent for auto-hide to respect.
         """
         self.logger.debug('%s | Toggling visibility', self.OVERLAY_ID)
-        if not self._user_hidden:
+        # Not get_visibility(): a fade-out reports visible until it completes
+        if self._shown:
             self.logger.silent('%s | Fading out overlay', self.OVERLAY_ID)
             self.set_visibility(False)
             self._user_hidden = True
@@ -338,6 +337,15 @@ class BaseOverlay(QmlBridge, QObject):
                 self.set_visibility(True)
         else:
             self.set_visibility(False)
+
+    def clear_user_hidden(self, reason: str):
+        """Drop the user's hide request, re-showing the overlay if telemetry is active."""
+        if not self._user_hidden:
+            return
+        self.logger.silent("%s | Clearing user hidden flag (reason: %s)", self.OVERLAY_ID, reason)
+        self._user_hidden = False
+        if self.locked and self.telemetry_active:
+            self.set_visibility(True)
 
     # ------------------------------------------------------------------
     # Window management
@@ -492,6 +500,7 @@ class BaseOverlay(QmlBridge, QObject):
         self._frame_active = False
 
     def set_visibility(self, visible: bool):
+        self._shown = visible
         self.animate_fade(visible)
 
     def get_window_info(self) -> OverlayPosition:
@@ -812,6 +821,10 @@ class BaseOverlay(QmlBridge, QObject):
         def _handle_set_telemetry_active(data: Dict[str, Any]) -> None:
             active = data["active"]
             self.set_telemetry_active(active)
+
+        @self.on_event("__clear_user_hidden__")
+        def _handle_clear_user_hidden(data: Dict[str, Any]) -> None:
+            self.clear_user_hidden(data["reason"])
 
     # ------------------------------------------------------------------
     # IPC - Signals/Slots
