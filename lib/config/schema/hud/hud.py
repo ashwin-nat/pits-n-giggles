@@ -657,13 +657,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
                 ["show_mfd", "mfd_settings"],
             )
 
-        # ---- Opacity relationship ----
-        if self.track_radar_idle_opacity >= self.overlays_opacity:
-            raise ConflictError(
-                "Track radar idle opacity cannot be greater than or equal to overlays opacity",
-                ["track_radar_idle_opacity", "overlays_opacity"],
-            )
-
+        # No rule ties radar idle opacity to the radar's opacity: the radar ignores an idle at or above it
         return self
 
     @field_validator("timing_tower_max_rows")

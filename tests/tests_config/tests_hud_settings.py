@@ -30,8 +30,8 @@ import allure
 import pytest
 from pydantic import ValidationError
 
-from lib.config import (HudSettings, MfdPageId, MfdPageSettings, MfdSettings, MfdTyreWearRateType, OverlayId,
-                        OverlayPosition, OverlaysFuelEstimationMode, OverlaysSpeedUnit, TimingTowerColId,
+from lib.config import (HudSettings, MfdPageId, MfdPageSettings, MfdSettings, MfdTyreWearRateType, OpacityOverride,
+                        OverlayId, OverlayPosition, OverlaysFuelEstimationMode, OverlaysSpeedUnit, TimingTowerColId,
                         TimingTowerColOptions, TimingTowerColSettings, TimingTowerTyreInfoMode, WeatherMFDUIType)
 from lib.config.schema.hud.mfd import DEFAULT_PAGES
 
@@ -185,17 +185,19 @@ def test_default_timing_tower_cols():
 
 
 @allure.story("Defaults")
-@allure.title("The default layout places every overlay at scale 1.0")
+@allure.title("The default layout places every overlay at scale 1.0 with no opacity override")
 def test_default_layout():
     """
     Builds HudSettings with no arguments and reads its overlay layout.
 
-    Expected: one OverlayPosition per overlay id, each at scale factor 1.0.
+    Expected: one OverlayPosition per overlay id, each at scale factor 1.0 with the default (disabled, 100)
+    opacity override.
     """
     layout = HudSettings().layout
 
     assert set(layout) == set(OverlayId)
     assert all(isinstance(pos, OverlayPosition) and pos.scale_factor == 1.0 for pos in layout.values())
+    assert all(pos.opacity_override == OpacityOverride(enabled=False, value=100) for pos in layout.values())
 
 # -------------------------------------- CROSS-FIELD RULES -------------------------------------------------------------
 
@@ -256,39 +258,31 @@ def test_hidden_mfd_may_have_no_page():
     HudSettings(show_mfd=False, mfd_settings=MfdSettings(pages=_pages()))
 
 
-_OPACITIES = {
-    "idle 0, overall 1": (0, 1, True),
-    "idle just below overall": (29, 30, True),
-    "idle equal to overall": (30, 30, False),
-    "idle above overall": (80, 70, False),
+# Idle opacity, overlays opacity, radar override (None for disabled)
+_RADAR_IDLE_ABOVE_BASE = {
+    "idle equal to overall": (30, 30, None),
+    "idle above overall": (80, 70, None),
+    "idle above an enabled radar override": (40, 100, 20),
+    "idle equal to an enabled radar override": (40, 100, 40),
 }
 
 @allure.story("Cross-field rules")
-@allure.title("Track radar idle opacity must be below overlays opacity ({case})")
-@pytest.mark.parametrize("case", list(_OPACITIES))
-def test_idle_opacity_below_overlays_opacity(case):
+@allure.title("Track radar idle opacity at or above the radar's opacity is accepted ({case})")
+@pytest.mark.parametrize("case", list(_RADAR_IDLE_ABOVE_BASE))
+def test_radar_idle_opacity_not_tied_to_base(case):
     """
-    Sets the track radar idle opacity and the overlays opacity on an enabled HUD.
+    Sets the track radar idle opacity at or above the radar's opacity (overlays opacity, or an enabled radar
+    opacity override) on an enabled HUD.
 
-    Expected: accepted when idle is strictly below overall, else a ValidationError naming the opacity rule.
+    Expected: the model builds unchanged. The radar ignores such an idle at render time, so no rule rejects it.
     """
-    idle, overall, accepted = _OPACITIES[case]
-    if accepted:
-        HudSettings(track_radar_idle_opacity=idle, overlays_opacity=overall)
-    else:
-        with pytest.raises(ValidationError, match="idle opacity"):
-            HudSettings(track_radar_idle_opacity=idle, overlays_opacity=overall)
-
-
-@allure.story("Cross-field rules")
-@allure.title("A disabled HUD may have idle opacity above overlays opacity")
-def test_disabled_hud_skips_opacity_rule():
-    """
-    Disables the HUD and sets the track radar idle opacity above the overlays opacity.
-
-    Expected: the model builds; the opacity rule only applies to an enabled HUD.
-    """
-    HudSettings(enabled=False, track_radar_idle_opacity=80, overlays_opacity=70)
+    idle, overall, override = _RADAR_IDLE_ABOVE_BASE[case]
+    ovr = OpacityOverride(enabled=override is not None, value=100 if override is None else override)
+    hud = HudSettings(track_radar_idle_opacity=idle, overlays_opacity=overall,
+                      layout={OverlayId.TRACK_RADAR: OverlayPosition(x=0, y=0, opacity_override=ovr)})
+    assert hud.track_radar_idle_opacity == idle
+    assert hud.overlays_opacity == overall
+    assert hud.layout[OverlayId.TRACK_RADAR].opacity_override == ovr
 
 # -------------------------------------- MFD PAGES ---------------------------------------------------------------------
 
@@ -526,6 +520,23 @@ def test_layout_missing_overlays_filled():
     assert set(layout) == set(OverlayId)
     for oid in OverlayId:
         assert layout[oid] == stored.get(oid, defaults[oid]), oid
+
+
+@allure.story("Layout")
+@allure.title("Two layout entries differing only in opacity_override.{field} count as changed")
+@pytest.mark.parametrize("field, value", [("enabled", True), ("value", 40)])
+def test_layout_entry_opacity_override_change_detected(field, value):
+    """
+    Compares an OverlayPosition with a copy whose opacity override differs in one field only. The launcher saves
+    the layout on lock only when has_changed reports a difference.
+
+    Expected: has_changed is True, and False against an identical copy.
+    """
+    before = OverlayPosition(x=1, y=2)
+    after = before.model_copy(update={"opacity_override": OpacityOverride(**{field: value})})
+
+    assert before.has_changed(after)
+    assert not before.has_changed(before.model_copy(deep=True))
 
 # -------------------------------------- DERIVED VALUES ----------------------------------------------------------------
 

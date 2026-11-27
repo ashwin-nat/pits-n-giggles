@@ -27,7 +27,7 @@ Usage:
 
 The payload file is JSON, holding one message:
 
-    {"cmd": "set-overlays-opacity", "args": {"opacity": 50}}
+    {"cmd": "set-global-opacity", "args": {"opacity": 50}}
 
 or a list of messages, sent in order:
 

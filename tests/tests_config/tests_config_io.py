@@ -33,8 +33,8 @@ from hypothesis import strategies as st
 from pydantic import ValidationError
 
 from lib.config import (CaptureSettings, DisplaySettings, ForwardingSettings,
-                        HttpsSettings, HudSettings, NetworkSettings, PngSettings,
-                        PrivacySettings, StreamOverlaySettings,
+                        HttpsSettings, HudSettings, NetworkSettings, OpacityOverride,
+                        PngSettings, PrivacySettings, StreamOverlaySettings,
                         load_config_from_json, save_config_to_json)
 
 from .tests_config_properties import FIELDS, _CONTAINERS, _nested_model_fields, png_settings_dicts
@@ -345,11 +345,6 @@ _BROKEN_RULES = {
         {"HUD.show_mfd": True, "HUD.mfd_settings": HudSettings().mfd_settings},
         {"HUD.track_radar_range_m": 30},
     ),
-    "radar idle opacity above overall": (
-        {"HUD": {"track_radar_idle_opacity": 90, "overlays_opacity": 50, "track_radar_range_m": 30}},
-        {"HUD.track_radar_idle_opacity": 30, "HUD.overlays_opacity": 100},
-        {"HUD.track_radar_range_m": 30},
-    ),
     "two timing tower columns at one position": (
         {"HUD": {"track_radar_range_m": 30, "timing_tower_col_options": {"cols": {
             "delta": {"enabled": True, "position": 3}, "tyre": {"enabled": True, "position": 3}}}}},
@@ -402,6 +397,13 @@ _BROKEN_RULES = {
         {"HUD.layout.mfd": HudSettings().layout["mfd"]},
         {"HUD.layout.lap_timer.x": 11, "HUD.track_radar_range_m": 30},
     ),
+    "overlay layout entry with a bad opacity override value": (
+        {"HUD": {"track_radar_range_m": 30, "layout": {
+            "mfd": {"x": 7, "y": 8, "opacity_override": {"enabled": True, "value": 150}}}}},
+        {"HUD.layout.mfd.opacity_override.value": 100},
+        {"HUD.layout.mfd.opacity_override.enabled": True, "HUD.layout.mfd.x": 7, "HUD.layout.mfd.y": 8,
+         "HUD.track_radar_range_m": 30},
+    ),
 }
 
 @allure.story("Bad value isolation")
@@ -445,6 +447,37 @@ def test_upgrade_default_clash_resets_both(config_path):
 
     assert (settings.Network.server_port, settings.MCP.mcp_http_port) == (4768, 4770)
     assert (settings.Network.telemetry_port, settings.Display.refresh_interval) == (20800, 300)
+
+
+@allure.story("Schema upgrade")
+@allure.title("A layout saved before opacity overrides loads with the default override (read_only={read_only})")
+@pytest.mark.parametrize("read_only", [False, True])
+def test_layout_without_opacity_override_upgrades(config_path, read_only):
+    """
+    Writes a full default config with mfd moved and rescaled, then strips opacity_override from every layout
+    entry, as saved by a build before overrides existed, and loads it normally or read-only.
+
+    Expected: x, y and scale are kept and every entry gets the default override. A normal load rewrites the file
+    with the key added and no .invalid backup; a read-only load leaves the file untouched.
+    """
+    old = PngSettings().model_dump(mode="json")
+    old["HUD"]["layout"]["mfd"].update(x=7, y=8, scale_factor=1.5)
+    for entry in old["HUD"]["layout"].values():
+        del entry["opacity_override"]
+    _write_json(config_path, old)
+    content = config_path.read_text(encoding="utf-8")
+
+    settings = load_config_from_json(str(config_path), read_only=read_only)
+
+    mfd = settings.HUD.layout["mfd"]
+    assert (mfd.x, mfd.y, mfd.scale_factor) == (7, 8, 1.5)
+    assert all(pos.opacity_override == OpacityOverride() for pos in settings.HUD.layout.values())
+    if read_only:
+        assert config_path.read_text(encoding="utf-8") == content
+    else:
+        saved = json.loads(config_path.read_text(encoding="utf-8"))["HUD"]["layout"]
+        assert all(entry["opacity_override"] == {"enabled": False, "value": 100} for entry in saved.values())
+    assert not _backup_exists(config_path)
 
 
 @allure.story("Bad value isolation")

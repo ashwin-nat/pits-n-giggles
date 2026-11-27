@@ -42,8 +42,9 @@ Put them under the matching `# ====` section of `lib/config/schema/hud/hud.py`. 
 
 ## Type B specifics
 
-- Overlay `apps/hud/ui/overlays/<name>/<name>.py` extending `BaseOverlay` with `QML_FILE`, `OVERLAY_ID = OverlayId.X`; high-frequency: `self.subscribe_hf(<Type>)` + `render_frame()`; event-driven: `@self.on_event("<topic>")` in `__init__`. QML `<name>.qml` copied from `overlays/template_overlay/template_overlay.qml`. Export it from `apps/hud/ui/overlays/__init__.py`.
+- Overlay `apps/hud/ui/overlays/<name>/<name>.py` extending `BaseOverlay` with `QML_FILE`, `OVERLAY_ID = OverlayId.X`; high-frequency: `self.subscribe_hf(<Type>)` + `render_frame()`; event-driven: `@self.on_event("<topic>")` in `__init__`. QML `<name>.qml` copied from `overlays/template_overlay/template_overlay.qml`; its root is `OverlayWindow` (import `"../base"`), never a bare `Window`, and any background colour goes in `backgroundColor`, not `color` (see "Overlay window and opacity" in `apps/hud/README.md`). Export it from `apps/hud/ui/overlays/__init__.py`.
 - Add the class to `OverlaysMgr.OVERLAY_CLASSES` in `overlays_mgr.py`; the manager instantiates it when its `OverlayId` is enabled.
+- Overlay-specific knobs (only if requested) go in the overlay's own right-click popover, never the launcher: override `custom_popover_settings()` with `Slider.for_config_field(...)` entries, and return the same config fields from `get_overlay_settings()` so lock saves them. See "Overlay popover" in `apps/hud/README.md`.
 - Toggle UDP code: in `apps/backend/telemetry_layer/telemetry_handler.py` add a `UdpActionCodes` field, its `_MAP` entry (config name -> field), pass it where `UdpActionCodes(...)` is built, and add a `_handle_udp_action(..., lambda: self._processToggleHud(OverlayId.X))` call in `handleButtonStatus`. The HUD side (`hud-toggle-notification`) is already generic.
 
 ## Extra interactions (beyond toggle)

@@ -1,11 +1,11 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
+import "../base"
 
-Window {
+OverlayWindow {
     id: root
     visible: true
-    color: "transparent"
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
 
     property real scaleFactor: 1.0

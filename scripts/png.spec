@@ -185,6 +185,7 @@ def qml_file(path, filename):
 
 datas.extend([
     qml_file("apps/hud/ui/overlays/base", "OverlayBorder.qml"),
+    qml_file("apps/hud/ui/overlays/base", "OverlayWindow.qml"),
     qml_file("apps/hud/ui/overlays/base", "DiffedTableModel.qml"),
     qml_file("apps/hud/ui/overlays/track_radar", "track_radar.qml"),
     qml_file("apps/hud/ui/overlays/input_telemetry", "input_telemetry.qml"),

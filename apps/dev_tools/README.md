@@ -18,7 +18,7 @@ poetry run python -m apps.dev_tools.ipc_injector --port <port> <msg.json>
 Sends management IPC commands to a subsystem that the launcher is already running. The payload is a JSON file holding one message, or a list of them sent in order:
 
 ```json
-{"cmd": "set-overlays-opacity", "args": {"opacity": 50}}
+{"cmd": "set-global-opacity", "args": {"opacity": 50}}
 ```
 
 - `--port <int>` (required) - the subsystem's IPC port. It is ephemeral; with the launcher started with `--debug`, find the latest `<name> IPC port reported: <port>` line in the launcher log. Without `--debug`, take the subsystem's listening ports from `netstat -ano` and confirm with `__ping__`, whose reply names the subsystem

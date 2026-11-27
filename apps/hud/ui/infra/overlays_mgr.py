@@ -219,6 +219,7 @@ class OverlaysMgr:
         # 3. Capture layout (transactional)
         # --------------------------------------------------
         layout = {}
+        overlay_settings: Dict[str, Any] = {}
 
         for overlay_id in list(self.window_manager.overlays.keys()):
             try:
@@ -228,7 +229,13 @@ class OverlaysMgr:
                     overlay_id,
                     curr_params,
                 )
-                layout[overlay_id] = curr_params.toJSON() if curr_params else {}
+                # Config fields the overlay edits in its popover (radar idle opacity and range, circuit info width)
+                owned = self.window_manager.request(overlay_id, "get_overlay_settings")
+                # A timeout must fail the whole capture, not save the layout without this overlay's edits
+                if curr_params is None or owned is None:
+                    raise TimeoutError("no reply to get_window_info or get_overlay_settings")
+                layout[overlay_id] = curr_params.toJSON()
+                overlay_settings.update(owned)
 
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.logger.exception(
@@ -244,12 +251,13 @@ class OverlaysMgr:
         # 4. Finalise response
         # --------------------------------------------------
         rsp["layout"] = layout
+        rsp["overlay_settings"] = overlay_settings
         return rsp
 
-    def set_overlays_opacity(self, opacity: int):
-        """Set overlays opacity"""
-        self.logger.debug("Setting overlays opacity to %s%%", opacity)
-        self.window_manager.emit_event('__set_opacity__', {'opacity': opacity}, high_prio=True)
+    def set_global_opacity(self, opacity: int):
+        """Set the global opacity, used by every overlay without an override"""
+        self.logger.debug("Setting global opacity to %s%%", opacity)
+        self.window_manager.emit_event('__set_global_opacity__', {'opacity': opacity}, high_prio=True)
 
     def next_page(self):
         """Go to the next page in MFD overlay"""
@@ -312,33 +320,6 @@ class OverlaysMgr:
 
         self.logger.debug("Setting overlay %s scale factor to %s", oid, scale_factor)
         self.window_manager.unicast_event(oid, '__set_scale_factor__', {'scale_factor': scale_factor})
-
-    def set_track_radar_idle_opacity(self, opacity: int):
-        self.logger.debug("Setting track radar idle opacity to %s%%", opacity)
-        self.window_manager.unicast_event(
-            overlay_id=TrackRadarOverlay.OVERLAY_ID,
-            event='set_track_radar_idle_opacity',
-            data={'opacity': opacity},
-            high_prio=True,
-        )
-
-    def set_track_radar_range(self, range_m: float):
-        self.logger.debug("Setting track radar range to %sm", range_m)
-        self.window_manager.unicast_event(
-            overlay_id=TrackRadarOverlay.OVERLAY_ID,
-            event='set_track_radar_range',
-            data={'range_m': range_m},
-            high_prio=True,
-        )
-
-    def set_circuit_info_length(self, length: int):
-        self.logger.debug("Setting circuit info length to %spx", length)
-        self.window_manager.unicast_event(
-            overlay_id=CircuitInfoOverlay.OVERLAY_ID,
-            event='set_circuit_info_length',
-            data={'length': length},
-            high_prio=True,
-        )
 
     # -------------------------------------- HELPERS -------------------------------------------------------------------
 

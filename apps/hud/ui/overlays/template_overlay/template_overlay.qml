@@ -1,12 +1,12 @@
 import QtQuick
 import QtQuick.Window
+import "../base"
 
-Window {
+OverlayWindow {
     id: root
     width: 200
     height: 100
     visible: true
-    color: "#00000000"   // transparent window
 
     property real scaleFactor: 1.0   // REQUIRED by BaseOverlay
 

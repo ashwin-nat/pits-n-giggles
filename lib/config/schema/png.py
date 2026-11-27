@@ -22,6 +22,8 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from typing import Any, Dict
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .capture import CaptureSettings
@@ -30,6 +32,7 @@ from .display import DisplaySettings
 from .forwarding import ForwardingSettings, is_loopback_host
 from .https import HttpsSettings
 from .hud.hud import HudSettings
+from .hud.layout import OverlayPosition
 from .mcp_cfg import McpSettings
 from .network import NetworkSettings
 from .pit_time_loss import PitTimeLossF1, PitTimeLossF2
@@ -141,6 +144,18 @@ class PngSettings(ConfigDiffMixin, BaseModel):
                 ports_by_type[port_type][value] = f"{section_name}.{field_name}"
 
         return self
+
+    def with_overlay_changes(self, layout: Dict[str, OverlayPosition],
+                             overlay_settings: Dict[str, Any]) -> "PngSettings":
+        """A validated copy with these overlays' layout entries and these HUD fields replaced.
+
+        Overlays missing from layout keep their entries. Raises ValidationError if the result is invalid.
+        """
+        new_settings = self.model_copy(deep=True)
+        new_settings.HUD.layout = {**self.HUD.layout, **layout}
+        for name, value in overlay_settings.items():
+            setattr(new_settings.HUD, name, value)
+        return type(self).model_validate(new_settings.model_dump())
 
     def __str__(self) -> str:
         lines = ["PngSettings:"]

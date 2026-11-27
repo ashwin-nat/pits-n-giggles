@@ -41,7 +41,8 @@ from pydantic import BaseModel, ValidationError
 
 from lib.config import (AutoOpenDashboardMode, CaptureSettings, DisplaySettings, ForwardingSettings,
                         HarvestPowerSmoothing, HttpsSettings, HudSettings, MfdPageSettings, MfdSettings,
-                        MfdTyreWearRateType, NetworkSettings, OverlayId, OverlayPosition, OverlaysFuelEstimationMode,
+                        MfdTyreWearRateType, NetworkSettings, OpacityOverride, OverlayId, OverlayPosition,
+                        OverlaysFuelEstimationMode,
                         OverlaysSpeedUnit, PitTimeLossF1, PitTimeLossF2, PngSettings, PredictionSettings,
                         PrivacySettings, StreamOverlaySettings, TimingTowerColOptions, TimingTowerColSettings,
                         TimingTowerTyreInfoMode, WeatherMFDUIType)
@@ -467,6 +468,7 @@ FIELDS: Dict[Type[BaseModel], Dict[str, FieldSpec]] = {
         "y": IntRange(),
         "scale_factor": FloatRange(lo=_SMALLEST_POSITIVE, finite=True),
     },
+    OpacityOverride: {"enabled": FLAG, "value": PERCENT},
 }
 
 # Fields no spec above can express; their example tests stay the only coverage
@@ -568,7 +570,11 @@ EXAMPLE_ONLY_VALUES: Dict[Type[BaseModel], st.SearchStrategy] = {
     ForwardingSettings: _FORWARDING,
     HudSettings: st.fixed_dictionaries({"layout": st.dictionaries(
         st.sampled_from([o.value for o in OverlayId]),
-        st.fixed_dictionaries({name: spec.valid() for name, spec in FIELDS[OverlayPosition].items()}),
+        st.fixed_dictionaries({
+            **{name: spec.valid() for name, spec in FIELDS[OverlayPosition].items()},
+            "opacity_override": st.fixed_dictionaries(
+                {name: spec.valid() for name, spec in FIELDS[OpacityOverride].items()}),
+        }),
         max_size=4)}),
 }
 
@@ -586,8 +592,8 @@ def png_settings_dicts(draw: st.DrawFn,
                        extra: Optional[Dict[Type[BaseModel], st.SearchStrategy]] = None) -> Dict[str, Any]:
     """A PngSettings input dict with every FIELDS and EXAMPLE_ONLY_VALUES field drawn from its valid values.
 
-    Cross-field rules are satisfied by construction: UDP action codes distinct, ports distinct per protocol, radar
-    idle opacity below overlays opacity. Validate the result anyway and reject() the draw if a rule still fails.
+    Cross-field rules are satisfied by construction: UDP action codes distinct, ports distinct per protocol.
+    Validate the result anyway and reject() the draw if a rule still fails.
     extra adds or replaces a model's EXAMPLE_ONLY_VALUES entry (e.g. HTTPS paths that need real files).
     """
     example_values = {**EXAMPLE_ONLY_VALUES, **(extra or {})}
@@ -617,14 +623,7 @@ def png_settings_dicts(draw: st.DrawFn,
             values[name] = build(model.model_fields[name].annotation)
         return values
 
-    values = build(PngSettings)
-    # Idle opacity must be strictly below overlays opacity; sort, and split a tie by one step inside 0..100
-    hud = values["HUD"]
-    idle, overlays = sorted((hud["track_radar_idle_opacity"], hud["overlays_opacity"]))
-    if idle == overlays:
-        idle, overlays = (idle, overlays + 1) if overlays < 100 else (idle - 1, overlays)
-    hud["track_radar_idle_opacity"], hud["overlays_opacity"] = idle, overlays
-    return values
+    return build(PngSettings)
 
 # ------------------------- TESTS --------------------------------------------------------------------------------------
 
