@@ -21,42 +21,28 @@
 # SOFTWARE.
 # pylint: skip-file
 
-import os
-import sys
+"""PitTimeLoss field names. Each track's value range is in tests_config_properties.py."""
 
-
-# Add the parent directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import allure
+import pytest
 
 from lib.config import PitTimeLossF1, PitTimeLossF2
 from lib.f1_types import TrackID
 
-from .tests_config_base import TestF1ConfigBase
+pytestmark = allure.feature("Pit time loss settings")
 
-# ----------------------------------------------------------------------------------------------------------------------
 
-class TestPitTimeLossF1(TestF1ConfigBase):
-    """Test NetworkSettings model validation and defaults"""
+@allure.story("Track names")
+@allure.title("Every {model.__name__} field names a known track")
+@pytest.mark.parametrize("model", [PitTimeLossF1, PitTimeLossF2], ids=lambda m: m.__name__)
+def test_field_names_are_tracks(model):
+    """
+    Maps each field name to a track name (underscores to spaces, except "_Reverse" layouts, which keep the
+    underscore) and looks it up among the TrackID names.
 
-    def test_track_name_validity(self):
-        field_names = list(PitTimeLossF1.model_fields.keys())
-        valid_track_names = {str(track) for track in TrackID}
-        for field in field_names:
-            if field.endswith("_Reverse"):
-                cleaned_field = field
-            else:
-                cleaned_field = field.replace("_", " ")
-            self.assertIn(cleaned_field, valid_track_names)
-
-class TestPitTimeLossF2(TestF1ConfigBase):
-    """Test NetworkSettings model validation and defaults"""
-
-    def test_track_name_validity(self):
-        field_names = list(PitTimeLossF1.model_fields.keys())
-        valid_track_names = {str(track) for track in TrackID}
-        for field in field_names:
-            if field.endswith("_Reverse"):
-                cleaned_field = field
-            else:
-                cleaned_field = field.replace("_", " ")
-            self.assertIn(cleaned_field, valid_track_names)
+    Expected: every field names a track, so the per-track lookup finds a value for it.
+    """
+    track_names = {str(track) for track in TrackID}
+    for field in model.model_fields:
+        name = field if field.endswith("_Reverse") else field.replace("_", " ")
+        assert name in track_names, f"{model.__name__}.{field}"

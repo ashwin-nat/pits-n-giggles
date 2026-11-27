@@ -32,7 +32,8 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from meta.meta import APP_NAME
 
 from .diff import ConfigDiffMixin
-from .utils import PortType, port_field, udp_action_field
+from .utils import (PortConflictError, PortType, UdpActionCodeConflictError, port_field,
+                    udp_action_field)
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -148,7 +149,9 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
                 (self.udp_tyre_delta_action_code == self.udp_custom_action_code):
             desc1 = fields_map["udp_tyre_delta_action_code"].description # pylint: disable=unsubscriptable-object
             desc2 = fields_map["udp_custom_action_code"].description # pylint: disable=unsubscriptable-object
-            raise ValueError(f"{desc1} and {desc2} must not be the same (both are {self.udp_tyre_delta_action_code})")
+            raise UdpActionCodeConflictError(
+                f"{desc1} and {desc2} must not be the same (both are {self.udp_tyre_delta_action_code})",
+                ["udp_tyre_delta_action_code", "udp_custom_action_code"])
 
         return self
 
@@ -194,7 +197,9 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
                         f"{port_type.upper()} port {port} is used by: {field_list}"
                     )
 
-            raise ValueError("Port conflict detected:\n" + "\n".join(messages))
+            raise PortConflictError("Port conflict detected:\n" + "\n".join(messages),
+                                    [name for ports in conflicts.values() for fields in ports.values()
+                                     for name, _ in fields])
 
         return self
 

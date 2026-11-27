@@ -75,11 +75,50 @@ for typing convenience):
   shared mailbox (no per-sample cross-thread signal; seq/loss accounting lives at the write site)
 - Frame timer (`refresh_interval_ms`, `render_frame()`) — event-driven vs frame-driven is a
   **constructor parameter**, never a base-class choice
-- Default handlers: `__set_opacity__`, `get_window_stats`, `__set_visibility__`, etc.
+- Default handlers: `__set_global_opacity__`, `get_window_stats`, `__set_visibility__`, etc.
 - `_qml_target` → `self._root` (the `QQuickWindow`)
 
 Concrete overlays subclass `BaseOverlay` directly (e.g. `TimingTowerOverlay`, `TrackRadarOverlay`,
 `HudOverlay`, `MfdOverlay`, `StandalonePageHost`).
+
+### Overlay window and opacity
+
+Every overlay's root QML is `OverlayWindow` (`overlays/base/OverlayWindow.qml`), never a bare
+`Window`. Children declared in it go into its `contentLayer`.
+
+- **Content opacity** (`contentOpacity`) is the overlay's opacity level. It is group opacity on
+  `contentLayer`; the layer is only enabled below 100%.
+- **Window opacity** is only the fade in/out, between 0 and 1.
+- The unlock border (`OverlayBorder.qml`) is a sibling of `contentLayer`, so the border, corner
+  handles and hover name always draw at full alpha.
+- A background colour goes in `backgroundColor`, not the window `color`, which content opacity
+  does not reach.
+
+`BaseOverlay.opacity` is read-only and resolves to the overlay's `opacity_override.value` when the
+override is enabled, otherwise the global value (`_global_opacity`, set by
+`__set_global_opacity__`). Every apply site reads it, so `set_opacity()` only writes a number.
+
+- The override lives on `self.config` and is saved on lock through `get_window_info()`; reset sends
+  the default override via `__set_config__`.
+- Track radar: content opacity stays at 1 and the resolved value goes to the QML `baseOpacity`,
+  because its QML already picks between base and idle opacity. Idle is capped at base there, so an
+  idle at or above the radar's opacity is ignored; no config rule ties the two.
+
+### Overlay popover (per-overlay settings)
+
+Settings that belong to one overlay are edited in that overlay's right-click popover while unlocked,
+never in the launcher. The launcher's Edit Overlays popup holds only settings shared by all overlays.
+
+- Overlays **declare** their settings as data (`overlays/base/overlay_settings.py`: `Toggle`,
+  `Slider`, `Note`, `Divider`), each value read through a callable. They never touch the popover.
+- `BaseOverlay.popover_settings()` is final: the opacity override, then a divider and
+  `custom_popover_settings()`, which an overlay overrides to add its own (default: none).
+- `OverlayPopover` (`infra/overlay_popover.py`, one instance owned by `WindowManager`) renders the
+  list, applies each change live, then re-reads every value. `WindowManager.refresh_overlay_popover()`
+  re-reads on a global opacity change or reset while it is open.
+- Saving is separate from display. An overlay that owns config fields returns them from
+  `get_overlay_settings()` as `{field_name: value}`. On lock the HUD replies with these as
+  `overlay_settings` next to `layout`; the launcher validates the merged settings and saves them.
 
 ---
 

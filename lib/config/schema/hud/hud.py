@@ -29,7 +29,7 @@ from typing import Any, ClassVar, Dict, Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ..diff import ConfigDiffMixin
-from ..utils import overlay_enable_field, udp_action_field
+from ..utils import ConflictError, overlay_enable_field, udp_action_field
 from .layout import (DEFAULT_OVERLAY_LAYOUT, OverlayId, OverlayPosition,
                      merge_overlay_layout)
 from .mfd import MfdSettings
@@ -626,7 +626,6 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             "ui": {
                 "visible": False
             },
-            "diff_exclude": True,
         }
     )
 
@@ -641,27 +640,24 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             return self
 
         # ---- At least one overlay must be enabled ----
-        if not any(
-            getattr(self, field_name)
-            for field_name, field in type(self).model_fields.items()
+        overlay_flags = [
+            field_name for field_name, field in type(self).model_fields.items()
             if field.json_schema_extra.get("ui", {}).get("overlay_enable", False)
-        ):
-            raise ValueError(
-                "HUD cannot be enabled while all overlays are disabled"
+        ]
+        if not any(getattr(self, field_name) for field_name in overlay_flags):
+            raise ConflictError(
+                "HUD cannot be enabled while all overlays are disabled",
+                ["enabled", *overlay_flags],
             )
 
         # ---- MFD pages must exist if MFD is enabled ----
         if self.show_mfd and not self.mfd_settings.sorted_enabled_pages():
-            raise ValueError(
-                "HUD cannot be enabled while all MFD pages are disabled"
+            raise ConflictError(
+                "HUD cannot be enabled while all MFD pages are disabled",
+                ["show_mfd", "mfd_settings"],
             )
 
-        # ---- Opacity relationship ----
-        if self.track_radar_idle_opacity >= self.overlays_opacity:
-            raise ValueError(
-                "Track radar idle opacity cannot be greater than or equal to overlays opacity"
-            )
-
+        # No rule ties radar idle opacity to the radar's opacity: the radar ignores an idle at or above it
         return self
 
     @field_validator("timing_tower_max_rows")

@@ -1,7 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
+import "../base"
 
-Window {
+OverlayWindow {
     id: root
 
     property real scaleFactor: 1.0
@@ -17,7 +18,7 @@ Window {
 
     width:  baseWidth  * scaleFactor
     height: baseHeight * scaleFactor
-    color: "#000000"
+    backgroundColor: "#000000"
 
     // Exposed properties for Python to update
     property string currentTime: "--:--.---"

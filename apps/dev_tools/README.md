@@ -13,6 +13,7 @@ poetry run python -m apps.dev_tools.check_save_invariants "data/**/*.json"
 poetry run python -m apps.dev_tools.pcap_trace <f1pcap-file-path> [--car N ...] [--all-events] [--json]
 poetry run python -m apps.dev_tools.pcap_trace <f1pcap-file-path> --around <session-time> [--window S] [--car N ...]
 poetry run python -m apps.dev_tools.pcap_trace <f1pcap-file-path> --at-lap <lap> --lap-time <seconds> [--window S] [--car N ...]
+poetry run python -m apps.dev_tools.ipc_injector --port <port> <msg.json>
 ```
 
 ## Recording Trace
@@ -41,6 +42,19 @@ lap, a garage tyre change) before writing a test for it.
 - `--all-events` prints every event, not just the key ones
 - `--json` prints one JSON object per line instead of the table, for scripts. Each has a `kind`: `info`, `event`,
   `session_uid`, `final_classification`, `tyre_sets` or `lap`
+
+## IPC Injector
+
+Sends management IPC commands to a subsystem that the launcher is already running. The payload is a JSON file holding one message, or a list of them sent in order:
+
+```json
+{"cmd": "set-global-opacity", "args": {"opacity": 50}}
+```
+
+- `--port <int>` (required) - the subsystem's IPC port. It is ephemeral; with the launcher started with `--debug`, find the latest `<name> IPC port reported: <port>` line in the launcher log. Without `--debug`, take the subsystem's listening ports from `netstat -ano` and confirm with `__ping__`, whose reply names the subsystem
+- `--timeout <seconds>` (default 5) - reply timeout per message
+- `--force` - allow `__shutdown__` and `__terminate__`. `__heartbeat__` is always refused
+- Prints one JSON reply per line. Exits 0 only if every reply has `"status": "success"`, so `__ping__` exits 1 even when it gets a reply
 
 ## Save Invariant Checker
 

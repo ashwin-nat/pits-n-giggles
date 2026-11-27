@@ -22,9 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .io.ini import load_config_from_ini, save_config_to_ini
 from .io.json import load_config_from_json, save_config_to_json
-from .io.migration import load_config_migrated, maybe_migrate_legacy_hud_layout
 from .schema.capture import CaptureSettings
 from .schema.display import AutoOpenDashboardMode, DisplaySettings
 from .schema.forwarding import ForwardingSettings
@@ -32,7 +30,7 @@ from .schema.https import HttpsSettings
 from .schema.hud.hud import (HudSettings, MfdTyreWearRateType,
                              OverlaysFuelEstimationMode, OverlaysSpeedUnit,
                              TimingTowerTyreInfoMode, WeatherMFDUIType)
-from .schema.hud.layout import OverlayId, OverlayPosition
+from .schema.hud.layout import OpacityOverride, OverlayId, OverlayPosition
 from .schema.hud.mfd import MfdPageId, MfdPageSettings, MfdSettings
 from .schema.hud.timing_tower import (TimingTowerColId, TimingTowerColOptions,
                                       TimingTowerColSettings)
@@ -85,16 +83,11 @@ __all__ = [
 
     'FilePathStr',
 
-    'load_config_from_ini',
-    'save_config_to_ini',
-
     'load_config_from_json',
     'save_config_to_json',
 
-    'load_config_migrated',
-    'maybe_migrate_legacy_hud_layout',
-
     'OverlayPosition',
+    'OpacityOverride',
 
     'OverlayId',
 ]

@@ -21,119 +21,148 @@
 # SOFTWARE.
 # pylint: skip-file
 
-import os
-import sys
-import tempfile
+"""HttpsSettings rules the field spec table does not cover: defaults, the key/cert file checks when enabled, the
+proto/key_path/cert_path values, and paths kept while HTTPS is toggled. Each field's type is in
+tests_config_properties.py."""
 
+import allure
+import pytest
 from pydantic import ValidationError
-
-# Add the parent directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.config import HttpsSettings
 
-from .tests_config_base import TestF1ConfigBase
+pytestmark = allure.feature("HTTPS settings")
 
-# ----------------------------------------------------------------------------------------------------------------------
 
-class TestHttpsSettings(TestF1ConfigBase):
-    """Test HttpsSettings model validation and defaults"""
+@pytest.fixture
+def key_and_cert(tmp_path):
+    """Paths of an existing key file and an existing cert file."""
+    key, cert = tmp_path / "server.key", tmp_path / "server.crt"
+    key.touch()
+    cert.touch()
+    return str(key), str(cert)
 
-    def test_default_values(self):
-        """Test that default values are set correctly"""
-        settings = HttpsSettings()
-        self.assertFalse(settings.enabled)
-        self.assertEqual(None, settings.key_file_path)
-        self.assertEqual(None, settings.cert_file_path)
-        self.assertEqual("http", settings.proto)
-        self.assertEqual(None, settings.key_path)
-        self.assertEqual(None, settings.cert_path)
+# -------------------------------------- DEFAULTS ----------------------------------------------------------------------
 
-    def test_enabled_without_key_should_fail(self):
-        """HTTPS enabled without key should raise appropriate error"""
-        with self.assertRaises(ValueError) as ctx:
-            HttpsSettings(enabled=True, cert_file_path="some/cert.pem")
-        self.assertIn("Key file is required", str(ctx.exception))
+@allure.story("Defaults")
+@allure.title("Default HttpsSettings serve plain HTTP with no key or cert")
+def test_default_values():
+    """
+    Builds HttpsSettings with no arguments.
 
-    def test_enabled_without_cert_should_fail(self):
-        """HTTPS enabled without cert should raise appropriate error"""
-        # Create a temp file for key to avoid key-related failure
-        with tempfile.NamedTemporaryFile(delete=False) as key_file:
-            key_path = key_file.name
+    Expected: HTTPS is off, both paths are None, proto is "http", and key_path/cert_path are None.
+    """
+    settings = HttpsSettings()
 
-        try:
-            with self.assertRaises(ValueError) as ctx:
-                HttpsSettings(enabled=True, key_file_path=key_path)
-            self.assertIn("Certificate file is required", str(ctx.exception))
-        finally:
-            os.unlink(key_path)
+    assert settings.enabled is False
+    assert (settings.key_file_path, settings.cert_file_path) == (None, None)
+    assert settings.proto == "http"
+    assert (settings.key_path, settings.cert_path) == (None, None)
 
-    def test_files_provided_but_https_disabled(self):
-        """Supplying file paths is allowed even if HTTPS is off"""
-        settings = HttpsSettings(
-            enabled=False,
-            key_file_path="/path/to/key",
-            cert_file_path="/path/to/cert"
-        )
-        self.assertFalse(settings.enabled)
-        self.assertEqual(str(settings.key_file_path), "/path/to/key")
-        self.assertEqual(str(settings.cert_file_path), "/path/to/cert")
-        self.assertEqual("http", settings.proto)
+# -------------------------------------- FILE CHECKS WHEN ENABLED ------------------------------------------------------
 
-    def test_valid_file_paths_when_enabled(self):
-        """HTTPS enabled with valid cert/key file paths should pass"""
-        with tempfile.NamedTemporaryFile(delete=False) as key_file, \
-             tempfile.NamedTemporaryFile(delete=False) as cert_file:
+@allure.story("File checks when enabled")
+@allure.title("Enabling HTTPS without a key file is rejected")
+def test_enabled_without_key_rejected():
+    """
+    Enables HTTPS with a cert path but no key path.
 
-            key_path = key_file.name
-            cert_path = cert_file.name
+    Expected: a ValidationError saying the key file is required.
+    """
+    with pytest.raises(ValidationError, match="Key file is required"):
+        HttpsSettings(enabled=True, cert_file_path="some/cert.pem")
 
-        try:
-            settings = HttpsSettings(
-                enabled=True,
-                key_file_path=key_path,
-                cert_file_path=cert_path
-            )
-            self.assertTrue(settings.enabled)
-            self.assertEqual(str(settings.key_file_path), key_path)
-            self.assertEqual(str(settings.cert_file_path), cert_path)
-            self.assertEqual("https", settings.proto)
-        finally:
-            os.unlink(key_path)
-            os.unlink(cert_path)
 
-    def test_nonexistent_file_paths_should_fail_validation(self):
-        """Should raise if HTTPS is enabled but paths do not exist"""
-        with self.assertRaises(ValueError) as ctx:
-            HttpsSettings(
-                enabled=True,
-                key_file_path="/non/existent/key.pem",
-                cert_file_path="/non/existent/cert.pem",
-            )
-        error_msg = str(ctx.exception)
-        self.assertIn("Key file is required", error_msg)
+@allure.story("File checks when enabled")
+@allure.title("Enabling HTTPS with a key file but no cert file is rejected")
+def test_enabled_without_cert_rejected(key_and_cert):
+    """
+    Enables HTTPS with an existing key file and no cert path.
 
-    def test_cert_key_property_valid(self):
-        """Should return None if HTTPS is disabled, otherwise return file paths"""
-        with tempfile.NamedTemporaryFile(delete=False) as key_file, \
-            tempfile.NamedTemporaryFile(delete=False) as cert_file:
+    Expected: a ValidationError saying the certificate file is required.
+    """
+    key, _ = key_and_cert
+    with pytest.raises(ValidationError, match="Certificate file is required"):
+        HttpsSettings(enabled=True, key_file_path=key)
 
-            key_path = key_file.name
-            cert_path = cert_file.name
 
-        try:
-            settings = HttpsSettings(
-                enabled=True,
-                key_file_path=key_path,
-                cert_file_path=cert_path,
-            )
-            self.assertEqual(settings.key_path, key_path)
-            self.assertEqual(settings.cert_path, cert_path)
+@allure.story("File checks when enabled")
+@allure.title("Enabling HTTPS with key and cert paths that do not exist is rejected")
+def test_enabled_with_missing_files_rejected():
+    """
+    Enables HTTPS with key and cert paths that point at no file.
 
-            settings.enabled = False
-            self.assertEqual(settings.key_path, None)
-            self.assertEqual(settings.cert_path, None)
+    Expected: a ValidationError saying the key file is required (the key is checked first).
+    """
+    with pytest.raises(ValidationError, match="Key file is required"):
+        HttpsSettings(enabled=True, key_file_path="/non/existent/key.pem", cert_file_path="/non/existent/cert.pem")
 
-        finally:
-            os.unlink(key_path)
-            os.unlink(cert_path)
+
+@allure.story("File checks when enabled")
+@allure.title("Enabling HTTPS with existing key and cert files serves HTTPS")
+def test_enabled_with_files_accepted(key_and_cert):
+    """
+    Enables HTTPS with an existing key file and an existing cert file.
+
+    Expected: the model builds, keeps both paths, and proto is "https".
+    """
+    key, cert = key_and_cert
+    settings = HttpsSettings(enabled=True, key_file_path=key, cert_file_path=cert)
+
+    assert (settings.key_file_path, settings.cert_file_path) == (key, cert)
+    assert settings.proto == "https"
+
+# -------------------------------------- DERIVED VALUES ----------------------------------------------------------------
+
+@allure.story("Derived values")
+@allure.title("key_path and cert_path give the files only while HTTPS is enabled")
+def test_key_and_cert_path_follow_enabled(key_and_cert):
+    """
+    Enables HTTPS with existing files, reads key_path/cert_path, then turns HTTPS off and reads them again.
+
+    Expected: the file paths while enabled, None once disabled.
+    """
+    key, cert = key_and_cert
+    settings = HttpsSettings(enabled=True, key_file_path=key, cert_file_path=cert)
+    assert (settings.key_path, settings.cert_path) == (key, cert)
+
+    settings.enabled = False
+    assert (settings.key_path, settings.cert_path) == (None, None)
+    assert (settings.key_file_path, settings.cert_file_path) == (key, cert)
+
+# -------------------------------------- TOGGLING ----------------------------------------------------------------------
+
+@allure.story("Toggling")
+@allure.title("Turning HTTPS off keeps the key and cert paths through a save and reload ({files})")
+@pytest.mark.parametrize("files", ["existing", "missing"])
+def test_disabled_keeps_paths_through_reload(key_and_cert, files):
+    """
+    Builds HttpsSettings with HTTPS off and key/cert paths set (existing files, or paths to no file as a repair
+    leaves them), then dumps it and validates the dump, as a save and reload would.
+
+    Expected: both builds succeed, HTTPS stays off, and both paths are kept unchanged.
+    """
+    key, cert = key_and_cert if files == "existing" else ("/non/existent/key.pem", "/non/existent/cert.pem")
+    settings = HttpsSettings(enabled=False, key_file_path=key, cert_file_path=cert)
+
+    reloaded = HttpsSettings.model_validate(settings.model_dump())
+
+    assert reloaded.proto == "http"
+    assert (reloaded.key_file_path, reloaded.cert_file_path) == (key, cert)
+
+
+@allure.story("Toggling")
+@allure.title("Turning HTTPS back on after a reload serves HTTPS with the kept files")
+def test_reenabled_after_reload_uses_kept_files(key_and_cert):
+    """
+    Saves HttpsSettings with HTTPS off and existing key/cert files, reloads the dump with enabled set to True.
+
+    Expected: the model builds, proto is "https", and key_path/cert_path are the original files.
+    """
+    key, cert = key_and_cert
+    saved = HttpsSettings(enabled=False, key_file_path=key, cert_file_path=cert).model_dump()
+
+    settings = HttpsSettings.model_validate({**saved, "enabled": True})
+
+    assert settings.proto == "https"
+    assert (settings.key_path, settings.cert_path) == (key, cert)

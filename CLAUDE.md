@@ -64,7 +64,8 @@ See `tests/README.md` for full details. Key conventions:
 - Test order and `random` values change every run (pytest-randomly seeds both). The header and the last line print the seed; rerun with `--randomly-seed=N` (or `last`), or use `--randomly-dont-reorganize` for file order.
 - Tests that bind real sockets/ports or spawn processes must be marked serial via module-level `pytestmark = pytest.mark.serial` so xdist funnels them to one worker.
 - Write **new** tests in native pytest style: plain `assert`, `@pytest.mark.parametrize`, and bare `async def test_*` (asyncio_mode is `auto` — no decorator or base class needed).
-- Existing tests are `unittest.TestCase`-style and run under pytest as-is; do not rewrite them.
+- Most existing tests are `unittest.TestCase`-style and run under pytest as-is. Leave untouched tests alone, but upgrade the ones a change touches to native pytest style. If a change touches most of a file, upgrade the whole file.
+- Every new or upgraded test gets Allure enrichment: an `@allure.title` (with `{param}` placeholders for what varies), a docstring describing what it does and what is expected (shown as the report description), and an `allure.feature` (module `pytestmark`) plus `allure.story` labels. Parametrize over plain values so the displayed parameters stay stable; see `tests/README.md`.
 - Backend state and session handling tests are scenarios in `tests/tests_session_state/`, never mocks of `SessionState`/`DataPerDriver`. Read `tests/tests_session_state/README.md` before adding one.
 - `tests/integration_test/` is the full-app integration runner and is not collected by pytest.
 
@@ -110,7 +111,7 @@ Reusable modules consumed by multiple apps:
 - **`f1_types/`** — Packet dataclass definitions for F1 2023–2025 seasons (16 packet types)
 - **`telemetry_manager/`** — Async UDP/TCP receiver manager and packet parser factory
 - **`socket_receiver/`** — Base, UDP, TCP receiver implementations
-- **`config/`** — Config loading from `png_config.json`/`app_settings.ini`; Pydantic validation models
+- **`config/`** — Config loading from `png_config.json`; Pydantic validation models. A load repairs invalid values (only the bad field, or every field a broken rule names, goes back to its default) and never fails on bad content. The launcher is the file's only writer: subsystems load with `read_only=True`. A rule between fields must raise `ConflictError` (or `PortConflictError` / `UdpActionCodeConflictError`) naming its fields, so the loader knows what to reset
 - **`ipc/`** — ZeroMQ-based IPC with three patterns: pub/sub (`IpcPubSubBroker`, `IpcPublisherAsync`, `IpcSubscriber*`), req/rep (`IpcServer*`, `IpcClientSync`), and router/dealer (`IpcRouter`, `IpcDealerClient`, `IpcDealerAsync`); also provides `PngSubsysId` for app identity
 - **`subsystem/`** — Child-side lifecycle base for launcher-managed subsystems (`PngSubsystem`, `AsyncSubsystem`, `SyncSubsystem`) — see "Subsystem Lifecycle" below
 - **`race_ctrl/`** — Race control event tracking: pit stops, car damage, tyre/wing changes; per-driver and per-session managers
@@ -189,7 +190,7 @@ The type parameter names the subsystem's args dataclass — a subclass of `Subsy
 
 `add_task()` / `add_periodic()` register work rather than starting it — they return a `SubsystemTask` handle and the base calls `asyncio.create_task()` once the loop is up, which is what lets registration happen in a constructor. Hold the handle only if you need to cancel that task yourself (`McpSubsystem`, `F1TelemetryHandler`). Code that registers work without owning the subsystem takes `add_task` as a `AddTask` parameter — that is how the backend's telemetry and state layers register theirs.
 
-Three consequences worth knowing. The config load is inside the constructor, so the constructor does its own reporting — a bad config logs and exits with a code rather than throwing a traceback at the launcher (`on_exit()` is not called on that path). `pre_boot()`, `make_logger()` and `should_run_mgmt_ipc()` are all called *before* the subclass `__init__` body, so an override must keep to class vars and `self.args`/`self.logger`, and nothing that body assigns may clobber what they set — `HudSubsystem._winmm` is a class attribute for exactly this reason. And constructing a subsystem binds real sockets, so it is a process, not an object you make several of in one interpreter.
+Three consequences worth knowing. The config load is inside the constructor, so the constructor does its own reporting — a config that cannot be loaded (a required file missing) logs and exits with a code rather than throwing a traceback at the launcher (`on_exit()` is not called on that path). Invalid values are repaired in memory instead, and the load is read-only: only the launcher writes the file. `pre_boot()`, `make_logger()` and `should_run_mgmt_ipc()` are all called *before* the subclass `__init__` body, so an override must keep to class vars and `self.args`/`self.logger`, and nothing that body assigns may clobber what they set — `HudSubsystem._winmm` is a class attribute for exactly this reason. And constructing a subsystem binds real sockets, so it is a process, not an object you make several of in one interpreter.
 
 The declarations are opt-in: the base constructs what is declared, registers its task/thread, and closes it *after* `on_shutdown()` returns, so per-subsystem teardown order is preserved. It never registers a route and never merges data-plane stats into the payload — topic names, handler bodies and `collect_stats()` stay subsystem-owned.
 

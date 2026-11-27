@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from pathlib import Path
-from typing import Any, Dict, Optional, final
+from typing import Any, Dict, List, Optional, final
 
 from lib.config import OverlayId, PngSettings
 from lib.f1_types import F1Utils
@@ -34,6 +34,7 @@ from lib.track_segments_classifier import (ComplexCornerSegmentInfo,
 from ....common import get_ref_row
 from ...hf_types import HudOverlayData
 from ..base.base_overlay import BaseOverlay
+from ..base.overlay_settings import OverlaySetting, Slider
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -80,13 +81,26 @@ class CircuitInfoOverlay(BaseOverlay):
         super().set_locked_state(locked)
         self.set_qml_property("lockedMode", locked)
 
-    def _register_handlers(self):
-        @self.on_event("set_circuit_info_length")
-        def _handle_set_circuit_info_length(data: dict):
-            self.logger.debug('%s | Received "set_circuit_info_length" event. Length: %s', self.OVERLAY_ID, data)
-            self.circuit_info_length = data["length"]
-            self._set_bar_width_property(self.circuit_info_length)
+    @final
+    def custom_popover_settings(self) -> List[OverlaySetting]:
+        """Bar width; the minimal style has a fixed width, so it gets none."""
+        if self.circuit_info_minimal:
+            return []
+        return [
+            Slider.for_config_field("circuit_info_length", "Bar width", " px",
+                                    value=lambda: self.circuit_info_length, on_change=self.set_bar_width),
+        ]
 
+    @final
+    def get_overlay_settings(self) -> Dict[str, Any]:
+        return {"circuit_info_length": self.circuit_info_length}
+
+    def set_bar_width(self, length: int):
+        """Set the full-style bar width in pixels."""
+        self.circuit_info_length = length
+        self._set_bar_width_property(length)
+
+    def _register_handlers(self):
         @self.on_event("race_table_update")
         def _handle_race_table_update(data: dict):
             session_type = data["event-type"]

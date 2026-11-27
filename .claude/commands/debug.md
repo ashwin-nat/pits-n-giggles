@@ -122,6 +122,35 @@ Replay when you need the app's own state, logs or UI: something a packet dump ca
 5. Read `png.log` in the user data dir.
 6. Remove the temporary logs before the fix goes for review. Keep a log only if the user wants it there.
 
+### Sending commands to a running subsystem
+
+`ipc_injector` sends management IPC messages to a subsystem the launcher is running: to ping it, read its stats,
+or drive a command without clicking through the UI. Write the message (or a list of them, sent in order) to a
+JSON file in the scratchpad. Passing a file avoids shell quoting problems.
+
+```bash
+poetry run python -m apps.dev_tools.ipc_injector --port <port> <msg.json>
+```
+
+```json
+{"cmd": "set-overlays-opacity", "args": {"opacity": 50}}
+```
+
+**Finding the port.** Ports change on every run. With `--debug`, take the latest
+`<name> IPC port reported: <port>` line in `png.log` (names: Core, Pit Wall, Web, HUD, MCP). Without it, those
+lines aren't written: take the subsystem's listening ports from `netstat -ano` and ping them. The reply's
+`source` names the owner (`backend`, `pit_wall` for the broker, `web`, `hud`, `mcp`).
+
+**Commands.** `__ping__` and `__get_stats__` work on every subsystem; redirect stats to a file, as the HUD's run
+to tens of KB. The rest are the `mgmt.on("<cmd>")` handlers: grep `apps/` for them and read the handler for
+its args.
+
+- Exit 0 means every reply had `"status": "success"`. `__ping__` replies have no status, so a good ping exits 1.
+- `success` only means the handler ran. Confirm the effect in `png.log` or on screen.
+- Commands change the live app. Send the configured value back afterwards, and ask before one that can't be
+  put back that way (a real `set-overlays-layout` moves the user's overlays).
+- `__shutdown__` and `__terminate__` need `--force`. `__heartbeat__` is always refused.
+
 ## 5. Write it up as you go
 
 Findings go in `plans/` (see CLAUDE.md), not only in chat: the evidence table, the packet table that shows

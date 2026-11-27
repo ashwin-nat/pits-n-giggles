@@ -59,15 +59,16 @@ def register_mgmt_routes(
         overlays_mgr.toggle_overlays_visibility()
         return {"status": "success", "message": "toggle-visibility handler executed."}
 
-    @mgmt.on("set-overlays-opacity")
-    def _set_opacity(args: dict) -> dict:
-        logger.debug("Received set-opacity command. args: %s", args)
+    @mgmt.on("set-global-opacity")
+    def _set_global_opacity(args: dict) -> dict:
+        logger.debug("Received set-global-opacity command. args: %s", args)
 
-        if opacity := args.get("opacity"):
-            overlays_mgr.set_overlays_opacity(opacity)
-            return {"status": "success", "message": "set-opacity handler executed."}
+        opacity = args.get("opacity")
+        if opacity is not None:
+            overlays_mgr.set_global_opacity(opacity)
+            return {"status": "success", "message": "set-global-opacity handler executed."}
 
-        return {"status": "error", "message": "Missing opacity value in set-opacity command."}
+        return {"status": "error", "message": "Missing opacity value in set-global-opacity command."}
 
     @mgmt.on("next-page")
     def _next_page(args: dict) -> dict:
@@ -101,33 +102,3 @@ def register_mgmt_routes(
             return {"status": "error", "message": "Missing layout in set-overlays-layout command."}
 
         return overlays_mgr.set_overlays_layout(layout)
-
-    @mgmt.on("set-track-radar-idle-opacity")
-    def _set_track_radar_idle_opacity(args: dict) -> dict:
-        logger.debug("Received set-track-radar-idle-opacity command. args: %s", args)
-
-        opacity = args.get("opacity")
-        if opacity is not None:
-            overlays_mgr.set_track_radar_idle_opacity(opacity)
-            return {"status": "success", "message": "set-track-radar-idle-opacity handler executed."}
-        return {"status": "error", "message": "Missing opacity value in set-track-radar-idle-opacity command."}
-
-    @mgmt.on("set-track-radar-range")
-    def _set_track_radar_range(args: dict) -> dict:
-        logger.debug("Received set-track-radar-range command. args: %s", args)
-
-        range_m = args.get("range_m")
-        if range_m is not None:
-            overlays_mgr.set_track_radar_range(range_m)
-            return {"status": "success", "message": "set-track-radar-range handler executed."}
-        return {"status": "error", "message": "Missing range_m value in set-track-radar-range command."}
-
-    @mgmt.on("set-circuit-info-length")
-    def _set_circuit_info_length(args: dict) -> dict:
-        logger.debug("Received set-circuit-info-length command. args: %s", args)
-
-        length = args.get("length")
-        if length is not None:
-            overlays_mgr.set_circuit_info_length(length)
-            return {"status": "success", "message": "set-circuit-info-length handler executed."}
-        return {"status": "error", "message": "Missing length value in set-circuit-info-length command."}

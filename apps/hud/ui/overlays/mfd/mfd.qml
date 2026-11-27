@@ -1,11 +1,12 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
+import "../base"
 
-Window {
+OverlayWindow {
     id: root
     visible: true
-    color: "black"
+    backgroundColor: "black"
 
     signal pageLoaded(string pageKey, var item)
 

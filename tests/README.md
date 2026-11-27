@@ -186,9 +186,9 @@ parametrize over plain values (`str`, numbers, enums):
 | Path | Purpose |
 |------|---------|
 | `tests_base.py` | Shared `F1TelemetryUnitTestsBase` base class |
-| `conftest.py` | pytest config: ignore list, serial→xdist group wiring, VS Code detection |
+| `conftest.py` | pytest config: ignore list, serial→xdist group wiring, VS Code detection, Hypothesis profile |
 | `tests_*.py` | Standalone unit test modules |
-| `tests_config/` | Config validation tests |
+| `tests_config/` | Config validation tests; field constraints as property tests (see below) |
 | `tests_delta/` | Lap delta tests |
 | `tests_data_per_driver/` | Per-driver data structure tests |
 | `tests_session_state/` | Session state scenarios - typed packets through the real handler and `SessionState`. See [its README](tests_session_state/README.md) |
@@ -203,6 +203,51 @@ parametrize over plain values (`str`, numbers, enums):
 `tests_session_state/` drives typed packets through the real `F1TelemetryHandler` and `SessionState`. Backend
 state and session handling tests go there. Its [README](tests_session_state/README.md) covers how to add a test, the
 practices to follow, the fixtures and the report labels.
+
+## Config Field Constraints
+
+`tests_config/tests_config_properties.py` checks every settings field against a table of what it should accept.
+Each field is one entry in `FIELDS`, written independently of the schema:
+
+```python
+FIELDS = {
+    NetworkSettings: {
+        "wdt_interval_sec": IntRange(1, 120),
+        "udp_custom_action_code": IntRange(1, 12, nullable=True),
+        ...
+    },
+    HudSettings: {
+        "overlays_speed_unit": Choice(OverlaysSpeedUnit, ("km/h", "mph")),
+        ...
+    },
+}
+```
+
+For each entry, Hypothesis checks that the model accepts values inside the spec and rejects values outside it, and
+`test_edges` checks each bound and one step past it. The spec kinds are `IntRange`, `FloatRange` (`finite=True`
+rejects inf/nan), `IntChoice`, `Choice` (stored enum values, listed), `Flag`, `Text`, `IPv4` (Hypothesis's
+`st.ip_addresses`) and `HostPort` (IPv4 or hostname, from `st.ip_addresses` and `provisional.domains`).
+
+When you add or change a config field:
+
+- Add or update its `FIELDS` entry. `test_every_field_is_covered` fails for any field of any model reachable from
+  `PngSettings` that has no entry.
+- A field no spec can express (a custom string validator, `FilePathStr`, an id-keyed dict) goes in `EXAMPLE_ONLY`
+  instead, and keeps hand-written tests in its section's file. Give it a value strategy in `EXAMPLE_ONLY_VALUES`
+  too, or the save-and-load property (`test_any_settings_roundtrip`) only ever sees its default.
+- A new required field (no default) needs a value in `REQUIRED`, so the other fields' cases can build the model.
+- Cross-field rules (port conflicts, distinct UDP action codes) are not covered here. Write example tests for them,
+  and add the rule to `_BROKEN_RULES` in `tests_config_io.py`. That checks a saved config breaking it loads with
+  exactly the rule's fields reset. `test_one_bad_value_resets_only_that_value` checks the same for one bad value
+  in any `FIELDS` field, using its spec's `invalid()` values.
+
+Changing a bound means editing both the schema and `FIELDS`. That is deliberate: a bound changed in only one place
+fails the test.
+
+Hypothesis runs under the `png` profile in `conftest.py`: 50 examples, no deadline, no example database, and a fixed
+seed per test, so a failure reproduces on every run and machine. It does not shrink: a failing property reports the
+first failing example it found. To get a minimal example while debugging, rerun the failing test with
+`--hypothesis-profile png-shrink` (slow on whole-settings properties).
 
 ## Serial vs Parallel
 

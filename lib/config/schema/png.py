@@ -22,14 +22,17 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from typing import Any, Dict
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .capture import CaptureSettings
 from .diff import ConfigDiffMixin
 from .display import DisplaySettings
-from .forwarding import _LOCALHOST_ALIASES, ForwardingSettings
+from .forwarding import ForwardingSettings, is_loopback_host
 from .https import HttpsSettings
 from .hud.hud import HudSettings
+from .hud.layout import OverlayPosition
 from .lap_analyzer import LapAnalyzerSettings
 from .mcp_cfg import McpSettings
 from .network import NetworkSettings
@@ -38,6 +41,7 @@ from .prediction import PredictionSettings
 from .privacy import PrivacySettings
 from .save_viewer import SaveViewerSettings
 from .stream_overlay import StreamOverlaySettings
+from .utils import ConflictError, PortConflictError, UdpActionCodeConflictError
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -80,8 +84,9 @@ class PngSettings(ConfigDiffMixin, BaseModel):
                 continue
 
             if val in seen:
-                raise ValueError(
-                    f"Duplicate UDP action code {val} between {seen[val]} and {name}"
+                raise UdpActionCodeConflictError(
+                    f"Duplicate UDP action code {val} between {seen[val]} and {name}",
+                    [seen[val], name],
                 )
             seen[val] = name
 
@@ -91,11 +96,17 @@ class PngSettings(ConfigDiffMixin, BaseModel):
     def _validate_no_localhost_udp_loop(self):
         telemetry_port = self.Network.telemetry_port
 
-        for host, port in self.Forwarding.forwarding_targets:
-            if port == telemetry_port and host in _LOCALHOST_ALIASES:
-                raise ValueError(
+        for field_name in ("target_1", "target_2", "target_3"):
+            target = getattr(self.Forwarding, f"{field_name}_tuple")
+            if target is None:
+                continue
+            host, port = target
+            if port == telemetry_port and is_loopback_host(host):
+                # Only the target is reset: the telemetry port is the one the game sends to
+                raise ConflictError(
                     f"UDP forwarding target {host}:{port} forms a localhost loop "
-                    f"with Network.telemetry_port={telemetry_port}"
+                    f"with Network.telemetry_port={telemetry_port}",
+                    [f"Forwarding.{field_name}"],
                 )
 
         return self
@@ -128,14 +139,27 @@ class PngSettings(ConfigDiffMixin, BaseModel):
 
                 if value in ports_by_type[port_type]:
                     prev = ports_by_type[port_type][value]
-                    raise ValueError(
+                    raise PortConflictError(
                         f"Duplicate {port_type.upper()} port {value} between "
-                        f"{prev} and {section_name}.{field_name}"
+                        f"{prev} and {section_name}.{field_name}",
+                        [prev, f"{section_name}.{field_name}"],
                     )
 
                 ports_by_type[port_type][value] = f"{section_name}.{field_name}"
 
         return self
+
+    def with_overlay_changes(self, layout: Dict[str, OverlayPosition],
+                             overlay_settings: Dict[str, Any]) -> "PngSettings":
+        """A validated copy with these overlays' layout entries and these HUD fields replaced.
+
+        Overlays missing from layout keep their entries. Raises ValidationError if the result is invalid.
+        """
+        new_settings = self.model_copy(deep=True)
+        new_settings.HUD.layout = {**self.HUD.layout, **layout}
+        for name, value in overlay_settings.items():
+            setattr(new_settings.HUD, name, value)
+        return type(self).model_validate(new_settings.model_dump())
 
     def __str__(self) -> str:
         lines = ["PngSettings:"]

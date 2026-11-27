@@ -21,275 +21,98 @@
 # SOFTWARE.
 # pylint: skip-file
 
-import os
-import sys
-from itertools import combinations
+"""NetworkSettings rules the field spec table does not cover: defaults, cross-field rules and derived values.
+Per-field ranges and types, bind_address included, are in tests_config_properties.py."""
 
+import allure
+import pytest
 from pydantic import ValidationError
 
-# Add the parent directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from lib.config import NetworkSettings
+from lib.config.schema.utils import PortConflictError, UdpActionCodeConflictError
 
-from .tests_config_base import TestF1ConfigBase
+pytestmark = allure.feature("Network settings")
 
-# ----------------------------------------------------------------------------------------------------------------------
+# -------------------------------------- DEFAULTS ----------------------------------------------------------------------
 
-class TestNetworkSettings(TestF1ConfigBase):
-    """Test NetworkSettings model validation and defaults"""
+@allure.story("Defaults")
+@allure.title("Default NetworkSettings hold the shipped values")
+def test_default_values():
+    """
+    Builds NetworkSettings with no arguments.
 
-    def test_default_values(self):
-        """Test that default values are set correctly"""
-        settings = NetworkSettings()
-        self.assertEqual(settings.telemetry_port, 20777)
-        self.assertEqual(settings.server_port, 4768)
-        self.assertEqual(settings.udp_tyre_delta_action_code, None)
-        self.assertEqual(settings.udp_custom_action_code, None)
-        self.assertEqual(settings.wdt_interval_sec, 30)
-        self.assertIsNone(settings.udp_custom_action_code)
-        self.assertIsNone(settings.udp_tyre_delta_action_code)
-        self.assertEqual(settings.broker_xpub_port, 53838)
-        self.assertEqual(settings.broker_xsub_port, 53835)
-        self.assertEqual(settings.broker_router_port, 53836)
-        self.assertEqual(settings.enable_pkt_ordering, False)
-        self.assertEqual(settings.udp_action_button_debounce_ms, 100)
+    Expected: every field holds its shipped default.
+    """
+    settings = NetworkSettings()
 
-    def test_invalid_port_ranges(self):
-        """Test that invalid port numbers raise ValidationError"""
-        with self.assertRaises(ValidationError):
-            NetworkSettings(telemetry_port=-1)
+    assert settings.telemetry_port == 20777
+    assert settings.server_port == 4768
+    assert settings.broker_xpub_port == 53838
+    assert settings.broker_xsub_port == 53835
+    assert settings.broker_router_port == 53836
+    assert settings.bind_address == "0.0.0.0"
+    assert settings.udp_tyre_delta_action_code is None
+    assert settings.udp_custom_action_code is None
+    assert settings.wdt_interval_sec == 30
+    assert settings.enable_pkt_ordering is False
+    assert settings.udp_action_button_debounce_ms == 100
 
-        with self.assertRaises(ValidationError):
-            NetworkSettings(server_port=65536)
+# -------------------------------------- CROSS-FIELD RULES -------------------------------------------------------------
 
-    def test_action_code_validation(self):
-        """Test UDP action code validation"""
-        # Valid range
-        settings = NetworkSettings(
-            udp_tyre_delta_action_code=1,
-            udp_custom_action_code=12
-        )
-        self.assertEqual(settings.udp_tyre_delta_action_code, 1)
-        self.assertEqual(settings.udp_custom_action_code, 12)
+@allure.story("Cross-field rules")
+@allure.title("The tyre delta and custom UDP action codes must differ")
+def test_udp_action_codes_must_differ():
+    """
+    Sets both UDP action codes to 5.
 
-        # Invalid range
-        with self.assertRaises(ValidationError):
-            NetworkSettings(udp_tyre_delta_action_code=0)
+    Expected: a ValidationError saying the two must not be the same.
+    """
+    with pytest.raises(ValidationError, match="must not be the same") as exc:
+        NetworkSettings(udp_tyre_delta_action_code=5, udp_custom_action_code=5)
+    assert isinstance(exc.value.errors()[0]["ctx"]["error"], UdpActionCodeConflictError)
 
-        with self.assertRaises(ValidationError):
-            NetworkSettings(udp_custom_action_code=13)
 
-    def test_valid_port_ranges(self):
-        net = NetworkSettings(
-            telemetry_port=1,
-            server_port=65535,
-            udp_tyre_delta_action_code=1,
-            udp_custom_action_code=12,
-            wdt_interval_sec=45
-        )
-        self.assertEqual(net.telemetry_port, 1)
-        self.assertEqual(net.server_port, 65535)
-        self.assertEqual(net.udp_tyre_delta_action_code, 1)
-        self.assertEqual(net.udp_custom_action_code, 12)
-        self.assertEqual(net.wdt_interval_sec, 45)
+_PORT_CONFLICTS = {
+    "two TCP ports": {"server_port": 5000, "broker_xpub_port": 5000},
+    "three TCP ports": {"server_port": 7000, "broker_xpub_port": 7000, "broker_xsub_port": 7000},
+    "router and xsub": {"broker_xsub_port": 9000, "broker_router_port": 9000},
+}
 
-    def test_invalid_telemetry_port(self):
-        with self.assertRaises(ValidationError):
-            NetworkSettings(telemetry_port=-1)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(telemetry_port=70000)
+@allure.story("Cross-field rules")
+@allure.title("Two TCP port fields cannot share a port ({case})")
+@pytest.mark.parametrize("case", list(_PORT_CONFLICTS))
+def test_tcp_port_conflict_rejected(case):
+    """
+    Sets two or three TCP port fields to the same port.
 
-    def test_invalid_server_port(self):
-        with self.assertRaises(ValidationError):
-            NetworkSettings(server_port=-1)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(server_port=70000)
+    Expected: a ValidationError reporting the port conflict.
+    """
+    with pytest.raises(ValidationError, match="Port conflict") as exc:
+        NetworkSettings(**_PORT_CONFLICTS[case])
+    assert isinstance(exc.value.errors()[0]["ctx"]["error"], PortConflictError)
 
-    def test_invalid_udp_tyre_delta_action_code(self):
-        with self.assertRaises(ValidationError):
-            NetworkSettings(udp_tyre_delta_action_code=0)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(udp_tyre_delta_action_code=13)
 
-    def test_invalid_udp_custom_action_code(self):
-        with self.assertRaises(ValidationError):
-            NetworkSettings(udp_custom_action_code=0)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(udp_custom_action_code=13)
+@allure.story("Cross-field rules")
+@allure.title("A UDP and a TCP port field may share a port number")
+def test_udp_and_tcp_may_share_port():
+    """
+    Sets the UDP telemetry port and the TCP server port to the same number.
 
-    def test_udp_action_codes_must_differ(self):
-        """Test that tyre and custom UDP action codes cannot be the same"""
-        with self.assertRaises(ValidationError) as ctx:
-            NetworkSettings(udp_tyre_delta_action_code=5, udp_custom_action_code=5)
-        self.assertIn("must not be the same", str(ctx.exception))
+    Expected: the model builds, since conflicts are checked per protocol.
+    """
+    settings = NetworkSettings(telemetry_port=6000, server_port=6000)
 
-    def test_wdt_interval_sec_invalid_type(self):
-        with self.assertRaises(ValidationError):
-            NetworkSettings(wdt_interval_sec="cat")
+    assert settings.telemetry_port == settings.server_port == 6000
 
-    def test_wdt_interval_sec_invalid_range(self):
-        with self.assertRaises(ValidationError):
-            NetworkSettings(wdt_interval_sec=0)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(wdt_interval_sec=121)
+# -------------------------------------- DERIVED VALUES ----------------------------------------------------------------
 
-    def test_broker_xpub_port(self):
+@allure.story("Derived values")
+@allure.title("udp_action_debounce_sec is {ms} ms in seconds")
+@pytest.mark.parametrize("ms, sec", [(0, 0.0), (100, 0.1), (500, 0.5)])
+def test_udp_action_debounce_sec(ms, sec):
+    """
+    Sets udp_action_button_debounce_ms and reads udp_action_debounce_sec.
 
-        NetworkSettings(broker_xpub_port=5000) # Valid
-        with self.assertRaises(ValidationError):
-            NetworkSettings(broker_xpub_port=-1)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(broker_xpub_port=69420)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(broker_xpub_port=None)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(broker_xpub_port="cat")
-
-        # Boundary conditions
-        NetworkSettings(broker_xpub_port=1)
-        NetworkSettings(broker_xpub_port=65535)
-
-    def test_broker_xsub_port(self):
-
-        NetworkSettings(broker_xsub_port=5000) # Valid
-        with self.assertRaises(ValidationError):
-            NetworkSettings(broker_xsub_port=-1)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(broker_xsub_port=69420)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(broker_xsub_port=None)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(broker_xsub_port="cat")
-
-        # Boundary conditions
-        NetworkSettings(broker_xsub_port=1)
-        NetworkSettings(broker_xsub_port=65535)
-
-    def test_broker_router_port(self):
-
-        NetworkSettings(broker_router_port=5000)  # Valid
-        with self.assertRaises(ValidationError):
-            NetworkSettings(broker_router_port=-1)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(broker_router_port=69420)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(broker_router_port=None)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(broker_router_port="cat")
-
-        # Boundary conditions
-        NetworkSettings(broker_router_port=1)
-        NetworkSettings(broker_router_port=65535)
-
-    def test_network_settings_port_conflicts(self):
-        """
-        Rules covered:
-        - TCP ports must be unique among TCP fields
-        - UDP ports must be unique among UDP fields
-        - UDP/TCP sharing the same numeric port is VALID
-        - unset / disabled ports (0 or None) are ignored
-        """
-
-        # ---- 1. Valid baseline ----
-        NetworkSettings(
-            telemetry_port=20777,      # UDP
-            server_port=4768,          # TCP
-            broker_xpub_port=53838,    # TCP
-            broker_xsub_port=53835,    # TCP
-            broker_router_port=53836,  # TCP
-        )
-
-        # ---- 2. TCP–TCP conflict (invalid) ----
-        with self.assertRaises(ValidationError):
-            NetworkSettings(
-                server_port=5000,
-                broker_xpub_port=5000,
-            )
-
-        # ---- 3. UDP–TCP same port (VALID) ----
-        NetworkSettings(
-            telemetry_port=6000,       # UDP
-            server_port=6000,          # TCP
-        )
-
-        # ---- 4. Three-way TCP conflict ----
-        with self.assertRaises(ValidationError):
-            NetworkSettings(
-                server_port=7000,
-                broker_xpub_port=7000,
-                broker_xsub_port=7000,
-            )
-
-        # ---- 5. broker_router_port conflicts with another TCP port ----
-        with self.assertRaises(ValidationError):
-            NetworkSettings(
-                broker_xsub_port=9000,
-                broker_router_port=9000,
-            )
-
-    def test_udp_action_button_debounce_ms_default(self):
-        settings = NetworkSettings()
-        self.assertEqual(settings.udp_action_button_debounce_ms, 100)
-
-    def test_udp_action_button_debounce_ms_valid(self):
-        NetworkSettings(udp_action_button_debounce_ms=0)
-        NetworkSettings(udp_action_button_debounce_ms=250)
-        NetworkSettings(udp_action_button_debounce_ms=500)
-
-    def test_udp_action_button_debounce_ms_invalid(self):
-        with self.assertRaises(ValidationError):
-            NetworkSettings(udp_action_button_debounce_ms=-1)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(udp_action_button_debounce_ms=501)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(udp_action_button_debounce_ms="cat")
-
-    def test_udp_action_debounce_sec(self):
-        settings = NetworkSettings(udp_action_button_debounce_ms=100)
-        self.assertAlmostEqual(settings.udp_action_debounce_sec, 0.1)
-
-        settings = NetworkSettings(udp_action_button_debounce_ms=0)
-        self.assertAlmostEqual(settings.udp_action_debounce_sec, 0.0)
-
-        settings = NetworkSettings(udp_action_button_debounce_ms=500)
-        self.assertAlmostEqual(settings.udp_action_debounce_sec, 0.5)
-
-    def test_bind_address_default(self):
-        settings = NetworkSettings()
-        self.assertEqual(str(settings.bind_address), "0.0.0.0")
-
-    def test_bind_address_valid(self):
-        NetworkSettings(bind_address="127.0.0.1")
-        NetworkSettings(bind_address="192.168.1.100")
-        NetworkSettings(bind_address="10.0.0.1")
-
-    def test_bind_address_invalid(self):
-        with self.assertRaises(ValidationError):
-            NetworkSettings(bind_address="not_an_ip")
-        with self.assertRaises(ValidationError):
-            NetworkSettings(bind_address="256.0.0.1")
-        with self.assertRaises(ValidationError):
-            NetworkSettings(bind_address="::1")  # IPv6 not accepted
-        with self.assertRaises(ValidationError):
-            NetworkSettings(bind_address="")
-        with self.assertRaises(ValidationError):
-            NetworkSettings(bind_address=None)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(bind_address=69420)
-
-    def test_enable_pkt_ordering(self):
-        net = NetworkSettings(enable_pkt_ordering=True)
-        self.assertTrue(net.enable_pkt_ordering)
-
-        net = NetworkSettings(enable_pkt_ordering=False)
-        self.assertFalse(net.enable_pkt_ordering)
-
-        with self.assertRaises(ValidationError):
-            NetworkSettings(enable_pkt_ordering="cat")
-
-        with self.assertRaises(ValidationError):
-            NetworkSettings(enable_pkt_ordering=None)
-
-        with self.assertRaises(ValidationError):
-            NetworkSettings(enable_pkt_ordering=69420)
+    Expected: the property is the same duration in seconds.
+    """
+    assert NetworkSettings(udp_action_button_debounce_ms=ms).udp_action_debounce_sec == pytest.approx(sec)

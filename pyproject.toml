@@ -72,4 +72,5 @@ diff-cover = "^10.5.1"
 chardet = "^5.2.0"
 pytest-randomly = "^5.1"
 zstandard = "^0.25.0"
+hypothesis = "^6.170.17"
 

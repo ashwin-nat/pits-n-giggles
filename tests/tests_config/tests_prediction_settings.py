@@ -21,179 +21,45 @@
 # SOFTWARE.
 # pylint: skip-file
 
-import os
-import sys
+"""PredictionSettings defaults and derived values. Per-field ranges, types and enum values are in
+tests_config_properties.py; diff behaviour is in tests_diff_mixin.py."""
 
-from pydantic import ValidationError
+import allure
+import pytest
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from lib.config import HarvestPowerSmoothing, PredictionSettings
 
-from lib.config import HarvestPowerSmoothing, PngSettings, PredictionSettings
-
-from .tests_config_base import TestF1ConfigBase
-
-# ----------------------------------------------------------------------------------------------------------------------
+pytestmark = allure.feature("Prediction settings")
 
 
-class TestPredictionSettings(TestF1ConfigBase):
-    """Test PredictionSettings model"""
+@allure.story("Defaults")
+@allure.title("Default PredictionSettings hold the shipped values")
+def test_default_values():
+    """
+    Builds PredictionSettings with no arguments.
 
-    def test_default_values(self):
-        """Defaults: weather-aware off, no sliding window."""
-        s = PredictionSettings()
-        self.assertFalse(s.weather_aware_prediction)
-        self.assertIsNone(s.tyre_wear_window_size)
+    Expected: weather-aware prediction off, no sliding tyre wear window, balanced harvest power smoothing.
+    """
+    settings = PredictionSettings()
 
-    def test_weather_aware_prediction_true(self):
-        s = PredictionSettings(weather_aware_prediction=True)
-        self.assertTrue(s.weather_aware_prediction)
-
-    def test_weather_aware_prediction_false(self):
-        s = PredictionSettings(weather_aware_prediction=False)
-        self.assertFalse(s.weather_aware_prediction)
-
-    def test_weather_aware_prediction_invalid_type(self):
-        with self.assertRaises(ValidationError):
-            PredictionSettings(weather_aware_prediction=[1, 2, 3])
-
-    def test_tyre_wear_window_size_valid(self):
-        s = PredictionSettings(tyre_wear_window_size=6)
-        self.assertEqual(s.tyre_wear_window_size, 6)
-
-    def test_tyre_wear_window_size_none(self):
-        s = PredictionSettings(tyre_wear_window_size=None)
-        self.assertIsNone(s.tyre_wear_window_size)
-
-    def test_tyre_wear_window_size_minimum(self):
-        """ge=2: 2 is valid, 1 is not."""
-        s = PredictionSettings(tyre_wear_window_size=2)
-        self.assertEqual(s.tyre_wear_window_size, 2)
-
-        with self.assertRaises(ValidationError):
-            PredictionSettings(tyre_wear_window_size=1)
-
-    def test_tyre_wear_window_size_invalid_type(self):
-        with self.assertRaises(ValidationError):
-            PredictionSettings(tyre_wear_window_size="six")
-
-    def test_both_flags_set(self):
-        s = PredictionSettings(weather_aware_prediction=True, tyre_wear_window_size=8)
-        self.assertTrue(s.weather_aware_prediction)
-        self.assertEqual(s.tyre_wear_window_size, 8)
-
-    def test_harvest_power_smoothing_default(self):
-        """Default harvest power smoothing profile is Balanced."""
-        s = PredictionSettings()
-        self.assertEqual(s.harvest_power_smoothing, HarvestPowerSmoothing.BALANCED)
-
-    def test_harvest_power_smoothing_all_values(self):
-        """Every smoothing profile is accepted."""
-        for profile in HarvestPowerSmoothing:
-            s = PredictionSettings(harvest_power_smoothing=profile)
-            self.assertEqual(s.harvest_power_smoothing, profile)
-
-    def test_harvest_power_smoothing_invalid_value(self):
-        with self.assertRaises(ValidationError):
-            PredictionSettings(harvest_power_smoothing="Turbo")
-
-    def test_harvest_power_window_size_property(self):
-        """The smoothing profile maps to the expected filter window size, ascending."""
-        expected = {
-            HarvestPowerSmoothing.VERY_RESPONSIVE: 7,
-            HarvestPowerSmoothing.RESPONSIVE: 11,
-            HarvestPowerSmoothing.BALANCED: 15,
-            HarvestPowerSmoothing.STABLE: 21,
-            HarvestPowerSmoothing.VERY_STABLE: 27,
-        }
-        for profile, window in expected.items():
-            s = PredictionSettings(harvest_power_smoothing=profile)
-            self.assertEqual(s.harvest_power_window_size, window)
-
-    def test_diff_weather_aware(self):
-        s1 = PredictionSettings()
-        s2 = PredictionSettings(weather_aware_prediction=True)
-        self.assertTrue(s1.has_changed(s2))
-        self.assertEqual(s1.diff(s2), {
-            "weather_aware_prediction": {"old_value": False, "new_value": True}
-        })
-
-    def test_diff_window_size(self):
-        s1 = PredictionSettings()
-        s2 = PredictionSettings(tyre_wear_window_size=6)
-        self.assertTrue(s1.has_changed(s2))
-        self.assertEqual(s1.diff(s2), {
-            "tyre_wear_window_size": {"old_value": None, "new_value": 6}
-        })
-
-    def test_diff_harvest_power_smoothing(self):
-        s1 = PredictionSettings()
-        s2 = PredictionSettings(harvest_power_smoothing=HarvestPowerSmoothing.STABLE)
-        self.assertTrue(s1.has_changed(s2))
-        self.assertEqual(s1.diff(s2), {
-            "harvest_power_smoothing": {
-                "old_value": HarvestPowerSmoothing.BALANCED,
-                "new_value": HarvestPowerSmoothing.STABLE,
-            }
-        })
-
-    def test_diff_no_change(self):
-        s1 = PredictionSettings(weather_aware_prediction=True, tyre_wear_window_size=4)
-        s2 = PredictionSettings(weather_aware_prediction=True, tyre_wear_window_size=4)
-        self.assertFalse(s1.has_changed(s2))
-        self.assertEqual(s1.diff(s2), {})
+    assert settings.weather_aware_prediction is False
+    assert settings.tyre_wear_window_size is None
+    assert settings.harvest_power_smoothing == HarvestPowerSmoothing.BALANCED
 
 
-class TestPngSettingsPrediction(TestF1ConfigBase):
-    """Test that PredictionSettings is wired into PngSettings correctly."""
+@allure.story("Derived values")
+@allure.title("Harvest power smoothing '{profile.value}' uses a {window}-sample filter window")
+@pytest.mark.parametrize("profile, window", [
+    (HarvestPowerSmoothing.VERY_RESPONSIVE, 7),
+    (HarvestPowerSmoothing.RESPONSIVE, 11),
+    (HarvestPowerSmoothing.BALANCED, 15),
+    (HarvestPowerSmoothing.STABLE, 21),
+    (HarvestPowerSmoothing.VERY_STABLE, 27),
+], ids=lambda v: v.value if isinstance(v, HarvestPowerSmoothing) else str(v))
+def test_harvest_power_window_size(profile, window):
+    """
+    Sets harvest_power_smoothing to one profile and reads harvest_power_window_size.
 
-    def test_prediction_section_present(self):
-        """PngSettings exposes a Prediction sub-model with correct defaults."""
-        s = PngSettings()
-        self.assertIsInstance(s.Prediction, PredictionSettings)
-        self.assertFalse(s.Prediction.weather_aware_prediction)
-        self.assertIsNone(s.Prediction.tyre_wear_window_size)
-
-    def test_prediction_section_accepts_values(self):
-        s = PngSettings(Prediction=PredictionSettings(
-            weather_aware_prediction=True,
-            tyre_wear_window_size=6,
-        ))
-        self.assertTrue(s.Prediction.weather_aware_prediction)
-        self.assertEqual(s.Prediction.tyre_wear_window_size, 6)
-
-    def test_prediction_diff_detected_by_png_settings(self):
-        """A change inside Prediction is visible through the top-level diff."""
-        s1 = PngSettings()
-        s2 = PngSettings(Prediction=PredictionSettings(weather_aware_prediction=True))
-        self.assertTrue(s1.has_changed(s2))
-        d = s1.diff(s2)
-        self.assertIn("Prediction", d)
-        self.assertIn("weather_aware_prediction", d["Prediction"])
-
-    def test_prediction_diff_field_filter(self):
-        """diff() with Prediction:[] returns all changed fields in that section."""
-        s1 = PngSettings()
-        s2 = PngSettings(Prediction=PredictionSettings(
-            weather_aware_prediction=True,
-            tyre_wear_window_size=8,
-        ))
-        d = s1.diff(s2, {"Prediction": []})
-        self.assertIn("Prediction", d)
-        self.assertIn("weather_aware_prediction", d["Prediction"])
-        self.assertIn("tyre_wear_window_size", d["Prediction"])
-
-    def test_prediction_no_diff_when_unchanged(self):
-        s1 = PngSettings()
-        s2 = PngSettings()
-        d = s1.diff(s2, {"Prediction": []})
-        self.assertNotIn("Prediction", d)
-
-    def test_png_settings_harvest_smoothing_covered_by_prediction_diff(self):
-        """Changing harvest_power_smoothing is caught by the {"Prediction": []} diff
-        the backend uses to decide on a restart."""
-        s1 = PngSettings()
-        s2 = PngSettings(Prediction=PredictionSettings(
-            harvest_power_smoothing=HarvestPowerSmoothing.VERY_RESPONSIVE))
-        d = s1.diff(s2, {"Prediction": []})
-        self.assertIn("Prediction", d)
-        self.assertIn("harvest_power_smoothing", d["Prediction"])
+    Expected: the profile's filter window, growing from very responsive to very stable.
+    """
+    assert PredictionSettings(harvest_power_smoothing=profile).harvest_power_window_size == window

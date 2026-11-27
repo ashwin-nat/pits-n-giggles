@@ -21,194 +21,92 @@
 # SOFTWARE.
 # pylint: skip-file
 
-import os
-import sys
+"""ForwardingSettings rules the field spec table does not cover: defaults, the parsed target list and duplicate
+targets. The host:port format of each target is in tests_config_properties.py."""
 
+import allure
+import pytest
 from pydantic import ValidationError
-
-# Add the parent directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-import os
-import sys
-
-from pydantic import ValidationError
-
-from .tests_config_base import TestF1ConfigBase
-
-# ----------------------------------------------------------------------------------------------------------------------
-# MIT License
-#
-# Copyright (c) [2025] [Ashwin Natarajan]
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-# pylint: skip-file
-
-
-
-# Add the parent directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.config import ForwardingSettings
 
-from .tests_config_base import TestF1ConfigBase
+pytestmark = allure.feature("Forwarding settings")
 
-# ----------------------------------------------------------------------------------------------------------------------
+# -------------------------------------- DEFAULTS ----------------------------------------------------------------------
 
-class TestForwardingSettings(TestF1ConfigBase):
-    """Test ForwardingSettings model and host:port validation"""
+@allure.story("Defaults")
+@allure.title("Default ForwardingSettings forward nowhere")
+def test_default_values():
+    """
+    Builds ForwardingSettings with no arguments.
 
-    def test_default_values(self):
-        """Test default values"""
-        settings = ForwardingSettings()
-        self.assertEqual(settings.target_1, "")
-        self.assertEqual(settings.target_2, "")
-        self.assertEqual(settings.target_3, "")
+    Expected: all three targets are empty, so the parsed target list is empty.
+    """
+    settings = ForwardingSettings()
 
-    def test_valid_hostport_formats(self):
-        """Test valid host:port formats"""
-        valid_targets = [
-            "localhost:8080",
-            "127.0.0.1:3000",
-            "example.com:80",
-            "my-server.domain:65535",
-            "192.168.1.1:443"
-        ]
+    assert (settings.target_1, settings.target_2, settings.target_3) == ("", "", "")
+    assert settings.forwarding_targets == []
 
-        for target in valid_targets:
-            settings = ForwardingSettings(target_1=target)
-            self.assertEqual(settings.target_1, target)
+# -------------------------------------- PARSED TARGETS ----------------------------------------------------------------
 
-    def test_empty_targets_allowed(self):
-        """Test that empty strings are allowed"""
-        settings = ForwardingSettings(
-            target_1="",
-            target_2=" ",  # Should be stripped to empty
-            target_3=None
-        )
-        self.assertEqual(settings.target_1, "")
-        self.assertEqual(settings.target_2, "")
-        self.assertEqual(settings.target_3, "")
+_TARGET_LISTS = {
+    "all empty": ({"target_1": "", "target_2": "", "target_3": ""}, []),
+    "all None": ({"target_1": None, "target_2": None, "target_3": None}, []),
+    "one target": ({"target_1": "localhost:8080"}, [("localhost", 8080)]),
+    "three targets": (
+        {"target_1": "host1.example.com:1234", "target_2": "192.168.1.10:65535", "target_3": "myhost:1"},
+        [("host1.example.com", 1234), ("192.168.1.10", 65535), ("myhost", 1)],
+    ),
+}
 
-    def test_invalid_hostport_formats(self):
-        """Test invalid host:port formats raise ValidationError"""
-        invalid_targets = [
-            "localhost",  # No port
-            ":8080",      # No host
-            "localhost:",  # No port number
-            "localhost:abc",  # Non-numeric port
-            "localhost:0",    # Port out of range
-            "localhost:65536", # Port out of range
-            "localhost:8080:extra", # Extra components
-            "local host:8080",  # Space in hostname
-        ]
+@allure.story("Derived values")
+@allure.title("forwarding_targets lists the set targets as (host, port), in order ({case})")
+@pytest.mark.parametrize("case", list(_TARGET_LISTS))
+def test_forwarding_targets(case):
+    """
+    Sets some or all of the three targets and reads forwarding_targets.
 
-        for target in invalid_targets:
-            with self.assertRaises(ValidationError):
-                ForwardingSettings(target_1=target)
+    Expected: one (host, int port) pair per non-empty target, in target order.
+    """
+    targets, expected = _TARGET_LISTS[case]
 
-    def test_port_range_validation(self):
-        """Test port number range validation"""
-        with self.assertRaises(ValidationError):
-            ForwardingSettings(target_1="localhost:0")
+    assert ForwardingSettings(**targets).forwarding_targets == expected
 
-        with self.assertRaises(ValidationError):
-            ForwardingSettings(target_1="localhost:65536")
+# -------------------------------------- DUPLICATE TARGETS -------------------------------------------------------------
 
-        # Valid boundaries
-        settings1 = ForwardingSettings(target_1="localhost:1")
-        settings2 = ForwardingSettings(target_1="localhost:65535")
-        self.assertEqual(settings1.target_1, "localhost:1")
-        self.assertEqual(settings2.target_1, "localhost:65535")
+_DISTINCT = {
+    "different hosts, same port": {"target_1": "example.com:1234", "target_2": "example.org:1234"},
+    "localhost and remote, same port": {"target_1": "localhost:5000", "target_2": "example.com:5000"},
+}
 
-    def test_empty_targets(self):
-        f = ForwardingSettings(target_1="", target_2="", target_3="")
-        self.assertEqual(f.forwarding_targets, [])
+_DUPLICATE = {
+    "localhost and 127.0.0.1": {"target_1": "localhost:6000", "target_2": "127.0.0.1:6000"},
+    "exact duplicate": {"target_1": "myhost:7000", "target_2": "myhost:7000"},
+    "different letter case": {"target_1": "MyHost:7000", "target_2": "myhost:7000"},
+    "absolute name": {"target_1": "nas.lan.:7000", "target_2": "nas.lan:7000"},
+}
 
-    def test_none_targets(self):
-        f = ForwardingSettings(target_1=None, target_2=None, target_3=None)
-        self.assertEqual(f.forwarding_targets, [])
+@allure.story("Cross-field rules")
+@allure.title("Distinct forwarding targets are accepted ({case})")
+@pytest.mark.parametrize("case", list(_DISTINCT))
+def test_distinct_targets_accepted(case):
+    """
+    Sets two targets that differ in host.
 
-    def test_single_valid_target(self):
-        f = ForwardingSettings(target_1="localhost:8080")
-        self.assertEqual(f.forwarding_targets, [("localhost", 8080)])
+    Expected: the model builds.
+    """
+    ForwardingSettings(**_DISTINCT[case])
 
-    def test_multiple_valid_targets(self):
-        f = ForwardingSettings(
-            target_1="host1.example.com:1234",
-            target_2="192.168.1.10:65535",
-            target_3="myhost:1"
-        )
-        expected = [
-            ("host1.example.com", 1234),
-            ("192.168.1.10", 65535),
-            ("myhost", 1),
-        ]
-        self.assertEqual(f.forwarding_targets, expected)
 
-    def test_invalid_hostport_format(self):
-        with self.assertRaises(ValidationError):
-            ForwardingSettings(target_1="noport")
-        with self.assertRaises(ValidationError):
-            ForwardingSettings(target_1="host:port:extra")
-        with self.assertRaises(ValidationError):
-            ForwardingSettings(target_1=":8080")
-        with self.assertRaises(ValidationError):
-            ForwardingSettings(target_1="host:")
+@allure.story("Cross-field rules")
+@allure.title("Duplicate forwarding targets are rejected ({case})")
+@pytest.mark.parametrize("case", list(_DUPLICATE))
+def test_duplicate_targets_rejected(case):
+    """
+    Sets two targets with the same port and the same host, counting localhost and 127.0.0.1 as one host, and
+    ignoring letter case and a trailing dot.
 
-    def test_port_out_of_range(self):
-        with self.assertRaises(ValidationError):
-            ForwardingSettings(target_1="host:0")
-        with self.assertRaises(ValidationError):
-            ForwardingSettings(target_1="host:70000")
-
-    def test_port_non_numeric(self):
-        with self.assertRaises(ValidationError):
-            ForwardingSettings(target_1="host:notanumber")
-
-    def test_whitespace_trimmed(self):
-        settings = ForwardingSettings(target_1="  myhost.com:1234  ")
-        self.assertEqual(settings.target_1, "myhost.com:1234")
-
-    def test_forwarding_duplicate_targets(self):
-        # valid: distinct targets
-        ForwardingSettings(
-            target_1="example.com:1234",
-            target_2="example.org:1234",
-        )
-
-        # valid: localhost vs remote
-        ForwardingSettings(
-            target_1="localhost:5000",
-            target_2="example.com:5000",
-        )
-
-        # invalid: localhost aliases treated as duplicate
-        with self.assertRaises(ValueError):
-            ForwardingSettings(
-                target_1="localhost:6000",
-                target_2="127.0.0.1:6000",
-            )
-
-        # invalid: exact duplicate
-        with self.assertRaises(ValueError):
-            ForwardingSettings(
-                target_1="myhost:7000",
-                target_2="myhost:7000",
-            )
+    Expected: a ValidationError reporting the duplicate target.
+    """
+    with pytest.raises(ValidationError, match="Duplicate forwarding target"):
+        ForwardingSettings(**_DUPLICATE[case])

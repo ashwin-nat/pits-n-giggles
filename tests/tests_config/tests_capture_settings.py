@@ -21,156 +21,60 @@
 # SOFTWARE.
 # pylint: skip-file
 
-import os
-import sys
+"""CaptureSettings rules the field spec table does not cover: defaults and session_dir. The autosave flags are in
+tests_config_properties.py."""
 
+import allure
+import pytest
 from pydantic import ValidationError
-
-# Add the parent directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.config import CaptureSettings
 
-from .tests_config_base import TestF1ConfigBase
+pytestmark = allure.feature("Capture settings")
 
-# ----------------------------------------------------------------------------------------------------------------------
+# -------------------------------------- DEFAULTS ----------------------------------------------------------------------
 
-class TestCaptureSettings(TestF1ConfigBase):
-    """Test CaptureSettings model"""
+@allure.story("Defaults")
+@allure.title("Default CaptureSettings hold the shipped values")
+def test_default_values():
+    """
+    Builds CaptureSettings with no arguments.
 
-    def test_default_values(self):
-        """Test default values"""
-        settings = CaptureSettings()
-        self.assertTrue(settings.post_race_data_autosave)
-        self.assertTrue(settings.post_quali_data_autosave)
-        self.assertFalse(settings.post_fp_data_autosave)
-        self.assertFalse(settings.post_tt_data_autosave)
-        self.assertFalse(settings.save_race_ctrl_msg)
+    Expected: every field holds its shipped default.
+    """
+    settings = CaptureSettings()
 
-    def test_boolean_validation_post_race_data_autosave(self):
-        capture_true = CaptureSettings(post_race_data_autosave=True)
-        self.assertTrue(capture_true.post_race_data_autosave)
+    assert settings.post_race_data_autosave is True
+    assert settings.post_quali_data_autosave is True
+    assert settings.post_fp_data_autosave is False
+    assert settings.post_tt_data_autosave is False
+    assert settings.save_race_ctrl_msg is False
+    assert settings.just_in_case_autosave is True
+    assert settings.unified_save_format is False
+    assert settings.session_dir == "data"
 
-        capture_false = CaptureSettings(post_race_data_autosave=False)
-        self.assertFalse(capture_false.post_race_data_autosave)
+# -------------------------------------- SESSION DIR -------------------------------------------------------------------
 
-        # Also test coercion from strings if you want
-        capture_str_true = CaptureSettings(post_race_data_autosave="True")
-        self.assertTrue(capture_str_true.post_race_data_autosave)
+@allure.story("Session dir")
+@allure.title("session_dir keeps the path {path}")
+@pytest.mark.parametrize("path", ["/my/sessions", "custom/relative"])
+def test_session_dir_valid(path):
+    """
+    Sets session_dir to an absolute or a relative path.
 
-        capture_str_false = CaptureSettings(post_race_data_autosave="False")
-        self.assertFalse(capture_str_false.post_race_data_autosave)
+    Expected: the model builds and keeps the path as given.
+    """
+    assert CaptureSettings(session_dir=path).session_dir == path
 
-    def test_boolean_validation_post_quali_data_autosave(self):
-        capture_true = CaptureSettings(post_quali_data_autosave=True)
-        self.assertTrue(capture_true.post_quali_data_autosave)
 
-        capture_false = CaptureSettings(post_quali_data_autosave=False)
-        self.assertFalse(capture_false.post_quali_data_autosave)
+@allure.story("Session dir")
+@allure.title("session_dir rejects {path!r}")
+@pytest.mark.parametrize("path", ["", "   "])
+def test_session_dir_blank_rejected(path):
+    """
+    Sets session_dir to an empty or whitespace-only string.
 
-        # Also test coercion from strings if you want
-        capture_str_true = CaptureSettings(post_quali_data_autosave="True")
-        self.assertTrue(capture_str_true.post_quali_data_autosave)
-
-        capture_str_false = CaptureSettings(post_quali_data_autosave="False")
-        self.assertFalse(capture_str_false.post_quali_data_autosave)
-
-    def test_boolean_validation_post_fp_data_autosave(self):
-        capture_true = CaptureSettings(post_fp_data_autosave=True)
-        self.assertTrue(capture_true.post_fp_data_autosave)
-
-        capture_false = CaptureSettings(post_fp_data_autosave=False)
-        self.assertFalse(capture_false.post_fp_data_autosave)
-
-        # Also test coercion from strings if you want
-        capture_str_true = CaptureSettings(post_fp_data_autosave="True")
-        self.assertTrue(capture_str_true.post_fp_data_autosave)
-
-        capture_str_false = CaptureSettings(post_fp_data_autosave="False")
-        self.assertFalse(capture_str_false.post_fp_data_autosave)
-
-    def test_boolean_validation_post_tt_data_autosave(self):
-        capture_true = CaptureSettings(post_tt_data_autosave=True)
-        self.assertTrue(capture_true.post_tt_data_autosave)
-
-        capture_false = CaptureSettings(post_tt_data_autosave=False)
-        self.assertFalse(capture_false.post_tt_data_autosave)
-
-        # Also test coercion from strings if you want
-        capture_str_true = CaptureSettings(post_tt_data_autosave="True")
-        self.assertTrue(capture_str_true.post_tt_data_autosave)
-
-        capture_str_false = CaptureSettings(post_tt_data_autosave="False")
-        self.assertFalse(capture_str_false.post_tt_data_autosave)
-
-    def test_boolean_validation_save_race_ctrl_msg(self):
-        capture_true = CaptureSettings(save_race_ctrl_msg=True)
-        self.assertTrue(capture_true.save_race_ctrl_msg)
-
-        capture_false = CaptureSettings(save_race_ctrl_msg=False)
-        self.assertFalse(capture_false.save_race_ctrl_msg)
-
-        capture_str_true = CaptureSettings(save_race_ctrl_msg="True")
-        self.assertTrue(capture_str_true.save_race_ctrl_msg)
-
-        capture_str_false = CaptureSettings(save_race_ctrl_msg="False")
-        self.assertFalse(capture_str_false.save_race_ctrl_msg)
-
-    def test_invalid_type_raises(self):
-        with self.assertRaises(ValidationError):
-            CaptureSettings(post_race_data_autosave="notaboolean")
-
-        with self.assertRaises(ValidationError):
-            CaptureSettings(post_quali_data_autosave="notaboolean")
-
-        with self.assertRaises(ValidationError):
-            CaptureSettings(post_fp_data_autosave="notaboolean")
-
-        with self.assertRaises(ValidationError):
-            CaptureSettings(post_tt_data_autosave="notaboolean")
-
-        with self.assertRaises(ValidationError):
-            CaptureSettings(save_race_ctrl_msg="notaboolean")
-
-    def test_default_just_in_case_autosave(self):
-        self.assertTrue(CaptureSettings().just_in_case_autosave)
-
-    def test_boolean_validation_just_in_case_autosave(self):
-        self.assertTrue(CaptureSettings(just_in_case_autosave=True).just_in_case_autosave)
-        self.assertFalse(CaptureSettings(just_in_case_autosave=False).just_in_case_autosave)
-        self.assertTrue(CaptureSettings(just_in_case_autosave="True").just_in_case_autosave)
-        self.assertFalse(CaptureSettings(just_in_case_autosave="False").just_in_case_autosave)
-
-    def test_invalid_just_in_case_autosave_raises(self):
-        with self.assertRaises(ValidationError):
-            CaptureSettings(just_in_case_autosave="notaboolean")
-
-    def test_default_unified_save_format(self):
-        self.assertFalse(CaptureSettings().unified_save_format)
-
-    def test_boolean_validation_unified_save_format(self):
-        self.assertTrue(CaptureSettings(unified_save_format=True).unified_save_format)
-        self.assertFalse(CaptureSettings(unified_save_format=False).unified_save_format)
-        self.assertTrue(CaptureSettings(unified_save_format="True").unified_save_format)
-        self.assertFalse(CaptureSettings(unified_save_format="False").unified_save_format)
-
-    def test_invalid_unified_save_format_raises(self):
-        with self.assertRaises(ValidationError):
-            CaptureSettings(unified_save_format="notaboolean")
-
-    def test_default_session_dir(self):
-        self.assertEqual(CaptureSettings().session_dir, "data")
-
-    def test_session_dir_absolute_path(self):
-        self.assertEqual(CaptureSettings(session_dir="/my/sessions").session_dir, "/my/sessions")
-
-    def test_session_dir_relative_path(self):
-        self.assertEqual(CaptureSettings(session_dir="custom/relative").session_dir, "custom/relative")
-
-    def test_session_dir_empty_raises(self):
-        with self.assertRaises(ValidationError):
-            CaptureSettings(session_dir="")
-
-    def test_session_dir_whitespace_only_raises(self):
-        with self.assertRaises(ValidationError):
-            CaptureSettings(session_dir="   ")
+    Expected: a ValidationError.
+    """
+    with pytest.raises(ValidationError):
+        CaptureSettings(session_dir=path)

@@ -27,8 +27,8 @@ from typing import Callable, Dict, List, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import (QHBoxLayout, QLabel, QPushButton, QSlider,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QPushButton,
+                               QSlider, QVBoxLayout, QWidget)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -82,11 +82,30 @@ class OverlaysAdjustPopup(QWidget):
 
         self.setFixedWidth(300)
 
+        # ---- Slider rows, filled by set_items() ----
+        self.rows_layout = QVBoxLayout()
+        self.rows_layout.setContentsMargins(0, 0, 0, 0)
+        self.rows_layout.setSpacing(12)
+        self.inner_layout.addLayout(self.rows_layout)
+
         # ---- Confirm button ----
         self.confirm_btn = QPushButton("Confirm")
         self.confirm_btn.clicked.connect(self.on_confirm)
         self.confirm_btn.setFixedHeight(36)
         self.confirm_btn.setFont(QFont("Formula1"))
+        self.inner_layout.addWidget(self.confirm_btn)
+
+        # ---- Footer: divider and note, hidden until set_hint() ----
+        self.footer_divider = QFrame(self.inner)
+        self.footer_divider.setFrameShape(QFrame.Shape.HLine)
+        self.footer_divider.setFixedHeight(1)
+        self.footer_divider.setStyleSheet("background-color: rgba(255,255,255,40); border: none;")
+        self.hint_label = QLabel(self.inner)
+        self.hint_label.setWordWrap(True)
+        self.hint_label.setStyleSheet("QLabel { color: rgba(255,255,255,150); font-size: 12px; }")
+        self.inner_layout.addWidget(self.footer_divider)
+        self.inner_layout.addWidget(self.hint_label)
+        self.set_hint(None)
 
         # ---- Styles (updated) ----
         self.setStyleSheet("""
@@ -202,7 +221,7 @@ class OverlaysAdjustPopup(QWidget):
             h.addWidget(value_label)
 
             row_layout.addLayout(h)
-            self.inner_layout.addWidget(row_widget)
+            self.rows_layout.addWidget(row_widget)
 
             self._slider_rows.append(SliderRow(
                 item=item,
@@ -212,9 +231,12 @@ class OverlaysAdjustPopup(QWidget):
                 row_widget=row_widget,
             ))
 
-        # Add confirm button at end
-        self.inner_layout.addWidget(self.confirm_btn)
-
+    # ---------------------------------------------------------
+    def set_hint(self, text: Optional[str]):
+        """Show text in the footer below a divider, or hide the footer when None."""
+        self.hint_label.setText(text or "")
+        self.footer_divider.setVisible(bool(text))
+        self.hint_label.setVisible(bool(text))
 
     # ---------------------------------------------------------
     def set_confirm_callback(self, callback):

@@ -2,8 +2,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
 import QtQuick.Shapes
+import "../base"
 
-Window {
+OverlayWindow {
     id: root
     visible: true
 
@@ -13,7 +14,6 @@ Window {
 
     width: baseWidth * scaleFactor
     height: baseHeight * scaleFactor
-    color: "transparent"
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
 
     // Radar properties
@@ -55,7 +55,8 @@ Window {
         height: root.baseHeight
 
         clip: true
-        opacity: root.lockedMode ? (root.carsNearby ? root.baseOpacity : root.idleOpacity) : root.baseOpacity
+        // Idle never brighter than base: an idle at or above it is ignored
+        opacity: root.lockedMode && !root.carsNearby ? Math.min(root.idleOpacity, root.baseOpacity) : root.baseOpacity
 
         transform: Scale {
             xScale: root.scaleFactor

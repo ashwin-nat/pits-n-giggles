@@ -26,9 +26,9 @@ import os
 from time import perf_counter_ns
 from typing import Any, Callable, Dict, Optional, Tuple, Type
 
-from PySide6.QtCore import (QMetaObject, QMutex, QMutexLocker, QObject, Qt,
-                            QTimer, QtMsgType, QWaitCondition, Signal, Slot,
-                            qInstallMessageHandler)
+from PySide6.QtCore import (QMetaObject, QMutex, QMutexLocker, QObject, QPoint,
+                            Qt, QTimer, QtMsgType, QWaitCondition, Signal,
+                            Slot, qInstallMessageHandler)
 from PySide6.QtWidgets import QApplication
 
 from lib.config import PngSettings
@@ -38,6 +38,7 @@ from lib.mailbox import LatestSlot
 
 from ..hf_types import HighFreqBase
 from ..overlays import BaseOverlay
+from .overlay_popover import OverlayPopover
 
 # -------------------------------------- CONSTANTS ----------------------------------------------------------------------
 
@@ -103,6 +104,7 @@ class WindowManager(QObject):
         }
         self._state_cursors: Dict[Tuple[str, str], int] = {}  # (overlay_id, topic) -> last-read seq
         self._topic_signals: Dict[str, _TopicSignal] = {}  # cmd -> proxy; only created for handled topics
+        self._overlay_popover: Optional[OverlayPopover] = None  # one shared instance, built on first use
 
         qInstallMessageHandler(self._qt_message_handler)
 
@@ -162,6 +164,24 @@ class WindowManager(QObject):
             if hf_type not in self._hf_slots:
                 self._hf_slots[hf_type] = LatestSlot(hf_type, self.stats)
             self.logger.debug("Overlay %s subscribed to HF type '%s'", overlay_id, hf_type)
+
+    def open_overlay_popover(self, overlay: BaseOverlay, global_pos: QPoint):
+        """Open overlay's settings popover at global_pos. GUI thread only."""
+        if self._overlay_popover is None:
+            self.logger.debug("Creating overlay popover")
+            self._overlay_popover = OverlayPopover(self.logger)
+        self._overlay_popover.open_for(overlay, global_pos)
+
+    def refresh_overlay_popover(self, overlay: BaseOverlay):
+        """Rebuild the popover if it is open on overlay. GUI thread only."""
+        if self._overlay_popover is not None:
+            self._overlay_popover.refresh(overlay)
+
+    def close_overlay_popover(self):
+        """Close the overlay popover if open. GUI thread only."""
+        if self._overlay_popover is not None and self._overlay_popover.isVisible():
+            self.logger.debug("Closing overlay popover on lock")
+            self._overlay_popover.hide()
 
     # pylint: disable=useless-return
     @Slot(str, str, dict)
