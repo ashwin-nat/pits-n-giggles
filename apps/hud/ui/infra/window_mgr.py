@@ -38,7 +38,7 @@ from lib.mailbox import LatestSlot
 
 from ..hf_types import HighFreqBase
 from ..overlays import BaseOverlay
-from .opacity_popover import OpacityPopover
+from .overlay_popover import OverlayPopover
 
 # -------------------------------------- CONSTANTS ----------------------------------------------------------------------
 
@@ -104,7 +104,7 @@ class WindowManager(QObject):
         }
         self._state_cursors: Dict[Tuple[str, str], int] = {}  # (overlay_id, topic) -> last-read seq
         self._topic_signals: Dict[str, _TopicSignal] = {}  # cmd -> proxy; only created for handled topics
-        self._opacity_popover: Optional[OpacityPopover] = None  # one shared instance, built on first use
+        self._overlay_popover: Optional[OverlayPopover] = None  # one shared instance, built on first use
 
         qInstallMessageHandler(self._qt_message_handler)
 
@@ -165,18 +165,23 @@ class WindowManager(QObject):
                 self._hf_slots[hf_type] = LatestSlot(hf_type, self.stats)
             self.logger.debug("Overlay %s subscribed to HF type '%s'", overlay_id, hf_type)
 
-    def open_opacity_popover(self, overlay: BaseOverlay, global_pos: QPoint):
-        """Open the opacity override popover for overlay at global_pos. GUI thread only."""
-        if self._opacity_popover is None:
-            self.logger.debug("Creating opacity popover")
-            self._opacity_popover = OpacityPopover(self.logger)
-        self._opacity_popover.open_for(overlay, global_pos)
+    def open_overlay_popover(self, overlay: BaseOverlay, global_pos: QPoint):
+        """Open overlay's settings popover at global_pos. GUI thread only."""
+        if self._overlay_popover is None:
+            self.logger.debug("Creating overlay popover")
+            self._overlay_popover = OverlayPopover(self.logger)
+        self._overlay_popover.open_for(overlay, global_pos)
 
-    def close_opacity_popover(self):
-        """Close the opacity override popover if open. GUI thread only."""
-        if self._opacity_popover is not None and self._opacity_popover.isVisible():
-            self.logger.debug("Closing opacity popover on lock")
-            self._opacity_popover.hide()
+    def refresh_overlay_popover(self, overlay: BaseOverlay):
+        """Rebuild the popover if it is open on overlay. GUI thread only."""
+        if self._overlay_popover is not None:
+            self._overlay_popover.refresh(overlay)
+
+    def close_overlay_popover(self):
+        """Close the overlay popover if open. GUI thread only."""
+        if self._overlay_popover is not None and self._overlay_popover.isVisible():
+            self.logger.debug("Closing overlay popover on lock")
+            self._overlay_popover.hide()
 
     # pylint: disable=useless-return
     @Slot(str, str, dict)

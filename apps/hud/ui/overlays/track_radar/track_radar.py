@@ -24,13 +24,14 @@
 
 import math
 from pathlib import Path
-from typing import Any, Dict, Optional, final
+from typing import Any, Dict, List, Optional, final
 
 from lib.config import OverlayId, PngSettings
 from lib.logger import PngLogger
 
 from ...hf_types import DriverMotionInfo, LiveSessionMotionInfo
 from ..base.base_overlay import BaseOverlay
+from ..base.overlay_settings import Note, OverlaySetting, Slider
 from ._glow_provider import RadarGlowImageProvider
 from ._radar_math import _RADAR_AREA_RATIO, car_px, to_radar_coords
 
@@ -54,7 +55,6 @@ class TrackRadarOverlay(BaseOverlay):
         self.radar_range_m: float = float(settings.HUD.track_radar_range_m)
         super().__init__(settings, logger)
         self.subscribe_hf(LiveSessionMotionInfo)
-        self._register_handlers()
 
     @final
     def pre_setup(self):
@@ -78,31 +78,43 @@ class TrackRadarOverlay(BaseOverlay):
         self._set_base_opacity_property(opacity)
 
     @final
-    def min_override_opacity(self) -> int:
-        """The override must stay above idle opacity, as the config rule requires."""
-        return self.idle_opacity + 1
-
-    @final
     def set_locked_state(self, locked: bool):
         """Set locked state."""
         self.logger.debug('%s | [OVERRIDDEN HANDLER] Setting locked state to %s', self.OVERLAY_ID, locked)
         super().set_locked_state(locked)
         self._set_locked_property(locked)
 
-    def _register_handlers(self):
-        @self.on_event("set_track_radar_idle_opacity")
-        def _handle_set_track_radar_idle_opacity(data: Dict[str, Any]):
-            """Set track radar idle opacity."""
-            self.logger.debug('%s | Received "set_track_radar_idle_opacity" event. Opacity: %s', self.OVERLAY_ID, data)
-            opacity = data["opacity"]
-            self.idle_opacity = opacity
-            self._set_idle_opacity_property(opacity)
+    @final
+    def custom_popover_settings(self) -> List[OverlaySetting]:
+        """Idle opacity (noted when ignored) and range."""
+        return [
+            Slider.for_config_field("track_radar_idle_opacity", "Idle opacity", "%",
+                                    value=lambda: self.idle_opacity, on_change=self.set_idle_opacity),
+            Note(text=self._idle_ignored_note, visible=lambda: self.idle_opacity > self.opacity),
+            Slider.for_config_field("track_radar_range_m", "Range", " m",
+                                    value=lambda: round(self.radar_range_m), on_change=self.set_radar_range),
+        ]
 
-        @self.on_event("set_track_radar_range")
-        def _handle_set_track_radar_range(data: Dict[str, Any]):
-            self.logger.info('%s | Received "set_track_radar_range" event. range_m: %s', self.OVERLAY_ID, data)
-            self.radar_range_m = float(data["range_m"])
-            self._apply_radar_range_to_qml()
+    @final
+    def get_overlay_settings(self) -> Dict[str, Any]:
+        return {
+            "track_radar_idle_opacity": self.idle_opacity,
+            "track_radar_range_m": round(self.radar_range_m),
+        }
+
+    def _idle_ignored_note(self) -> str:
+        against = "the radar's opacity override" if self.config.opacity_override.enabled else "the global opacity"
+        return f"Idle opacity is above {against} ({self.opacity}%), so it is ignored"
+
+    def set_idle_opacity(self, opacity: int):
+        """Set the opacity (0-100) used while locked with no cars nearby."""
+        self.idle_opacity = opacity
+        self._set_idle_opacity_property(opacity)
+
+    def set_radar_range(self, range_m: int):
+        """Set the distance in metres the radar's edge represents."""
+        self.radar_range_m = float(range_m)
+        self._apply_radar_range_to_qml()
 
     @final
     def render_frame(self):

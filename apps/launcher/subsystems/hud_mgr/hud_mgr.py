@@ -95,7 +95,7 @@ class HudAppMgr(PngAppMgrBase):
             self._set_state(AppState.UNSUPPORTED)
 
         self.overlays_adj_popup = OverlaysAdjustPopup(self.window)
-        self.overlays_adj_popup.set_hint("Right-click an overlay to set its own opacity")
+        self.overlays_adj_popup.set_hint("Right-click an overlay for its own settings")
         self.overlays_adj_popup.hide()
 
     def _get_button_configs(self) -> List[ButtonConfig]:
@@ -278,6 +278,8 @@ class HudAppMgr(PngAppMgrBase):
 
     def _reset_to_locked(self) -> None:
         """A HUD process starts locked, and a stopped one cannot be edited: match the launcher to that."""
+        # No lock round trip here, so a stop or restart while unlocked loses unsaved drags and popover edits.
+        # Accepted: start/stop is a developer action, and a settings-driven restart mid-edit is rare.
         self.locked = True
         self._show_lock_state()
 
@@ -331,11 +333,8 @@ class HudAppMgr(PngAppMgrBase):
 
         # IPC success - persist the reset overlays' defaults, keeping the rest untouched
         try:
-            new_layout = dict(self.curr_settings.HUD.layout)
-            for oid in reset_ids:
-                new_layout[oid] = default_layout_dict[oid]
-            self._save_new_layout_to_disk(new_layout=new_layout)
-            self.info_log(f"HUD overlays reset to defaults and saved successfully: {reset_ids}")
+            if self._save_overlay_changes({oid: default_layout_dict[oid] for oid in reset_ids}, {}):
+                self.info_log(f"HUD overlays reset to defaults and saved successfully: {reset_ids}")
         except Exception as e:  # pylint: disable=broad-except
             self.error_log(f"Failed to persist default HUD layout: {e}")
 
@@ -450,54 +449,6 @@ class HudAppMgr(PngAppMgrBase):
         else:
             self.debug_log("Set global opacity command was successful")
 
-    def _send_circuit_info_length_change(self, length: int) -> None:
-        """Send circuit info length change to HUD app
-
-        Args:
-            length (int): New circuit info length (m)
-        """
-        self.debug_log("Sending set-circuit-info-length command to HUD...")
-        rsp = IpcClientSync(self.ipc_port).request(command="set-circuit-info-length", args={
-            "length": length,
-        })
-        status = rsp.get("status")
-        if status != "success":
-            self.error_log(f"Failed to set circuit info length: {rsp}")
-        else:
-            self.debug_log("Set circuit info length command was successful")
-
-    def _send_track_radar_idle_opacity_change(self, opacity: int) -> None:
-        """Send track radar idle opacity change to HUD app
-
-        Args:
-            opacity (int): New track radar idle opacity
-        """
-        self.debug_log("Sending set-track-radar-idle-opacity command to HUD...")
-        rsp = IpcClientSync(self.ipc_port).request(command="set-track-radar-idle-opacity", args={
-            "opacity": opacity,
-        })
-        status = rsp.get("status")
-        if status != "success":
-            self.error_log(f"Failed to set track radar idle opacity: {rsp}")
-        else:
-            self.debug_log("Set track radar idle opacity command was successful")
-
-    def _send_track_radar_range_change(self, range_m: int) -> None:
-        """Send track radar range change to HUD app
-
-        Args:
-            range_m (int): New track radar range in metres
-        """
-        self.debug_log("Sending set-track-radar-range command to HUD...")
-        rsp = IpcClientSync(self.ipc_port).request(command="set-track-radar-range", args={
-            "range_m": range_m,
-        })
-        status = rsp.get("status")
-        if status != "success":
-            self.error_log(f"Failed to set track radar range: {rsp}")
-        else:
-            self.debug_log("Set track radar range command was successful")
-
     def _start_integration_test_thread(self):
         """Start the integration test thread"""
         self.integration_test_stop_event.clear()
@@ -611,7 +562,7 @@ class HudAppMgr(PngAppMgrBase):
         return False
 
     def show_overlays_adj_popup(self):
-        """Show the overlays adjustment popup (opacity and other non-position settings)"""
+        """Show the overlays adjustment popup: settings shared by every overlay. Per-overlay ones live in the HUD."""
         hud_settings = self.curr_settings.HUD
 
         # pylint: disable=unsubscriptable-object
@@ -623,35 +574,6 @@ class HudAppMgr(PngAppMgrBase):
                 max=HudSettings.model_fields["overlays_opacity"].json_schema_extra["ui"]["max"],
                 value=hud_settings.overlays_opacity,
                 visible=True,
-            ),
-
-            SliderItem(
-                key="track_radar_idle_opacity",
-                label="Track Radar Idle Opacity",
-                min=HudSettings.model_fields["track_radar_idle_opacity"].json_schema_extra["ui"]["min"],
-                max=HudSettings.model_fields["track_radar_idle_opacity"].json_schema_extra["ui"]["max"],
-                value=hud_settings.track_radar_idle_opacity,
-                tooltip=HudSettings.model_fields["track_radar_idle_opacity"].json_schema_extra["ui"]["ext_info"][0],
-                visible=hud_settings.show_track_radar_overlay,
-            ),
-
-            SliderItem(
-                key="circuit_info_length",
-                label="Circuit Info Length (px)",
-                min=HudSettings.model_fields["circuit_info_length"].json_schema_extra["ui"]["min"],
-                max=HudSettings.model_fields["circuit_info_length"].json_schema_extra["ui"]["max"],
-                value=hud_settings.circuit_info_length,
-                visible=hud_settings.show_circuit_info,
-            ),
-
-            SliderItem(
-                key="track_radar_range_m",
-                label="Track Radar Range (m)",
-                min=HudSettings.model_fields["track_radar_range_m"].json_schema_extra["ui"]["min"],
-                max=HudSettings.model_fields["track_radar_range_m"].json_schema_extra["ui"]["max"],
-                value=hud_settings.track_radar_range_m,
-                tooltip=HudSettings.model_fields["track_radar_range_m"].json_schema_extra["ui"]["ext_info"][0],
-                visible=hud_settings.show_track_radar_overlay,
             ),
         ])
         self.overlays_adj_popup.set_confirm_callback(self._overlays_adj_popup_on_confirm)
@@ -673,9 +595,6 @@ class HudAppMgr(PngAppMgrBase):
         # ---- Build candidate settings (ALLOW invalid intermediate state here) ----
         new_settings = self.curr_settings.model_copy(deep=True)
         new_settings.HUD.overlays_opacity = values["overlays_opacity"]
-        new_settings.HUD.track_radar_idle_opacity = values["track_radar_idle_opacity"]
-        new_settings.HUD.circuit_info_length = values["circuit_info_length"]
-        new_settings.HUD.track_radar_range_m = values["track_radar_range_m"]
 
         # ---- FORCE VALIDATION (this is the important bit) ----
         try:
@@ -699,50 +618,9 @@ class HudAppMgr(PngAppMgrBase):
 
             return
 
-        global_opacity_changed = (
-            self.curr_settings.HUD.overlays_opacity
-            != validated_settings.HUD.overlays_opacity
-        )
-
-        track_radar_idle_opacity_changed = (
-            self.curr_settings.HUD.track_radar_idle_opacity
-            != validated_settings.HUD.track_radar_idle_opacity
-        )
-
-        circuit_info_length_changed = (
-            self.curr_settings.HUD.circuit_info_length
-            != validated_settings.HUD.circuit_info_length
-        )
-
-        track_radar_range_changed = (
-            self.curr_settings.HUD.track_radar_range_m
-            != validated_settings.HUD.track_radar_range_m
-        )
-
-        # ---- Apply runtime effects ----
-        if global_opacity_changed:
-            self._send_global_opacity_change(
-                validated_settings.HUD.overlays_opacity
-            )
-
-        if track_radar_idle_opacity_changed:
-            self._send_track_radar_idle_opacity_change(
-                validated_settings.HUD.track_radar_idle_opacity
-            )
-
-        if circuit_info_length_changed:
-            self._send_circuit_info_length_change(
-                validated_settings.HUD.circuit_info_length
-            )
-
-        if track_radar_range_changed:
-            self._send_track_radar_range_change(
-                validated_settings.HUD.track_radar_range_m
-            )
-
-        # ---- Persist only VALIDATED settings ----
-        if global_opacity_changed or track_radar_idle_opacity_changed or circuit_info_length_changed \
-                or track_radar_range_changed:
+        # ---- Apply and persist only VALIDATED settings ----
+        if self.curr_settings.HUD.overlays_opacity != validated_settings.HUD.overlays_opacity:
+            self._send_global_opacity_change(validated_settings.HUD.overlays_opacity)
             self.window.update_settings(validated_settings)
             self.window.save_settings_to_disk(validated_settings)
 
@@ -774,11 +652,12 @@ class HudAppMgr(PngAppMgrBase):
         return True, rsp
 
     def _save_layout_if_changed(self, rsp: dict[str, Any]) -> None:
-        """Save the layout if it has changed."""
+        """Save the layout and the overlays' own settings (edited in their popovers) if either changed."""
         layout: Optional[Dict[str, Dict[str, int]]] = rsp.get("layout")
         if not layout:
             self.error_log(f"HUD layout not found in lock-widgets response: {json.dumps(rsp, indent=2)}")
             return
+        overlay_settings: Dict[str, Any] = rsp.get("overlay_settings", {})
 
         should_write = False
         parsed_layout_dict = HudSettings.get_layout_dict_from_json(layout)
@@ -793,17 +672,31 @@ class HudAppMgr(PngAppMgrBase):
                                "Saving to disk...")
                 should_write = True
 
-        if should_write:
-            self._save_new_layout_to_disk(new_layout=parsed_layout_dict)
-        else:
-            self.debug_log("HUD layout has not changed. Not saving to disk...")
+        for name, value in overlay_settings.items():
+            curr_value = getattr(self.curr_settings.HUD, name)
+            if curr_value != value:
+                self.debug_log(f"Overlay setting {name} has changed from {curr_value} to {value}. Saving to disk...")
+                should_write = True
 
-    def _save_new_layout_to_disk(self, new_layout: Dict[str, OverlayPosition]) -> None:
-        """Save the new layout to disk and propagate the new settings to all subsystems"""
-        new_settings = self.curr_settings.model_copy(deep=True)
-        new_settings.HUD.layout = new_layout
+        if should_write:
+            self._save_overlay_changes(parsed_layout_dict, overlay_settings)
+        else:
+            self.debug_log("Overlay layout and settings have not changed. Not saving to disk...")
+
+    def _save_overlay_changes(self, layout: Dict[str, OverlayPosition], overlay_settings: Dict[str, Any]) -> bool:
+        """Validate, save and propagate these layout entries and overlay-owned HUD fields; others are kept.
+
+        Returns:
+            False if the result was invalid and nothing was saved
+        """
+        try:
+            new_settings = self.curr_settings.with_overlay_changes(layout, overlay_settings)
+        except ValidationError as e:
+            self.error_log(f"Overlay layout or settings are invalid, not saving: {e}")
+            return False
         self.window.update_settings(new_settings)
         self.window.save_settings_to_disk(new_settings)
+        return True
 
     @override
     def get_start_by_default(self):

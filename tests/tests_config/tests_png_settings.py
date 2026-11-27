@@ -29,7 +29,8 @@ import allure
 import pytest
 from pydantic import ValidationError
 
-from lib.config import ForwardingSettings, HudSettings, NetworkSettings, PngSettings
+from lib.config import (ForwardingSettings, HudSettings, NetworkSettings, OpacityOverride, OverlayId,
+                        OverlayPosition, PngSettings)
 from lib.config.schema.mcp_cfg import McpSettings
 from lib.config.schema.utils import PortConflictError, UdpActionCodeConflictError
 
@@ -145,3 +146,107 @@ def test_forwarding_loop_rejected(case):
     """
     with pytest.raises(ValidationError, match="localhost loop"):
         PngSettings(Network=NetworkSettings(telemetry_port=20777), Forwarding=ForwardingSettings(**_LOOP[case]))
+
+# -------------------------------------- OVERLAY CHANGES ---------------------------------------------------------------
+
+def _moved(oid: OverlayId, **changes) -> OverlayPosition:
+    """oid's default layout entry with the given fields changed."""
+    return HudSettings.get_default_layout_dict()[oid].model_copy(update=changes)
+
+
+@allure.story("Overlay changes")
+@allure.title("Overlay changes replace the given layout entries and keep the rest")
+def test_overlay_changes_replace_only_given_layout_entries():
+    """
+    Starts from settings with the lap timer moved, then applies a layout holding only a moved MFD with an opacity
+    override.
+
+    Expected: the MFD entry is replaced, the lap timer keeps its moved entry, and the original settings are unchanged.
+    """
+    curr = PngSettings(HUD=HudSettings(layout={OverlayId.LAP_TIMER: _moved(OverlayId.LAP_TIMER, x=11, y=12)}))
+    mfd = _moved(OverlayId.MFD, x=7, y=8, opacity_override=OpacityOverride(enabled=True, value=40))
+
+    new = curr.with_overlay_changes({OverlayId.MFD: mfd}, {})
+
+    assert new.HUD.layout[OverlayId.MFD] == mfd
+    assert new.HUD.layout[OverlayId.LAP_TIMER] == curr.HUD.layout[OverlayId.LAP_TIMER]
+    assert curr.HUD.layout[OverlayId.MFD] == HudSettings.get_default_layout_dict()[OverlayId.MFD]
+
+
+_OWNED = {
+    "track_radar_idle_opacity": 55,
+    "track_radar_range_m": 30,
+    "circuit_info_length": 900,
+}
+
+@allure.story("Overlay changes")
+@allure.title("An overlay-owned HUD field is applied ({field})")
+@pytest.mark.parametrize("field", list(_OWNED))
+def test_overlay_changes_apply_owned_field(field):
+    """
+    Applies a new value for one HUD field an overlay edits in its popover, with no layout change.
+
+    Expected: the field takes the new value; every other HUD field is unchanged.
+    """
+    curr = PngSettings()
+
+    new = curr.with_overlay_changes({}, {field: _OWNED[field]})
+
+    assert getattr(new.HUD, field) == _OWNED[field]
+    assert curr.HUD.diff(new.HUD) == {field: {"old_value": getattr(curr.HUD, field), "new_value": _OWNED[field]}}
+
+
+@allure.story("Overlay changes")
+@allure.title("Overlay changes matching the current settings change nothing")
+def test_overlay_changes_unchanged():
+    """
+    Applies the current layout and the current values of the overlay-owned HUD fields, as an unchanged lock does.
+
+    Expected: the result does not differ from the current settings.
+    """
+    curr = PngSettings()
+
+    new = curr.with_overlay_changes(dict(curr.HUD.layout), {field: getattr(curr.HUD, field) for field in _OWNED})
+
+    assert not curr.has_changed(new)
+
+
+_INVALID = {
+    "radar range above its maximum": ({}, {"track_radar_range_m": 999}),
+    "circuit info length below its minimum": ({}, {"circuit_info_length": 10}),
+    # model_construct skips validation, so the bad value reaches with_overlay_changes
+    "layout entry with a bad scale": ({OverlayId.MFD: OverlayPosition.model_construct(
+        x=0, y=0, scale_factor=-1, opacity_override=OpacityOverride())}, {}),
+}
+
+@allure.story("Overlay changes")
+@allure.title("Overlay changes that make the settings invalid are rejected ({case})")
+@pytest.mark.parametrize("case", list(_INVALID))
+def test_overlay_changes_invalid_rejected(case):
+    """
+    Applies a layout entry or overlay-owned HUD field value that fails its constraint.
+
+    Expected: a ValidationError, so the launcher saves nothing.
+    """
+    layout, owned = _INVALID[case]
+    with pytest.raises(ValidationError):
+        PngSettings().with_overlay_changes(layout, owned)
+
+
+@allure.story("Overlay changes")
+@allure.title("Resetting an overlay restores its default layout entry, opacity override included")
+def test_overlay_changes_reset_restores_default():
+    """
+    Starts from settings with the MFD moved and an opacity override on, then applies the MFD's default entry, as
+    Reset Overlays does.
+
+    Expected: the MFD entry equals the default, with the default (disabled) opacity override.
+    """
+    curr = PngSettings(HUD=HudSettings(layout={
+        OverlayId.MFD: _moved(OverlayId.MFD, x=7, opacity_override=OpacityOverride(enabled=True, value=40))}))
+    default = HudSettings.get_default_layout_dict()[OverlayId.MFD]
+
+    new = curr.with_overlay_changes({OverlayId.MFD: default}, {})
+
+    assert new.HUD.layout[OverlayId.MFD] == default
+    assert new.HUD.layout[OverlayId.MFD].opacity_override == OpacityOverride()

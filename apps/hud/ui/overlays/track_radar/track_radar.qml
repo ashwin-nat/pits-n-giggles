@@ -55,7 +55,8 @@ OverlayWindow {
         height: root.baseHeight
 
         clip: true
-        opacity: root.lockedMode ? (root.carsNearby ? root.baseOpacity : root.idleOpacity) : root.baseOpacity
+        // Idle never brighter than base: an idle at or above it is ignored
+        opacity: root.lockedMode && !root.carsNearby ? Math.min(root.idleOpacity, root.baseOpacity) : root.baseOpacity
 
         transform: Scale {
             xScale: root.scaleFactor

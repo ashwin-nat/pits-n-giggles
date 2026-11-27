@@ -592,9 +592,8 @@ def png_settings_dicts(draw: st.DrawFn,
                        extra: Optional[Dict[Type[BaseModel], st.SearchStrategy]] = None) -> Dict[str, Any]:
     """A PngSettings input dict with every FIELDS and EXAMPLE_ONLY_VALUES field drawn from its valid values.
 
-    Cross-field rules are satisfied by construction: UDP action codes distinct, ports distinct per protocol, radar
-    idle opacity below overlays opacity and below an enabled radar opacity override. Validate the result anyway and
-    reject() the draw if a rule still fails.
+    Cross-field rules are satisfied by construction: UDP action codes distinct, ports distinct per protocol.
+    Validate the result anyway and reject() the draw if a rule still fails.
     extra adds or replaces a model's EXAMPLE_ONLY_VALUES entry (e.g. HTTPS paths that need real files).
     """
     example_values = {**EXAMPLE_ONLY_VALUES, **(extra or {})}
@@ -624,18 +623,7 @@ def png_settings_dicts(draw: st.DrawFn,
             values[name] = build(model.model_fields[name].annotation)
         return values
 
-    values = build(PngSettings)
-    # Idle opacity must be strictly below overlays opacity; sort, and split a tie by one step inside 0..100
-    hud = values["HUD"]
-    idle, overlays = sorted((hud["track_radar_idle_opacity"], hud["overlays_opacity"]))
-    if idle == overlays:
-        idle, overlays = (idle, overlays + 1) if overlays < 100 else (idle - 1, overlays)
-    hud["track_radar_idle_opacity"], hud["overlays_opacity"] = idle, overlays
-    # An enabled radar override must also be above idle; idle < overlays <= 100, so idle + 1 stays in range
-    radar_ovr = hud.get("layout", {}).get(OverlayId.TRACK_RADAR.value, {}).get("opacity_override")
-    if radar_ovr and FLAG.expected(radar_ovr["enabled"]):
-        radar_ovr["value"] = max(radar_ovr["value"], idle + 1)
-    return values
+    return build(PngSettings)
 
 # ------------------------- TESTS --------------------------------------------------------------------------------------
 

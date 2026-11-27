@@ -98,12 +98,27 @@ Every overlay's root QML is `OverlayWindow` (`overlays/base/OverlayWindow.qml`),
 override is enabled, otherwise the global value (`_global_opacity`, set by
 `__set_global_opacity__`). Every apply site reads it, so `set_opacity()` only writes a number.
 
-- While unlocked, right-click opens `OpacityPopover` (one instance, owned by `WindowManager`),
-  which calls `set_opacity_override()` on every change. The override lives on `self.config` and is
-  saved on lock through `get_window_info()`; reset sends the default override via `__set_config__`.
-- `min_override_opacity()` is the popover's lower bound: 0, or idle + 1 for the track radar.
+- The override lives on `self.config` and is saved on lock through `get_window_info()`; reset sends
+  the default override via `__set_config__`.
 - Track radar: content opacity stays at 1 and the resolved value goes to the QML `baseOpacity`,
-  because its QML already picks between base and idle opacity.
+  because its QML already picks between base and idle opacity. Idle is capped at base there, so an
+  idle at or above the radar's opacity is ignored; no config rule ties the two.
+
+### Overlay popover (per-overlay settings)
+
+Settings that belong to one overlay are edited in that overlay's right-click popover while unlocked,
+never in the launcher. The launcher's Edit Overlays popup holds only settings shared by all overlays.
+
+- Overlays **declare** their settings as data (`overlays/base/overlay_settings.py`: `Toggle`,
+  `Slider`, `Note`, `Divider`), each value read through a callable. They never touch the popover.
+- `BaseOverlay.popover_settings()` is final: the opacity override, then a divider and
+  `custom_popover_settings()`, which an overlay overrides to add its own (default: none).
+- `OverlayPopover` (`infra/overlay_popover.py`, one instance owned by `WindowManager`) renders the
+  list, applies each change live, then re-reads every value. `WindowManager.refresh_overlay_popover()`
+  re-reads on a global opacity change or reset while it is open.
+- Saving is separate from display. An overlay that owns config fields returns them from
+  `get_overlay_settings()` as `{field_name: value}`. On lock the HUD replies with these as
+  `overlay_settings` next to `layout`; the launcher validates the merged settings and saves them.
 
 ---
 

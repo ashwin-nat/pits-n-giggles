@@ -25,8 +25,8 @@
 import ctypes
 from pathlib import Path
 from time import perf_counter_ns
-from typing import (TYPE_CHECKING, Any, Callable, Dict, Optional, Type,
-                    TypeVar, final)
+from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional,
+                    Type, TypeVar, final)
 
 from PySide6.QtCore import (Q_ARG, QEvent, QMetaObject, QObject, QPoint,
                             QPropertyAnimation, QSize, Qt, QTimer, QUrl,
@@ -41,6 +41,7 @@ from lib.logger import PngLogger
 from meta.meta import APP_NAME_SNAKE
 
 from ...hf_types import HighFreqBase
+from .overlay_settings import Divider, OverlaySetting, Slider, Toggle
 from .qml_bridge import QmlBridge
 
 if TYPE_CHECKING:
@@ -203,15 +204,45 @@ class BaseOverlay(QmlBridge, QObject):
         ovr = self.config.opacity_override
         return ovr.value if ovr.enabled else self._global_opacity
 
-    def min_override_opacity(self) -> int:
-        """Lowest value the opacity override may take."""
-        return 0
-
     def set_opacity_override(self, enabled: bool, value: int):
         """Set this overlay's opacity override and apply the resulting opacity."""
         override = OpacityOverride(enabled=enabled, value=value)
         self.config = self.config.model_copy(update={"opacity_override": override})
         self.set_opacity(self.opacity)
+
+    @final
+    def popover_settings(self) -> List[OverlaySetting]:
+        """Settings shown in this overlay's right-click popover: the opacity override, then custom ones."""
+        settings: List[OverlaySetting] = [
+            Toggle("Override global opacity",
+                   value=self._override_enabled, on_change=self._set_override_enabled),
+            Slider(None, 0, 100, "%",
+                   value=self._override_value, on_change=self._set_override_value,
+                   enabled=self._override_enabled),
+        ]
+        if custom := self.custom_popover_settings():
+            settings += [Divider(), *custom]
+        return settings
+
+    def _override_enabled(self) -> bool:
+        return self.config.opacity_override.enabled
+
+    def _override_value(self) -> int:
+        return self.config.opacity_override.value
+
+    def _set_override_enabled(self, enabled: bool):
+        self.set_opacity_override(enabled, self._override_value())
+
+    def _set_override_value(self, value: int):
+        self.set_opacity_override(self._override_enabled(), value)
+
+    def custom_popover_settings(self) -> List[OverlaySetting]:
+        """Overlay-specific popover settings, shown below the opacity override. None by default."""
+        return []
+
+    def get_overlay_settings(self) -> Dict[str, Any]:
+        """Config fields this overlay owns, by name, with their current values. Saved by the launcher on lock."""
+        return {}
 
     @property
     def is_animation_overlay(self) -> bool:
@@ -549,7 +580,7 @@ class BaseOverlay(QmlBridge, QObject):
 
     def _on_mouse_press(self, event: QMouseEvent) -> bool:
         if event.button() == Qt.MouseButton.RightButton:
-            self._window_manager.open_opacity_popover(self, event.globalPosition().toPoint())
+            self._window_manager.open_overlay_popover(self, event.globalPosition().toPoint())
             return True
         if event.button() != Qt.MouseButton.LeftButton:
             return False
@@ -778,6 +809,11 @@ class BaseOverlay(QmlBridge, QObject):
             self.logger.debug('%s | Received request "get_window_info"', self.OVERLAY_ID)
             return self.get_window_info().toJSON()
 
+        @self.on_request("get_overlay_settings")
+        def _get_overlay_settings(_data: dict):
+            self.logger.debug('%s | Received request "get_overlay_settings"', self.OVERLAY_ID)
+            return self.get_overlay_settings()
+
         @self.on_request("get_window_stats")
         def _get_stats(_data: dict):
             self.logger.debug('%s | Received request "get_window_stats"', self.OVERLAY_ID)
@@ -790,7 +826,7 @@ class BaseOverlay(QmlBridge, QObject):
             self.set_locked_state(locked)
             if locked:
                 # Its changes are already on the overlay, so the lock that follows saves them
-                self._window_manager.close_opacity_popover()
+                self._window_manager.close_overlay_popover()
             else:
                 self.set_visibility(True)
 
@@ -807,6 +843,7 @@ class BaseOverlay(QmlBridge, QObject):
         def _handle_set_global_opacity(data: Dict[str, Any]):
             self._global_opacity = data["opacity"]
             self.set_opacity(self.opacity)
+            self._window_manager.refresh_overlay_popover(self)
 
         @self.on_event("__set_config__")
         def _handle_set_window_config(data: Dict[str, Any]) -> None:
@@ -816,6 +853,7 @@ class BaseOverlay(QmlBridge, QObject):
             self.set_ui_scale(config.scale_factor)
             # The new config carries its own override (the default, on reset)
             self.set_opacity(self.opacity)
+            self._window_manager.refresh_overlay_popover(self)
 
         @self.on_event("__set_telemetry_active__")
         def _handle_set_telemetry_active(data: Dict[str, Any]) -> None:

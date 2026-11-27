@@ -258,86 +258,31 @@ def test_hidden_mfd_may_have_no_page():
     HudSettings(show_mfd=False, mfd_settings=MfdSettings(pages=_pages()))
 
 
-_OPACITIES = {
-    "idle 0, overall 1": (0, 1, True),
-    "idle just below overall": (29, 30, True),
-    "idle equal to overall": (30, 30, False),
-    "idle above overall": (80, 70, False),
+# Idle opacity, overlays opacity, radar override (None for disabled)
+_RADAR_IDLE_ABOVE_BASE = {
+    "idle equal to overall": (30, 30, None),
+    "idle above overall": (80, 70, None),
+    "idle above an enabled radar override": (40, 100, 20),
+    "idle equal to an enabled radar override": (40, 100, 40),
 }
 
 @allure.story("Cross-field rules")
-@allure.title("Track radar idle opacity must be below overlays opacity ({case})")
-@pytest.mark.parametrize("case", list(_OPACITIES))
-def test_idle_opacity_below_overlays_opacity(case):
+@allure.title("Track radar idle opacity at or above the radar's opacity is accepted ({case})")
+@pytest.mark.parametrize("case", list(_RADAR_IDLE_ABOVE_BASE))
+def test_radar_idle_opacity_not_tied_to_base(case):
     """
-    Sets the track radar idle opacity and the overlays opacity on an enabled HUD.
+    Sets the track radar idle opacity at or above the radar's opacity (overlays opacity, or an enabled radar
+    opacity override) on an enabled HUD.
 
-    Expected: accepted when idle is strictly below overall, else a ValidationError naming the opacity rule.
+    Expected: the model builds unchanged. The radar ignores such an idle at render time, so no rule rejects it.
     """
-    idle, overall, accepted = _OPACITIES[case]
-    if accepted:
-        HudSettings(track_radar_idle_opacity=idle, overlays_opacity=overall)
-    else:
-        with pytest.raises(ValidationError, match="idle opacity"):
-            HudSettings(track_radar_idle_opacity=idle, overlays_opacity=overall)
-
-
-@allure.story("Cross-field rules")
-@allure.title("A disabled HUD may have idle opacity above overlays opacity")
-def test_disabled_hud_skips_opacity_rule():
-    """
-    Disables the HUD and sets the track radar idle opacity above the overlays opacity.
-
-    Expected: the model builds; the opacity rule only applies to an enabled HUD.
-    """
-    HudSettings(enabled=False, track_radar_idle_opacity=80, overlays_opacity=70)
-
-
-def _radar_override(enabled: bool, value: int) -> dict:
-    """A layout holding only the track radar, with the given opacity override."""
-    return {OverlayId.TRACK_RADAR: OverlayPosition(x=0, y=0,
-                                                   opacity_override=OpacityOverride(enabled=enabled, value=value))}
-
-
-_RADAR_IDLE = 30
-# Override enabled, override value, accepted; idle is _RADAR_IDLE
-_RADAR_OVERRIDES = {
-    "enabled at idle": (True, _RADAR_IDLE, False),
-    "enabled one below idle": (True, _RADAR_IDLE - 1, False),
-    "enabled one above idle": (True, _RADAR_IDLE + 1, True),
-    "disabled at 0": (False, 0, True),
-    "disabled at idle": (False, _RADAR_IDLE, True),
-}
-
-@allure.story("Cross-field rules")
-@allure.title("Track radar idle opacity must be below an enabled radar opacity override ({case})")
-@pytest.mark.parametrize("case", list(_RADAR_OVERRIDES))
-def test_idle_opacity_below_radar_override(case):
-    """
-    Sets the track radar idle opacity to 30 and gives the radar's layout entry an opacity override, on an enabled
-    HUD with overlays opacity at 100.
-
-    Expected: accepted when the override is disabled or its value is strictly above idle, else a ValidationError
-    naming the radar override rule.
-    """
-    enabled, value, accepted = _RADAR_OVERRIDES[case]
-    kwargs = {"track_radar_idle_opacity": _RADAR_IDLE, "layout": _radar_override(enabled, value)}
-    if accepted:
-        HudSettings(**kwargs)
-    else:
-        with pytest.raises(ValidationError, match="opacity override"):
-            HudSettings(**kwargs)
-
-
-@allure.story("Cross-field rules")
-@allure.title("A disabled HUD may have a radar opacity override below idle opacity")
-def test_disabled_hud_skips_radar_override_rule():
-    """
-    Disables the HUD and enables a track radar opacity override of 0, below the idle opacity.
-
-    Expected: the model builds; the radar override rule only applies to an enabled HUD.
-    """
-    HudSettings(enabled=False, track_radar_idle_opacity=_RADAR_IDLE, layout=_radar_override(True, 0))
+    idle, overall, override = _RADAR_IDLE_ABOVE_BASE[case]
+    ovr = OpacityOverride(enabled=override is not None, value=100 if override is None else override)
+    hud = HudSettings(track_radar_idle_opacity=idle, overlays_opacity=overall,
+                      layout={OverlayId.TRACK_RADAR: OverlayPosition(x=0, y=0, opacity_override=ovr)})
+    assert hud.track_radar_idle_opacity == idle
+    assert hud.overlays_opacity == overall
+    assert hud.layout[OverlayId.TRACK_RADAR].opacity_override == ovr
 
 # -------------------------------------- MFD PAGES ---------------------------------------------------------------------
 

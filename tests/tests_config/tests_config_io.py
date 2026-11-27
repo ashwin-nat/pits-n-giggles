@@ -345,11 +345,6 @@ _BROKEN_RULES = {
         {"HUD.show_mfd": True, "HUD.mfd_settings": HudSettings().mfd_settings},
         {"HUD.track_radar_range_m": 30},
     ),
-    "radar idle opacity above overall": (
-        {"HUD": {"track_radar_idle_opacity": 90, "overlays_opacity": 50, "track_radar_range_m": 30}},
-        {"HUD.track_radar_idle_opacity": 30, "HUD.overlays_opacity": 100},
-        {"HUD.track_radar_range_m": 30},
-    ),
     "two timing tower columns at one position": (
         {"HUD": {"track_radar_range_m": 30, "timing_tower_col_options": {"cols": {
             "delta": {"enabled": True, "position": 3}, "tyre": {"enabled": True, "position": 3}}}}},
@@ -401,12 +396,6 @@ _BROKEN_RULES = {
         {"HUD": {"layout": {"mfd": {"y": 5}, "lap_timer": {"x": 11, "y": 12}}, "track_radar_range_m": 30}},
         {"HUD.layout.mfd": HudSettings().layout["mfd"]},
         {"HUD.layout.lap_timer.x": 11, "HUD.track_radar_range_m": 30},
-    ),
-    "radar opacity override at or below idle": (
-        {"HUD": {"track_radar_idle_opacity": 40, "track_radar_range_m": 30, "layout": {
-            "track_radar": {"x": 1, "y": 2, "opacity_override": {"enabled": True, "value": 20}}}}},
-        {"HUD.layout.track_radar.opacity_override": OpacityOverride()},
-        {"HUD.track_radar_idle_opacity": 40, "HUD.layout.track_radar.x": 1},
     ),
     "overlay layout entry with a bad opacity override value": (
         {"HUD": {"track_radar_range_m": 30, "layout": {
