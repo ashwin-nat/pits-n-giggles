@@ -286,7 +286,7 @@ class HudAppMgr(PngAppMgrBase):
         reply = QMessageBox.question(
             self.window,
             "Reset Overlays",
-            "Reset all overlays to their default positions and scale factors?",
+            "Reset all overlays to their default positions, scale factors and opacity overrides?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -296,7 +296,7 @@ class HudAppMgr(PngAppMgrBase):
         self._reset_overlays()
 
     def _reset_overlays(self, overlay_ids: Optional[List[str]] = None):
-        """Reset HUD overlay positions/scales to defaults.
+        """Reset HUD overlay positions, scales and opacity overrides to defaults.
 
         Args:
             overlay_ids: Overlay IDs to reset. If None, all overlays are reset.
